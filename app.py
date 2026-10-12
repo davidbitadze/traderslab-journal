@@ -2,20 +2,13 @@ import pandas as pd
 import streamlit as st
 from supabase import create_client
 
-# 1. Supabase კავშირის ინიციალიზაცია (secrets-იდან ან პირდაპირი გასაღებებით)
-SUPABASE_URL = st.secrets.get(
-    "SUPABASE_URL", "თქვენი_supabase_url_აქ"
-)  # დროებით ან სქრეტებიდან
-SUPABASE_KEY = st.secrets.get("SUPABASE_KEY", "თქვენი_supabase_key_აქ")
+# Supabase კავშირის ზუსტი მონაცემები
+SUPABASE_URL = "https://sulifmgcdblvufmygjpg.supabase.co"
+SUPABASE_KEY = "sb_publishable_74vvbyKYiZ-8fFXdGfd0zQ_Ezk57..."  # აქ ჩაწერეთ თქვენი სრული Publishable Key
 
-# სათაური და ინტერფეისი
 st.title("📊 Traders Lab - სავაჭრო ჟურნალი")
-st.write(
-    "მოგესალმებით! ეს არის თქვენი განახლებული, ვებ-პლატფორმაზე გადატანილი"
-    " სავაჭრო დღიური."
-)
+st.write("ვებ-პლატფორმაზე გადატანილი სავაჭრო დღიური წარმატებით მუშაობს.")
 
-# 2. მონაცემების წამოღება Supabase-იდან
 try:
   supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
   response = supabase.table("trades").select("*").execute()
@@ -26,17 +19,12 @@ try:
     st.subheader("📋 არსებული გარიგებების ისტორია")
     st.dataframe(df)
   else:
-    st.info(
-        "ცხრილი ცარიელია ან მონაცემები ჯერ არ ჩანს. სცადეთ მონაცემების დამატება."
-    )
+    st.info("ცხრილი ცარიელია.")
 
 except Exception as e:
-  st.error(
-      "გთხოვთ მიუთითოთ Supabase კავშირის გასაღებები (URL და Key). შეცდომა:"
-      f" {e}"
-  )
+  st.error(f"კავშირის შეცდომა: {e}")
 
-# 3. მარტივი ფორმა ახალი გარიგების დასამატებლად (MVP)
+# ახალი გარიგების დამატების ფორმა
 st.subheader("➕ ახალი გარიგების დამატება")
 with st.form("trade_form"):
   col1, col2 = st.columns(2)
@@ -49,12 +37,9 @@ with st.form("trade_form"):
     pattern = st.text_input("პატერნი", "ვ-შემობრუნება")
     trigger = st.text_input("ტრიგერი", "ჩამოთვლა / მიწოლა")
 
-  submit_button = st.form_submit_button(
-      label="გარიგების შენახვა ბაზაში"
-  )
+  submit_button = st.form_submit_button(label="გარიგების შენახვა ბაზაში")
 
   if submit_button:
     st.success(
-        f"მონაცემები წარმატებით დამუშავდა! წყვილი: {pair}, მიმართულება: {side}"
+        f"მონაცემები მზად არის ჩასაწერად! წყვილი: {pair}, მიმართულება: {side}"
     )
-    # აქ მოხდება ბაზაში ჩაწერა შემდეგ ნაბიჯზე
