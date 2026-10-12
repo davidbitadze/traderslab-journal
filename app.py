@@ -4,7 +4,7 @@ from supabase import create_client
 
 # Supabase კავშირის ზუსტი მონაცემები
 SUPABASE_URL = "https://sulifmgcdblvufmygjpg.supabase.co"
-SUPABASE_KEY = "sb_publishable_74vvbyKYiZ-8fFXdGfd0zQ_Ezk57..."  # აქ ჩაწერეთ თქვენი სრული Publishable Key
+SUPABASE_KEY = "sb_publishable_74vvbyKYIz-8fXXdGfd0zQ_Ezk57Jsu"  # აქ ჩაწერეთ თქვენი სრული Publishable Key
 
 st.title("📊 Traders Lab - სავაჭრო ჟურნალი")
 st.write("ვებ-პლატფორმაზე გადატანილი სავაჭრო დღიური წარმატებით მუშაობს.")
