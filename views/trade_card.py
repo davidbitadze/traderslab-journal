@@ -46,24 +46,36 @@ def render_trade_card(trade, df):
       )
 
     with col_menu:
-      # სამწტილიანი მენიუ (Glide სტილის პოპაპი)
+      # Glide-ის სტილის სამწტილიანი მენიუ ზუსტად ორი ღილაკით
       with st.popover("⋯"):
-        st.subheader(f"მმართველობა: {pair}")
+        st.subheader(f"მართვა: {pair}")
 
-        # ვიყენებთ რადიო ღილაკებს ან ჩანართებს პირდაპირი არჩევისთვის
-        action_choice = st.radio(
-            "აირჩიეთ მოქმედება",
-            ["✏️ ჩასწორება (პოზიციის მართვა)", "🗑️ წაშლა"],
-            key=f"choice_{trade_id}",
-        )
+        # ორი ძირითადი ღილაკი ერთმანეთის მიყოლებით
+        col_btn1, col_btn2 = st.columns(2)
+        with col_btn1:
+          edit_clicked = st.button("✏️ ჩასწორება", key=f"edit_btn_{trade_id}")
+        with col_btn2:
+          delete_clicked = st.button(
+              "🗑️ წაშლა", key=f"del_btn_{trade_id}"
+          )
+
+        # სესიის მეხსიერებაში ვინახავთ რომელ ღილაკზე დააკლიკა იუზერმა
+        state_key = f"mode_{trade_id}"
+        if edit_clicked:
+          st.session_state[state_key] = "edit"
+        elif delete_clicked:
+          st.session_state[state_key] = "delete"
+
+        current_mode = st.session_state.get(state_key, None)
 
         st.divider()
 
-        if "ჩასწორება" in action_choice:
-          st.write("**პოზიციის მართვა / ახალი ეტაპი**")
+        # თუ არჩეულია ჩასწორება
+        if current_mode == "edit":
+          st.write("**პოზიციის მართვა / ჩასწორება**")
 
           sub_action_type = st.selectbox(
-              "მოქმედების ტიპი",
+              "მოქმედება",
               [
                   "Scale In (დამატება)",
                   "Partial Exit (ნაწილობრივი ჩახურვა)",
@@ -89,20 +101,13 @@ def render_trade_card(trade, df):
             )
             sub_desc = st.text_input("შენიშვნა", key=f"desc_{trade_id}")
 
-            # დასრულების გადამრთველიც იქვეა, რომ კომფორტული იყოს
             mark_finalized = st.checkbox(
                 "გარიგება დასრულებულია (Finalized)",
                 value=is_finalized,
                 key=f"fin_chk_{trade_id}",
             )
 
-            col_btn1, col_btn2 = st.columns(2)
-            with col_btn1:
-              submitted = st.form_submit_button("შენახვა")
-            with col_btn2:
-              cancel = st.form_submit_button("გაუქმება")
-
-            if submitted:
+            if st.form_submit_button("ცვლილებების შენახვა"):
               child_trade_data = {
                   "Trade ID": str(uuid.uuid4()),
                   "Parent Trade ID": trade_id,
@@ -114,33 +119,33 @@ def render_trade_card(trade, df):
                   "ActionType": sub_action_type,
                   "Description": sub_desc,
               }
-              # ვანახლებთ მთავარ სტატუსსაც თუ შეიცვალა
               update_trade(trade_id, {"Finalized": str(mark_finalized)})
 
               if insert_trade(child_trade_data):
-                st.success("ცვლილებები შენახულია!")
+                st.success("წარმატებით შეინახა!")
+                del st.session_state[state_key]
                 st.rerun()
 
-        elif "წაშლა" in action_choice:
+        # თუ არჩეულია წაშლა
+        elif current_mode == "delete":
           st.error(
-              "⚠️ ყურადღება: წაშლის შემდეგ მონაცემების აღდგენა შეუძლებელი"
-              " იქნება!"
+              "⚠️ ნამდვილად გსურთ წაშლა? წაშლის შემდეგ მონაცემები ვეღარ"
+              " აღდგება!"
           )
 
-          col_del1, col_del2 = st.columns(2)
-          with col_del1:
-            if st.button("OK (წაშლა)", key=f"ok_del_{trade_id}"):
+          col_d1, col_d2 = st.columns(2)
+          with col_d1:
+            if st.button("OK", key=f"conf_del_{trade_id}"):
               if delete_trade(trade_id):
-                st.success("გარიგება წარმატებით წაიშალა!")
+                st.success("წაიშალა!")
+                del st.session_state[state_key]
                 st.rerun()
-              else:
-                st.error("წაშლა ვერ მოხერხდა.")
-          with col_del2:
-            if st.button("Cancel (გაუქმება)", key=f"canc_del_{trade_id}"):
-              st.info("გაუქმებულია.")
+          with col_d2:
+            if st.button("Cancel", key=f"canc_del_{trade_id}"):
+              del st.session_state[state_key]
               st.rerun()
 
-    # დეტალური ისტორიის ჩაშლა ბარათის ქვემოთ
+    # დეტალური ისტორია ბარათის ქვეშ
     if not sub_actions.empty:
       with st.expander(f"📋 დეტალური ისტორია ({len(sub_actions)} ქვემოქმედება)"):
         for _, sub in sub_actions.iterrows():
