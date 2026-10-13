@@ -2,6 +2,7 @@ from database import (
     add_setting_item,
     delete_setting_item,
     fetch_settings,
+    update_setting_item,
 )
 import streamlit as st
 
@@ -20,12 +21,26 @@ def render_settings_view(lang="ka"):
     patterns = fetch_settings("pattern")
 
     for p in patterns:
-      c_del, c_txt = st.columns([1, 5])
+      c_del, c_edit, c_txt = st.columns([1, 1, 4])
       with c_del:
         if st.button("🗑️", key=f"del_pat_{p}"):
           if delete_setting_item("pattern", p):
             st.success(f"წაიშალა: {p}")
             st.rerun()
+
+      with c_edit:
+        # რედაქტირების პოპაპი თითოეულ ელემენტზე
+        with st.popover("✏️"):
+          st.caption(f"პატერნის შეცვლა: {p}")
+          updated_pat_name = st.text_input(
+              "ახალი სახელი", value=p, key=f"inp_pat_{p}"
+          )
+          if st.button("შენახვა", key=f"btn_pat_{p}"):
+            if updated_pat_name and updated_pat_name != p:
+              if update_setting_item("pattern", p, updated_pat_name):
+                st.success("წარმატებით განახლდა!")
+                st.rerun()
+
       with c_txt:
         st.write(p)
 
@@ -43,12 +58,25 @@ def render_settings_view(lang="ka"):
     triggers = fetch_settings("trigger")
 
     for tr in triggers:
-      c_del, c_txt = st.columns([1, 5])
+      c_del, c_edit, c_txt = st.columns([1, 1, 4])
       with c_del:
         if st.button("🗑️", key=f"del_trig_{tr}"):
           if delete_setting_item("trigger", tr):
             st.success(f"წაიშალა: {tr}")
             st.rerun()
+
+      with c_edit:
+        with st.popover("✏️"):
+          st.caption(f"ტრიგერის შეცვლა: {tr}")
+          updated_trig_name = st.text_input(
+              "ახალი სახელი", value=tr, key=f"inp_trig_{tr}"
+          )
+          if st.button("შენახვა", key=f"btn_trig_{tr}"):
+            if updated_trig_name and updated_trig_name != tr:
+              if update_setting_item("trigger", tr, updated_trig_name):
+                st.success("წარმატებით განახლდა!")
+                st.rerun()
+
       with c_txt:
         st.write(tr)
 
