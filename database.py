@@ -28,3 +28,46 @@ def insert_trade(trade_data):
   except Exception as e:
     st.error(f"ბაზაში ჩაწერის შეცდომა: {e}")
     return False
+
+# database.py-ის დამატებითი ფუნქციები პარამეტრებისთვის
+
+
+def fetch_settings(category):
+  """კატეგორიის მიხედვით (მაგ: 'pattern' ან 'trigger') სიის წამოღება ბაზიდან"""
+  try:
+    supabase = get_supabase_client()
+    response = (
+        supabase.table("user_settings")
+        .select("*")
+        .eq("category", category)
+        .execute()
+    )
+    return [row["item_name"] for row in response.data] if response.data else []
+  except Exception:
+    # საწყისი დეფოლტები თუ ცხრილი ჯერ ცარიელია
+    if category == "pattern":
+      return ["ვ-შემობრუნება", "ორმაგი წვერი", "თავი მხრები"]
+    else:
+      return ["პინბარი", "ჩამყლაპავი", "გაფართოვება"]
+
+
+def add_setting_item(category, item_name):
+  try:
+    supabase = get_supabase_client()
+    supabase.table("user_settings").insert(
+        {"category": category, "item_name": item_name}
+    ).execute()
+    return True
+  except Exception as e:
+    return False
+
+
+def delete_setting_item(category, item_name):
+  try:
+    supabase = get_supabase_client()
+    supabase.table("user_settings").delete().eq("category", category).eq(
+        "item_name", item_name
+    ).execute()
+    return True
+  except Exception as e:
+    return False
