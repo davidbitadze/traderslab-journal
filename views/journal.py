@@ -91,8 +91,7 @@ def render_journal_view(lang="ka"):
 
       if submitted:
         # გენერირდება ახალი უნიკალური Trade ID ამ კონკრეტული ჩანაწერისთვის
-        current_trade_id = str(uuid.uuid4())[:8]  # მოკლე 8-ნიშნა ID
-
+        current_trade_id = str(uuid.uuid4())  # სრული UUID ფორმატი
         # თუ მთავარი შესვლაა, Parent Trade ID არის თავისივე ID
         if action_type == "Start Row in Journal (მთავარი შესვლა)":
           final_parent_id = current_trade_id
