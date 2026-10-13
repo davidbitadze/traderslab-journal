@@ -49,9 +49,17 @@ def render_journal_view(lang="ka"):
 
       description = st.text_area("აღწერა / კომენტარი (Description)", "")
 
+      # სკრინშოტის ატვირთვის ველი
+      screenshot = st.file_uploader(
+          "გარიგების სკრინშოტი (Screenshot)", type=["png", "jpg", "jpeg"]
+      )
+
       submitted = st.form_submit_button("ბაზაში შენახვა (Save Trade)")
 
       if submitted:
+        # სკრინშოტის სახელის დამუშავება (თუ ატვირთულია)
+        screenshot_name = screenshot.name if screenshot else "No Screenshot"
+
         trade_data = {
             "Entry Date": str(entry_date),
             "Pair": pair,
@@ -64,10 +72,11 @@ def render_journal_view(lang="ka"):
             "Pattern": pattern,
             "Trigger": trigger,
             "Description": description,
+            "Screenshot": screenshot_name,
         }
 
         if insert_trade(trade_data):
-          st.success("გარიგება წარმატებით დაემატა ბაზაში!")
+          st.success("გარიგება და სკრინშოტი წარმატებით დაემატა ბაზაში!")
           st.rerun()
         else:
           st.error("შენახვა ვერ მოხერხდა.")
@@ -81,7 +90,6 @@ def render_journal_view(lang="ka"):
         " ედიტორის რეჟიმში):"
     )
 
-    # st.data_editor საშუალებას გვაძლევს ცხრილშივე ვმართოთ მონაცემები
     edited_df = st.data_editor(
         df,
         use_container_width=True,
