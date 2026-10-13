@@ -1,7 +1,12 @@
 from database import fetch_trades, insert_trade
 import streamlit as st
 from utils.translations import t
+from views.add_trade import render_add_trade_view
 
+# ...
+if menu == t("menu_add", lang):
+  render_add_trade_view(lang)
+    
 st.set_page_config(
     page_title="Traders Lab - სავაჭრო ჟურნალი", page_icon="📊", layout="wide"
 )
