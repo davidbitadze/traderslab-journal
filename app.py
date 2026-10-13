@@ -1,22 +1,29 @@
-import pandas as pd
 import streamlit as st
-from supabase import create_client
+from database import fetch_trades
+from views import analytics  # თუ უკვე გაქვთ ფაილები views-ში
 
-# Supabase კავშირის ზუსტი მონაცემები
-SUPABASE_URL = "https://sulifmgcdblvufmygjpg.supabase.co"
-SUPABASE_KEY = (
-    "sb_publishable_74vvbyKYiZ-8fFXdGfd0zQ_Ezk57..."  # თქვენი სრული კლავიში
+st.set_page_config(
+    page_title="Traders Lab - სავაჭრო ჟურნალი", page_icon="📊", layout="wide"
 )
 
-st.title("📊 Traders Lab - სავაჭრო ჟურნალი")
-st.write("ვებ-პლატფორმაზე გადატანილი სავაჭრო დღიური წარმატებით მუშაობს.")
+st.sidebar.title("🧭 ნავიგაცია")
+menu = st.sidebar.selectbox(
+    "აირჩიეთ გვერდი", ["📊 სავაჭრო ჟურნალი", "➕ ახალი გარიგება", "📈 ანალიტიკა"]
+)
 
-try:
-  supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+if menu == "📊 სავაჭრო ჟურნალი":
+  st.title("📊 არსებული გარიგებების ისტორია")
+  df = fetch_trades()
+  if not df.empty:
+    st.dataframe(df, use_container_width=True)
+  else:
+    st.info("ცხრილი ამჟამად ცარიელია.")
 
-  # ახალი გარიგების დამატების ფორმა
-  st.subheader("➕ ახალი გარიგების დამატება")
-  with st.form("trade_form"):
+elif menu == "➕ ახალი გარიგება":
+  st.title("➕ ახალი გარიგების დამატება")
+  from database import insert_trade
+
+  with st.form("new_trade_form"):
     col1, col2 = st.columns(2)
     with col1:
       pair = st.text_input("ვალუტის წყვილი (Pair)", "EURUSD")
@@ -27,11 +34,9 @@ try:
       pattern = st.text_input("პატერნი", "ვ-შემობრუნება")
       trigger = st.text_input("ტრიგერი", "ჩამოთვლა / მიწოლა")
 
-    submit_button = st.form_submit_button(label="გარიგების შენახვა ბაზაში")
-
-    if submit_button:
-      # მონაცემების გაგზავნა Supabase-ში
-      insert_data = {
+    submitted = st.form_submit_button("გარიგების შენახვა ბაზაში")
+    if submitted:
+      data = {
           "Pair": pair,
           "Entry Price": entry_price,
           "Qty": qty,
@@ -39,23 +44,19 @@ try:
           "Pattern": pattern,
           "Trigger": trigger,
       }
-      res = supabase.table("trades").insert(insert_data).execute()
-      st.success(
-          f"გარიგება წარმატებით შეინახა ბაზაში! წყვილი: {pair}, მიმართულება:"
-          f" {side}"
-      )
-      st.rerun()  # გვერდის განახლება, რომ ცხრილშიც გამოჩნდეს
+      if insert_trade(data):
+        st.success("გარიგება წარმატებით შეინახა ბაზაში!")
 
-  # არსებული გარიგებების წამოღება და ჩვენება
-  response = supabase.table("trades").select("*").execute()
-  data = response.data
-
-  if data:
-    df = pd.DataFrame(data)
-    st.subheader("📋 არსებული გარიგებების ისტორია")
-    st.dataframe(df)
+elif menu == "📈 ანალიტიკა":
+  st.title("📈 სტატისტიკა და ანალიტიკა")
+  df = fetch_trades()
+  if not df.empty:
+    st.write(
+        "სტატისტიკური პანელი მუშავდება... (აქ გადმოიტანება თქვენი Google"
+        " Sheets-ის მე-3 გვერდის ლოგიკა)"
+    )
+    st.metric(
+        label="სულ გარიგებები", value=len(df)
+    )  # დროებითი ტესტ მეთრიკა
   else:
-    st.info("ცხრილი ამჟამად ცარიელია.")
-
-except Exception as e:
-  st.error(f"შეცდომა: {e}")
+    st.info("მონაცემები არ არის ანალიტიკისთვის.")
