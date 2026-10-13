@@ -1,9 +1,8 @@
 from database import fetch_trades, insert_trade
 import streamlit as st
-from views.add_trade import render_add_trade_view
 from utils.translations import t
+from views.journal import render_journal_view
 
-# 1. საიტის ძირითადი კონფიგურაცია აუცილებლად პირველი უნდა იყოს!
 st.set_page_config(
     page_title="Traders Lab - სავაჭრო ჟურნალი", page_icon="📊", layout="wide"
 )
@@ -27,29 +26,20 @@ if selected_lang != st.session_state.lang:
 
 lang = st.session_state.lang
 
-# მენიუ
+# მთავარი მენიუ
 st.sidebar.title(t("nav_header", lang))
 menu = st.sidebar.selectbox(
     "აირჩიეთ გვერდი",
     [
         t("menu_journal", lang),
-        t("menu_add", lang),
         t("menu_analytics", lang),
     ],
 )
 
-# გვერდების ლოგიკა
+# გვერდების მიხედვით ჩვენება
 if menu == t("menu_journal", lang):
-  st.title(t("journal_title", lang))
-  df = fetch_trades()
-  if not df.empty:
-    st.dataframe(df, use_container_width=True)
-  else:
-    st.info(t("empty_table", lang))
-
-elif menu == t("menu_add", lang):
-  # აქ გამოძახებულია ჩვენი ახალი მოდულური ფორმა, რომელიც ითვალისწინებს მრავალნაწილიან გარიგებებს
-  render_add_trade_view(lang)
+  # აქ გამოიძახება ჟურნალისა და პოპაპ ფორმის ერთიანი სივრცე
+  render_journal_view(lang)
 
 elif menu == t("menu_analytics", lang):
   st.title(t("analytics_title", lang))
