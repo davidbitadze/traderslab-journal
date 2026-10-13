@@ -7,7 +7,8 @@ from supabase import create_client
 def get_supabase_client():
   # კოდი ეძებს სექრეტებში ჩაწერილ გასაღებებს
   supabase_url = st.secrets["SUPABASE_URL"]
-  supabase_key = st.secrets["SUPABASE_KEY"]
+  supabase_key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN1bGlmbWdjZGJsdnVmbXlnanBnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE4MTMxOTAsImV4cCI6MjEwNzM4OTE5MH0.nKibVuu0NM4qjnVNX9i71GLfp2fqnoxlC7EAJhXQx8I"
+#  supabase_key = st.secrets["SUPABASE_KEY"]
   return create_client(supabase_url, supabase_key)
 
 
