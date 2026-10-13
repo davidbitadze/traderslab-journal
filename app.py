@@ -1,12 +1,9 @@
 from database import fetch_trades, insert_trade
 import streamlit as st
-from utils.translations import t
 from views.add_trade import render_add_trade_view
+from utils.translations import t
 
-# ...
-if menu == t("menu_add", lang):
-  render_add_trade_view(lang)
-    
+# 1. საიტის ძირითადი კონფიგურაცია აუცილებლად პირველი უნდა იყოს!
 st.set_page_config(
     page_title="Traders Lab - სავაჭრო ჟურნალი", page_icon="📊", layout="wide"
 )
@@ -51,30 +48,8 @@ if menu == t("menu_journal", lang):
     st.info(t("empty_table", lang))
 
 elif menu == t("menu_add", lang):
-  st.title(t("add_title", lang))
-  with st.form("new_trade_form"):
-    col1, col2 = st.columns(2)
-    with col1:
-      pair = st.text_input(t("pair", lang), "EURUSD")
-      entry_price = st.text_input(t("entry_price", lang), "1.0850")
-      qty = st.text_input(t("qty", lang), "6000")
-    with col2:
-      side = st.selectbox(t("side", lang), ["Long", "Short"])
-      pattern = st.text_input(t("pattern", lang), "ვ-შემობრუნება")
-      trigger = st.text_input(t("trigger", lang), "ჩამოთვლა / მიწოლა")
-
-    submitted = st.form_submit_button(t("save_btn", lang))
-    if submitted:
-      data = {
-          "Pair": pair,
-          "Entry Price": entry_price,
-          "Qty": qty,
-          "Side": side,
-          "Pattern": pattern,
-          "Trigger": trigger,
-      }
-      if insert_trade(data):
-        st.success(t("success_save", lang))
+  # აქ გამოძახებულია ჩვენი ახალი მოდულური ფორმა, რომელიც ითვალისწინებს მრავალნაწილიან გარიგებებს
+  render_add_trade_view(lang)
 
 elif menu == t("menu_analytics", lang):
   st.title(t("analytics_title", lang))
