@@ -33,7 +33,7 @@ def render_journal_view(lang="ka"):
         selected_parent = st.selectbox(
             "აირჩიეთ დედა გარიგება (Parent Trade ID)",
             options=parent_choices,
-            format_func=lambda x: f"ID: {x[:8]}... ({df[df['TradeID']==x]['Pair'].values[0] if 'Pair' in df.columns else ''})",
+            format_func=lambda x: f"ID: {x[:8]}... ({df[df['Trade ID']==x]['Pair'].values[0] if 'Pair' in df.columns else ''})",
         )
 
         action_type = st.selectbox(
