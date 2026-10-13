@@ -71,3 +71,13 @@ def delete_setting_item(category, item_name):
     return True
   except Exception as e:
     return False
+
+def update_setting_item(category, old_name, new_name):
+  try:
+    supabase = get_supabase_client()
+    supabase.table("user_settings").update({"item_name": new_name}).eq(
+        "category", category
+    ).eq("item_name", old_name).execute()
+    return True
+  except Exception as e:
+    return False
