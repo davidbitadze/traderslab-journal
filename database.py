@@ -1,14 +1,14 @@
+from database import fetch_trades, insert_trade  # ან უბრალოდ შენი ძველი კოდი
 import pandas as pd
-from supabase import create_client
 import streamlit as st
-
-# Supabase კავშირის პარამეტრები
-SUPABASE_URL = "https://sulifmgcdblvufmygjpg.supabase.co"
-SUPABASE_KEY = "sb_publishable_74vvbyKYiZ-8fFXdGfd0zQ_Ezk57..."
+from supabase import create_client
 
 
 def get_supabase_client():
-  return create_client(SUPABASE_URL, SUPABASE_KEY)
+  # კოდი ეძებს სექრეტებში ჩაწერილ გასაღებებს
+  supabase_url = st.secrets["SUPABASE_URL"]
+  supabase_key = st.secrets["SUPABASE_KEY"]
+  return create_client(supabase_url, supabase_key)
 
 
 def fetch_trades():
