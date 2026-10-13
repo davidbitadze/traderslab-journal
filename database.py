@@ -92,3 +92,14 @@ def update_trade(trade_id, updated_data):
     return True
   except Exception as e:
     return False
+    
+def delete_trade(trade_id):
+  """გარიგების და მასთან დაკავშირებული ქვემოქმედებების წაშლა Trade ID-ის მიხედვით"""
+  try:
+    supabase = get_supabase_client()
+    # ვშლით მთავარ გარიგებას ან მის ქვემოქმედებებს, რომლებსაც ეს Parent ID აქვთ
+    supabase.table("trades").delete().eq("Trade ID", trade_id).execute()
+    supabase.table("trades").delete().eq("Parent Trade ID", trade_id).execute()
+    return True
+  except Exception as e:
+    return False
