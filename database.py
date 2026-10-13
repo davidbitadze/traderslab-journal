@@ -81,3 +81,14 @@ def update_setting_item(category, old_name, new_name):
     return True
   except Exception as e:
     return False
+
+def update_trade(trade_id, updated_data):
+  """არსებული გარიგების მონაცემების განახლება Supabase-ში Trade ID-ის მიხედვით"""
+  try:
+    supabase = get_supabase_client()
+    supabase.table("trades").update(updated_data).eq(
+        "Trade ID", trade_id
+    ).execute()
+    return True
+  except Exception as e:
+    return False
