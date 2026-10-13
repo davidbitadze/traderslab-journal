@@ -46,22 +46,24 @@ def render_trade_card(trade, df):
       )
 
     with col_menu:
+      # სამწტილიანი მენიუ (Glide სტილის პოპაპი)
       with st.popover("⋯"):
-        st.write(f"**პოზიციის მართვა:** {pair}")
+        st.subheader(f"მმართველობა: {pair}")
 
-        menu_action = st.selectbox(
-            "არჩევანი",
-            [
-                "პოზიციის მართვა (Scale In/Exit)",
-                "სტატუსის შეცვლა (Finalized)",
-                "🗑️ გარიგების წაშლა",
-            ],
-            key=f"menu_{trade_id}",
+        # ვიყენებთ რადიო ღილაკებს ან ჩანართებს პირდაპირი არჩევისთვის
+        action_choice = st.radio(
+            "აირჩიეთ მოქმედება",
+            ["✏️ ჩასწორება (პოზიციის მართვა)", "🗑️ წაშლა"],
+            key=f"choice_{trade_id}",
         )
 
-        if "მართვა" in menu_action:
+        st.divider()
+
+        if "ჩასწორება" in action_choice:
+          st.write("**პოზიციის მართვა / ახალი ეტაპი**")
+
           sub_action_type = st.selectbox(
-              "მოქმედება",
+              "მოქმედების ტიპი",
               [
                   "Scale In (დამატება)",
                   "Partial Exit (ნაწილობრივი ჩახურვა)",
@@ -87,7 +89,20 @@ def render_trade_card(trade, df):
             )
             sub_desc = st.text_input("შენიშვნა", key=f"desc_{trade_id}")
 
-            if st.form_submit_button("შესრულება"):
+            # დასრულების გადამრთველიც იქვეა, რომ კომფორტული იყოს
+            mark_finalized = st.checkbox(
+                "გარიგება დასრულებულია (Finalized)",
+                value=is_finalized,
+                key=f"fin_chk_{trade_id}",
+            )
+
+            col_btn1, col_btn2 = st.columns(2)
+            with col_btn1:
+              submitted = st.form_submit_button("შენახვა")
+            with col_btn2:
+              cancel = st.form_submit_button("გაუქმება")
+
+            if submitted:
               child_trade_data = {
                   "Trade ID": str(uuid.uuid4()),
                   "Parent Trade ID": trade_id,
@@ -99,32 +114,35 @@ def render_trade_card(trade, df):
                   "ActionType": sub_action_type,
                   "Description": sub_desc,
               }
+              # ვანახლებთ მთავარ სტატუსსაც თუ შეიცვალა
+              update_trade(trade_id, {"Finalized": str(mark_finalized)})
+
               if insert_trade(child_trade_data):
-                st.success("მოქმედება დაემატა!")
+                st.success("ცვლილებები შენახულია!")
                 st.rerun()
 
-        elif "სტატუსის" in menu_action:
-          new_status = st.checkbox(
-              "გარიგება დასრულებულია (Finalized)",
-              value=is_finalized,
-              key=f"chk_{trade_id}",
+        elif "წაშლა" in action_choice:
+          st.error(
+              "⚠️ ყურადღება: წაშლის შემდეგ მონაცემების აღდგენა შეუძლებელი"
+              " იქნება!"
           )
-          if st.button("სტატუსის შენახვა", key=f"btn_stat_{trade_id}"):
-            if update_trade(trade_id, {"Finalized": str(new_status)}):
-              st.success("სტატუსი განახლდა!")
+
+          col_del1, col_del2 = st.columns(2)
+          with col_del1:
+            if st.button("OK (წაშლა)", key=f"ok_del_{trade_id}"):
+              if delete_trade(trade_id):
+                st.success("გარიგება წარმატებით წაიშალა!")
+                st.rerun()
+              else:
+                st.error("წაშლა ვერ მოხერხდა.")
+          with col_del2:
+            if st.button("Cancel (გაუქმება)", key=f"canc_del_{trade_id}"):
+              st.info("გაუქმებულია.")
               st.rerun()
 
-        elif "წაშლა" in menu_action:
-          st.warning("ნამდვილად გსურთ ამ გარიგებისა და მისი ისტორიის წაშლა?")
-          if st.button("⚠️ დიახ, წაშლა", key=f"del_{trade_id}"):
-            if delete_trade(trade_id):
-              st.success("გარიგება წაიშალა!")
-              st.rerun()
-
+    # დეტალური ისტორიის ჩაშლა ბარათის ქვემოთ
     if not sub_actions.empty:
-      with st.expander(
-          f"📋 დეტალური ისტორია ({len(sub_actions)} ქვემოქმედება)"
-      ):
+      with st.expander(f"📋 დეტალური ისტორია ({len(sub_actions)} ქვემოქმედება)"):
         for _, sub in sub_actions.iterrows():
           st.markdown(
               f"- **{sub.get('ActionType')}**: ფასი: {sub.get('Entry Price')}"
