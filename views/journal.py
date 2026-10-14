@@ -54,7 +54,7 @@ def render_journal_view(lang="ka"):
   final_balance = total_deposits + total_pnl
 
   # 5. დინამიკური სათაური ბალანსით
-  st.title(f"📊 სავაჭრო ჟურნალი — {final_balance:.2f}$")
+  st.title(f"📊 სავაჭრო ჟურნალი: {final_balance:.2f}$")
 
   # 6. ახალი გარიგების დამატების მოდალი
   render_add_trade_modal()
