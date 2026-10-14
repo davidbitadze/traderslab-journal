@@ -70,6 +70,7 @@ def render_add_trade_modal():
             "Side": side,
             "Entry Price": str(entry_price),
             "Qty": str(qty),
+            "Risk ($)": str(risk_dollar),
             "SL_Price": str(sl_price),
             "TP_Price": str(tp_price),
             "ActionType": "Start Row in Journal (მთავარი შესვლა)",
