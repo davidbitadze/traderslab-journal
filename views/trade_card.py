@@ -205,6 +205,11 @@ def render_trade_card(trade, df):
   ]
   if not exits.empty:
     exit_price = exits.iloc[-1].get("Entry Price", entry_price)
+  else:
+    # 👈 აი აქ ზუსტად: თუ გარიგება დასრულებულია, მაგრამ გამოსვლა არ ფიქსირდება
+    if is_finalized:
+      # შეგიძლია გამოიტანო გაფრთხილება ან დაუტოვო entry_price (რომ PnL იყოს 0)
+      exit_price = entry_price
 
   pnl = calculate_trade_pnl(entry_price, exit_price, risk_val, side)
   status_icon = "🟢" if pnl > 0 else ("🔴" if pnl < 0 else "⚪")
