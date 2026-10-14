@@ -177,7 +177,7 @@ def show_trade_details_dialog(trade, df):
         st.rerun()
 
 
-# ქოლბექი ტოიგლის ცვლილებისთვის (ციკლური რეფრეშის თავიდან ასაცილებლად)
+# ქოლბექი ტოიგლის ცვლილებისთვის
 def handle_toggle_change(t_id):
   new_val = st.session_state.get(f"toggle_fin_{t_id}", False)
   update_trade(t_id, {"Finalized": str(new_val)})
@@ -206,9 +206,7 @@ def render_trade_card(trade, df):
   if not exits.empty:
     exit_price = exits.iloc[-1].get("Entry Price", entry_price)
   else:
-    # 👈 აი აქ ზუსტად: თუ გარიგება დასრულებულია, მაგრამ გამოსვლა არ ფიქსირდება
     if is_finalized:
-      # შეგიძლია გამოიტანო გაფრთხილება ან დაუტოვო entry_price (რომ PnL იყოს 0)
       exit_price = entry_price
 
   pnl = calculate_trade_pnl(entry_price, exit_price, risk_val, side)
@@ -240,20 +238,12 @@ def render_trade_card(trade, df):
       )
 
     with col_toggle:
-      new_status = st.toggle(
-          "დასრულებული" if is_finalized else "მიმდინარე",
-          value=is_finalized,
-          key=f"toggle_fin_{trade_id}",
-        )
-        if new_status != is_finalized:
-          update_trade(trade_id, {"Finalized": str(new_status)})
-        
-        # თუ ტოიგლი გადაიყვანა დასრულებულზე, მაგრამ Exit არ მოიძებნა
-        if new_status and exits.empty:
-          st.toast("⚠️ გარიგება დასრულებულია, მაგრამ გამოსვლის (Exit) დეტალები არ არის მითითებული (PnL = 0$)", icon="ℹ️")
-        
-        st.rerun()
+      current_toggle_state = st.session_state.get(
+          f"toggle_fin_{trade_id}", is_finalized
+      )
+      toggle_label = "დასრულებული" if current_toggle_state else "მიმდინარე"
 
+      # ერთადერთი სწორი ტოიგლი ქოლბექით
       st.toggle(
           toggle_label,
           value=is_finalized,
@@ -261,6 +251,14 @@ def render_trade_card(trade, df):
           on_change=handle_toggle_change,
           args=(trade_id,),
       )
+
+      # თუ დასრულებულზე გადაიყვანა და Exit არ აქვს, ვატყობინებთ
+      if current_toggle_state and exits.empty:
+        st.toast(
+            "⚠️ გარიგება დასრულებულია, მაგრამ გამოსვლის (Exit) დეტალები არ არის"
+            " მითითებული (PnL = 0$)",
+            icon="ℹ️",
+        )
 
     with col_menu:
       with st.popover("⋯"):
