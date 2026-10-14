@@ -252,3 +252,17 @@ def delete_balance_transaction(txn_id):
     return True
   except Exception as e:
     return False
+
+def fetch_trades():
+  try:
+    supabase = get_supabase_client()
+    response = (
+        supabase.table("trades")
+        .select("*")
+        .order("Entry Date", desc=True)
+        .execute()
+    )
+    return pd.DataFrame(response.data) if response.data else pd.DataFrame()
+  except Exception as e:
+    st.error(f"ბაზიდან მონაცემის წამოღების შეცდომა: {e}")
+    return pd.DataFrame()
