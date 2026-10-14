@@ -39,9 +39,9 @@ def show_trade_details_dialog(trade, df):
   sub_action_type = st.selectbox(
       "მოქმედების ტიპი",
       [
+          "Full Exit (გამოსვლა)",
+          "Partial Exit (ნაწილობრივ გამოსვლა)",
           "Scale In (დამატება)",
-          "Partial Exit (ნაწილობრივი ჩახურვა)",
-          "Full Exit (სრული ჩახურვა)",
       ],
       key=f"dialog_act_{trade_id}",
   )
