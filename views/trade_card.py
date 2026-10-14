@@ -51,6 +51,11 @@ def show_trade_details_dialog(trade, df):
           # ვამოწმებთ, არის თუ არა ეს მთავარი შესვლა (Start Row)
           is_start_row = "Start Row" in str(sub.get("ActionType", ""))
 
+# ვამოწმებთ მიმდინარე Finalized სტატუსს
+          current_finalized = trade.get("Finalized", False)
+          if isinstance(current_finalized, str):
+            current_finalized = current_finalized.lower() == "true"
+          
           edit_price = st.number_input(
               "ფასი",
               value=float(sub.get("Entry Price", 1.0850))
@@ -70,6 +75,7 @@ def show_trade_details_dialog(trade, df):
 
           # თუ მთავარი შესვლაა, ვამატებთ რისკის ველსაც
           edit_risk = 10.0
+          edit_finalized = current_finalized
           if is_start_row:
             edit_risk = st.number_input(
                 "რისკი დოლარში (Risk $)",
@@ -77,6 +83,9 @@ def show_trade_details_dialog(trade, df):
                 if str(sub.get("Risk ($)", "10")).replace(".", "", 1).isdigit()
                 else 10.0,
                 step=1.0,
+            )
+            edit_finalized = st.checkbox(
+                "გარიგება დასრულებულია (Finalized)", value=current_finalized
             )
 
           edit_date = st.text_input(
@@ -93,6 +102,8 @@ def show_trade_details_dialog(trade, df):
               }
               if is_start_row:
                 update_data["Risk ($)"] = str(edit_risk)
+                # ვანახლებთ მთავარ გარიგებაზეც Finalized სტატუსს
+                update_trade(trade_id, {"Finalized": str(edit_finalized)})
 
               if update_trade(sub_id, update_data):
                 st.success("წარმატებით განახლდა!")
