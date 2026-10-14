@@ -1,4 +1,5 @@
 from database import fetch_balance_transactions, fetch_trades
+import pandas as pd
 import streamlit as st
 from utils.formulas import calculate_trade_pnl
 from views.add_trade_modal import render_add_trade_modal
@@ -54,7 +55,7 @@ def render_journal_view(lang="ka"):
   final_balance = total_deposits + total_pnl
 
   # 5. დინამიკური სათაური ბალანსით
-  st.title(f"📊 სავაჭრო ჟურნალი: {final_balance:.2f}$")
+  st.title(f"📊 სავაჭრო ჟურნალი — {final_balance:.2f}$")
 
   # 6. ახალი გარიგების დამატების მოდალი
   render_add_trade_modal()
@@ -69,6 +70,16 @@ def render_journal_view(lang="ka"):
     ]
     if main_trades.empty:
       main_trades = df.drop_duplicates(subset=["Parent Trade ID"])
+
+    # 🔄 სორტირება: თარიღის მიხედვით ახლიდან ძველისკენ (Descending)
+    if "Entry Date" in main_trades.columns:
+      # ვცდილობთ გადავაქციოთ datetime ტიპად სწორი სორტირებისთვის
+      main_trades["parsed_date"] = pd.to_datetime(
+          main_trades["Entry Date"], errors="coerce"
+      )
+      main_trades = main_trades.sort_values(
+          by="parsed_date", ascending=False
+      ).drop(columns=["parsed_date"])
 
     # თითოეული გარიგებისთვის გამოვიძახებთ ცალკეულ კომპონენტს
     for index, trade in main_trades.iterrows():
