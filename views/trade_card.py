@@ -34,7 +34,7 @@ def render_trade_card(trade, df):
   state_key = f"mode_{trade_id}"
   current_mode = st.session_state.get(state_key, None)
 
-  # კომპაქტური ბარათი მინიმალური ვერტიკალური სივრცით
+  # კომპაქტური ჰორიზონტალური ბარათი
   with st.container(border=True):
     col_img, col_info, col_edit, col_menu = st.columns([0.8, 7.2, 1, 1])
 
@@ -42,7 +42,6 @@ def render_trade_card(trade, df):
       st.markdown("🖼️" if screenshot != "No Screenshot" else "📁")
 
     with col_info:
-      # ერთიანი ჰორიზონტალური ხაზი Glide სტილში
       st.markdown(
           f"### {status_icon} **{pair}** &nbsp; `{side}` &nbsp;"
           f" **{pnl:+.2f}\$**"
@@ -53,8 +52,11 @@ def render_trade_card(trade, df):
       )
 
     with col_edit:
-      if st.button("✏️", key=f"edit_btn_{trade_id}", help="ჩასწორება"):
-        st.session_state[state_key] = "edit" if current_mode != "edit" else None
+      # ჩასწორების ღილაკი ხსნის დეტალების მოდალს/ფანჯარას
+      if st.button("✏️", key=f"edit_btn_{trade_id}", help="დეტალები / ჩასწორება"):
+        st.session_state[state_key] = (
+            "details" if current_mode != "details" else None
+        )
         st.rerun()
 
     with col_menu:
@@ -64,13 +66,27 @@ def render_trade_card(trade, df):
           st.session_state[state_key] = "delete"
           st.rerun()
 
-    # ჩასწორების ფორმა
-    if current_mode == "edit":
+    # 🪟 ერთიანი „დეტალები“ ფანჯარა (ისტორია + ახალი მოქმედების დამატება)
+    if current_mode == "details":
       st.divider()
-      st.markdown("##### ⚙️ პოზიციის მართვა / დამატება / ჩახურვა")
+      st.markdown(f"#### 🔍 გარიგების დეტალები: {pair} ({side})")
+
+      # 1. არსებული ისტორიის ჩვენება
+      if not sub_actions.empty:
+        st.markdown("**📋 ეტაპების ისტორია:**")
+        for _, sub in sub_actions.iterrows():
+          st.info(
+              f"• **{sub.get('ActionType')}** | ფასი: {sub.get('Entry Price')}"
+              f" | მოც.: {sub.get('Qty')} | დრო: {sub.get('Entry Date')}"
+          )
+      else:
+        st.caption("ამ გარიგებაზე დამატებითი ეტაპები ჯერ არ არის.")
+
+      st.markdown("---")
+      st.markdown("**➕ ახალი ჩანაწერის შეტანა (Scale In / Exit):**")
 
       sub_action_type = st.selectbox(
-          "მოქმედება",
+          "მოქმედების ტიპი",
           [
               "Scale In (დამატება)",
               "Partial Exit (ნაწილობრივი ჩახურვა)",
@@ -94,7 +110,7 @@ def render_trade_card(trade, df):
         with col_f2:
           sub_qty = st.number_input("მოცულობა", value=1000.0, step=100.0)
           mark_finalized = st.checkbox(
-              "გარიგება დასრულებულია", value=is_finalized
+              "გარიგება დასრულებულია (Finalized)", value=is_finalized
           )
 
         sub_desc = st.text_input("შენიშვნა / კომენტარი")
@@ -104,9 +120,11 @@ def render_trade_card(trade, df):
 
         col_s1, col_s2 = st.columns(2)
         with col_s1:
-          submitted = st.form_submit_button("💾 შენახვა", use_container_width=True)
+          submitted = st.form_submit_button(
+              "💾 ჩანაწერის დამატება", use_container_width=True
+          )
         with col_s2:
-          if st.form_submit_button("❌ დახურვა", use_container_width=True):
+          if st.form_submit_button("❌ ფანჯრის დახურვა", use_container_width=True):
             del st.session_state[state_key]
             st.rerun()
 
@@ -129,7 +147,7 @@ def render_trade_card(trade, df):
           update_trade(trade_id, {"Finalized": str(mark_finalized)})
 
           if insert_trade(child_trade_data):
-            st.success("წარმატებით შეინახა!")
+            st.success("წარმატებით დაემატა!")
             del st.session_state[state_key]
             st.rerun()
 
@@ -137,7 +155,8 @@ def render_trade_card(trade, df):
     elif current_mode == "delete":
       st.divider()
       st.error(
-          "⚠️ ნამდვილად გსურთ წაშლა? მონაცემები ვეღარ აღდგება!"
+          "⚠️ ნამდვილად გსურთ გარიგებისა და მისი ისტორიის წაშლა? მონაცემები"
+          " ვეღარ აღდგება!"
       )
       col_d1, col_d2 = st.columns(2)
       with col_d1:
@@ -154,12 +173,3 @@ def render_trade_card(trade, df):
         ):
           del st.session_state[state_key]
           st.rerun()
-
-    # დეტალური ისტორია კომპაქტურად
-    if not sub_actions.empty:
-      with st.expander(f"📋 ისტორია ({len(sub_actions)} ქვემოქმედება)"):
-        for _, sub in sub_actions.iterrows():
-          st.markdown(
-              f"- **{sub.get('ActionType')}**: {sub.get('Entry Price')} |"
-              f" მოც.: {sub.get('Qty')} | დრო: {sub.get('Entry Date')}"
-          )
