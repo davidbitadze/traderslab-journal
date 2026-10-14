@@ -15,7 +15,11 @@ def render_add_trade_modal():
       col1, col2 = st.columns(2)
 
       with col1:
-        entry_date = st.date_input("თარიღი (Entry Date)", datetime.today())
+        # დროის კოპირებისთვის ვიყენებთ text_input-ს, რომ ჩასვათ ზუსტი ფორმატით (მაგ: 2026-10-13 16:38:00)
+        default_time_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        entry_date = st.text_input(
+            "თარიღი და დრო (მაგ: 2026-10-13 16:38:00)", value=default_time_str
+        )
         pair = st.text_input("ვალუტის წყვილი (Pair)", "EURUSD")
         side = st.selectbox("მიმართულება (Side)", ["Long", "Short"])
         entry_price = st.number_input(
@@ -57,8 +61,8 @@ def render_add_trade_modal():
 
         trade_data = {
             "Trade ID": trade_id,
-            "Parent Trade ID": trade_id,  # თავად არის მთავარი დედა ტრეიდი
-            "Entry Date": str(entry_date),
+            "Parent Trade ID": trade_id,
+            "Entry Date": entry_date,
             "Pair": pair,
             "Side": side,
             "Entry Price": str(entry_price),
