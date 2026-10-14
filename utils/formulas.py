@@ -1,10 +1,22 @@
-def calculate_trade_pnl(entry_price, exit_price, risk_usd, side="Long"):
-  try:
-    e_price = float(entry_price)
-    ex_price = float(exit_price) if exit_price else e_price
-    risk = float(risk_usd) if risk_usd else 0.0
+import math
 
-    if e_price == 0:
+
+def calculate_trade_pnl(entry_price, exit_price, risk_usd, side="Long"):
+  """გამოთვლის რეალურ მოგება/წაგებას (Real Profit) და აზღვევს NaN შედეგებს."""
+  try:
+    e_price = float(entry_price) if entry_price else 0.0
+    ex_price = float(exit_price) if exit_price else e_price
+    
+    # ვამოწმებთ რისკის მნიშვნელობას (თუ NaN-ია ან ცარიელია, ვანიჭებთ 0.0-ს)
+    if risk_usd is None or (isinstance(risk_usd, float) and math.isnan(risk_usd)):
+      risk = 0.0
+    else:
+      try:
+        risk = float(risk_usd)
+      except (ValueError, TypeError):
+        risk = 0.0
+
+    if e_price == 0 or risk == 0:
       return 0.0
 
     # მიმართულება
@@ -15,11 +27,12 @@ def calculate_trade_pnl(entry_price, exit_price, risk_usd, side="Long"):
     else:
       diff = e_price - ex_price
 
-    # Real Profit = Risk ($) x Effective R/R
-    # სადაც Effective R/R არის მიმდინარე ფასის სხვაობის შეფარდება საწყის ცვლილებასთან
-    # თუ ზუსტ კოეფიციენტს ითვლით, შეგიძლიათ პირდაპირ მიამმაპოთ:
     ratio = diff / e_price
-    result = risk * ratio * 100  # სკალირების კოეფიციენტი ლოტებისა და პიპების მიხედვით
+    result = risk * ratio * 100
+
+    # საბოლოო შემოწმება, რომ შედეგი არ იყოს NaN
+    if math.isnan(result):
+      return 0.0
 
     return round(result, 2)
   except Exception:
