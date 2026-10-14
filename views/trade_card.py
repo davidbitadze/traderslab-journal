@@ -22,7 +22,7 @@ def show_trade_details_dialog(trade, df):
   st.markdown(f"### {pair} — **{side}**")
   st.divider()
 
-# 1. არსებული ისტორია
+  # 1. არსებული ისტორია
   if not sub_actions.empty:
     st.markdown("**📋 ეტაპების ისტორია:**")
     for _, sub in sub_actions.iterrows():
@@ -36,25 +36,18 @@ def show_trade_details_dialog(trade, df):
       with col_h2:
         if st.button("✏️", key=f"edit_sub_{sub_id}", help="ამ ეტაპის ჩასწორება"):
           st.session_state["active_edit_sub"] = sub_id
-          # აქ აღარ ვუძახებთ st.rerun()-ს პირდაპირ, რომ არ დახუროს დიალოგი
       with col_h3:
         if st.button("🗑️", key=f"del_sub_{sub_id}", help="ამ ეტაპის წაშლა"):
           if delete_trade(sub_id):
-            st.success("ჩანაწერი წაიშალა!")
-            st.rerun()
+            st.toast("ჩანაწერი წაიშალა!", icon="🗑️")
+            # აღარ ვხურავთ ფანჯარს rerun-ით, რომ იუზერმა შეძლოს რამდენიმეს წაშლა
 
-# თუ ზუსტად ამ სუბ-ჩანაწერის ედიტირებაა არჩეული, ვხსნით იქვე ფორმას
+      # თუ ზუსტად ამ სუბ-ჩანაწერის ედიტირებაა არჩეული, ვხსნით იქვე ფორმას
       if st.session_state.get("active_edit_sub") == sub_id:
         with st.form(f"form_edit_sub_inline_{sub_id}"):
           st.markdown(f"**✏️ ჩასწორება: {sub.get('ActionType')}**")
-          
-# ვამოწმებთ, არის თუ არა ეს მთავარი შესვლა (Start Row)
-          is_start_row = "Start Row" in str(sub.get("ActionType", ""))
 
-          # ვამოწმებთ მიმდინარე Finalized სტატუსს
-          current_finalized = trade.get("Finalized", False)
-          if isinstance(current_finalized, str):
-            current_finalized = current_finalized.lower() == "true"
+          is_start_row = "Start Row" in str(sub.get("ActionType", ""))
 
           edit_price = st.number_input(
               "ფასი",
@@ -73,9 +66,7 @@ def show_trade_details_dialog(trade, df):
               step=100.0,
           )
 
-          # თუ მთავარი შესვლაა, ვამატებთ რისკისა და Finalized ჩექბოქსს
           edit_risk = 10.0
-          edit_finalized = current_finalized
           if is_start_row:
             edit_risk = st.number_input(
                 "რისკი დოლარში (Risk $)",
@@ -83,9 +74,6 @@ def show_trade_details_dialog(trade, df):
                 if str(sub.get("Risk ($)", "10")).replace(".", "", 1).isdigit()
                 else 10.0,
                 step=1.0,
-            )
-            edit_finalized = st.checkbox(
-                "გარიგება დასრულებულია (Finalized)", value=current_finalized
             )
 
           edit_date = st.text_input(
@@ -102,8 +90,6 @@ def show_trade_details_dialog(trade, df):
               }
               if is_start_row:
                 update_data["Risk ($)"] = str(edit_risk)
-                # ვანახლებთ მთავარ გარიგებაზეც Finalized სტატუსს
-                update_trade(trade_id, {"Finalized": str(edit_finalized)})
 
               if update_trade(sub_id, update_data):
                 st.success("წარმატებით განახლდა!")
@@ -150,11 +136,6 @@ def show_trade_details_dialog(trade, df):
       sub_qty = st.number_input(
           "მოცულობა", value=1000.0, step=100.0, key=f"dialog_qty_{trade_id}"
       )
-      mark_finalized = st.checkbox(
-          "გარიგება დასრულებულია (Finalized)",
-          value=is_finalized,
-          key=f"dialog_fin_{trade_id}",
-      )
 
     sub_desc = st.text_input(
         "შენიშვნა / კომენტარი", key=f"dialog_desc_{trade_id}"
@@ -165,9 +146,16 @@ def show_trade_details_dialog(trade, df):
         key=f"dialog_file_{trade_id}",
     )
 
-    submitted = st.form_submit_button(
-        "💾 ცვლილებების შენახვა", use_container_width=True
-    )
+    col_btn1, col_btn2 = st.columns(2)
+    with col_btn1:
+      submitted = st.form_submit_button(
+          "💾 ცვლილებების შენახვა", use_container_width=True
+      )
+    with col_btn2:
+      cancelled = st.form_submit_button("❌ გაუქმება", use_container_width=True)
+
+    if cancelled:
+      st.rerun()
 
     if submitted:
       screenshot_name = (
@@ -185,8 +173,6 @@ def show_trade_details_dialog(trade, df):
           "Description": sub_desc,
           "Screenshot": screenshot_name,
       }
-      update_trade(trade_id, {"Finalized": str(mark_finalized)})
-
       if insert_trade(child_trade_data):
         st.success("წარმატებით დაემატა!")
         st.rerun()
@@ -202,6 +188,10 @@ def render_trade_card(trade, df):
   risk_val = trade.get("Risk ($)", 5.85)
   screenshot = trade.get("Screenshot", "No Screenshot")
 
+  is_finalized = trade.get("Finalized", False)
+  if isinstance(is_finalized, str):
+    is_finalized = is_finalized.lower() == "true"
+
   sub_actions = df[df["Parent Trade ID"] == trade_id]
   exit_price = entry_price
 
@@ -214,12 +204,14 @@ def render_trade_card(trade, df):
   pnl = calculate_trade_pnl(entry_price, exit_price, risk_val, side)
   status_icon = "🟢" if pnl > 0 else ("🔴" if pnl < 0 else "⚪")
 
+  status_badge = "⚪ დასრულებული" if is_finalized else "🟢 მიმდინარე"
+
   state_key = f"mode_{trade_id}"
   current_mode = st.session_state.get(state_key, None)
 
-  # სუპერ-კომპაქტური ჰორიზონტალური ბარათი (ფანქრის ღილაკის გარეშე)
+  # სუპერ-კომპაქტური ჰორიზონტალური ბარათი სტატუსის გადამრთველით
   with st.container(border=True):
-    col_img, col_info, col_menu = st.columns([0.8, 8.2, 1])
+    col_img, col_info, col_toggle, col_menu = st.columns([0.6, 6.4, 2, 1])
 
     with col_img:
       st.markdown(
@@ -238,6 +230,15 @@ def render_trade_card(trade, df):
           f"📅 {entry_date} &nbsp;•&nbsp; 🏷️ {formation} &nbsp;•&nbsp; 💵 შესვლა:"
           f" {entry_price}"
       )
+
+    with col_toggle:
+      # სწრაფი გადამრთველი ბარათზევე (მიმდინარე / დასრულებული)
+      new_status = st.toggle(
+          status_badge, value=is_finalized, key=f"toggle_fin_{trade_id}"
+      )
+      if new_status != is_finalized:
+        update_trade(trade_id, {"Finalized": str(new_status)})
+        st.rerun()
 
     with col_menu:
       # მთელი მართვა გადატანილია სამ წერტილში (⋯)
