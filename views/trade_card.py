@@ -244,9 +244,9 @@ def render_trade_card(trade, df):
           "დასრულებული" if is_finalized else "მიმდინარე",
           value=is_finalized,
           key=f"toggle_fin_{trade_id}",
-      )
-      if new_status != is_finalized:
-        update_trade(trade_id, {"Finalized": str(new_status)})
+        )
+        if new_status != is_finalized:
+          update_trade(trade_id, {"Finalized": str(new_status)})
         
         # თუ ტოიგლი გადაიყვანა დასრულებულზე, მაგრამ Exit არ მოიძებნა
         if new_status and exits.empty:
