@@ -10,8 +10,30 @@ import streamlit as st
 def render_settings_view(lang="ka"):
   st.title("⚙️ კონფიგურაცია და პარამეტრები (Settings)")
   st.write(
-      "მართეთ პლატფორმის ძირითადი ცნობარები და სავაჭრო ელემენტები."
+      "მართეთ პლატფორმის ძირითადი ცნობარები, სავაჭრო ელემენტები და ფინანსური"
+      " პარამეტრები."
   )
+
+  # --- ახალი ფინანსური პარამეტრების სექცია (საწყისი დეპოზიტი) ---
+  st.markdown("### 💰 საწყისი დეპოზიტის მართვა")
+  current_deposit = st.session_state.get("initial_deposit", 500.0)
+
+  col_dep1, col_dep2 = st.columns([2, 1])
+  with col_dep1:
+    initial_deposit = st.number_input(
+        "საწყისი დეპოზიტი ($)",
+        value=float(current_deposit),
+        step=50.0,
+        key="inp_initial_deposit",
+    )
+  with col_dep2:
+    st.write("")  # გასწორებისთვის
+    st.write("")
+    if st.button("💾 დეპოზიტის შენახვა", use_container_width=True):
+      st.session_state["initial_deposit"] = initial_deposit
+      st.success("საწყისი დეპოზიტი წარმატებით განახლდა!")
+
+  st.divider()
 
   col1, col2 = st.columns(2)
 
@@ -29,7 +51,6 @@ def render_settings_view(lang="ka"):
             st.rerun()
 
       with c_edit:
-        # რედაქტირების პოპაპი თითოეულ ელემენტზე
         with st.popover("✏️"):
           st.caption(f"პატერნის შეცვლა: {p}")
           updated_pat_name = st.text_input(
