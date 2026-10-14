@@ -48,14 +48,14 @@ def show_trade_details_dialog(trade, df):
         with st.form(f"form_edit_sub_inline_{sub_id}"):
           st.markdown(f"**✏️ ჩასწორება: {sub.get('ActionType')}**")
           
-          # ვამოწმებთ, არის თუ არა ეს მთავარი შესვლა (Start Row)
+# ვამოწმებთ, არის თუ არა ეს მთავარი შესვლა (Start Row)
           is_start_row = "Start Row" in str(sub.get("ActionType", ""))
 
-# ვამოწმებთ მიმდინარე Finalized სტატუსს
+          # ვამოწმებთ მიმდინარე Finalized სტატუსს
           current_finalized = trade.get("Finalized", False)
           if isinstance(current_finalized, str):
             current_finalized = current_finalized.lower() == "true"
-          
+
           edit_price = st.number_input(
               "ფასი",
               value=float(sub.get("Entry Price", 1.0850))
@@ -73,7 +73,7 @@ def show_trade_details_dialog(trade, df):
               step=100.0,
           )
 
-          # თუ მთავარი შესვლაა, ვამატებთ რისკის ველსაც
+          # თუ მთავარი შესვლაა, ვამატებთ რისკისა და Finalized ჩექბოქსს
           edit_risk = 10.0
           edit_finalized = current_finalized
           if is_start_row:
