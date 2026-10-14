@@ -177,6 +177,12 @@ def show_trade_details_dialog(trade, df):
         st.rerun()
 
 
+# ქოლბექი ტოიგლის ცვლილებისთვის (ციკლური რეფრეშის თავიდან ასაცილებლად)
+def handle_toggle_change(t_id):
+  new_val = st.session_state.get(f"toggle_fin_{t_id}", False)
+  update_trade(t_id, {"Finalized": str(new_val)})
+
+
 def render_trade_card(trade, df):
   trade_id = trade.get("Trade ID") or trade.get("Parent Trade ID")
   pair = trade.get("Pair", "N/A")
@@ -229,16 +235,20 @@ def render_trade_card(trade, df):
       )
 
     with col_toggle:
-      # სტატიკური ტექსტით გადამრთველი, რომელიც არ იწვევს ციკლურ რეფრეშს
-      new_status = st.toggle(
-          "დასრულებული" if is_finalized else "მიმდინარე",
+      # ვადგენთ მიმდინარე მნიშვნელობას session_state-იდან ან ბაზიდან
+      current_toggle_state = st.session_state.get(
+          f"toggle_fin_{trade_id}", is_finalized
+      )
+      # დინამიკური წარწერა: თუ ჩართულია - "დასრულებული", თუ არა - "მიმდინარე"
+      toggle_label = "დასრულებული" if current_toggle_state else "მიმდინარე"
+
+      st.toggle(
+          toggle_label,
           value=is_finalized,
           key=f"toggle_fin_{trade_id}",
+          on_change=handle_toggle_change,
+          args=(trade_id,),
       )
-      # ვანახლებთ მხოლოდ მაშინ, როდესაც რეალურად შეიცვალა მნიშვნელობა
-      if new_status != is_finalized:
-        update_trade(trade_id, {"Finalized": str(new_status)})
-        st.rerun()
 
     with col_menu:
       with st.popover("⋯"):
