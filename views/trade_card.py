@@ -34,7 +34,7 @@ def render_trade_card(trade, df):
   state_key = f"mode_{trade_id}"
   current_mode = st.session_state.get(state_key, None)
 
-  # კომპაქტური ჰორიზონტალური ბარათი
+  # კომპაქტური ბარათი ჰორიზონტალური განლაგებით
   with st.container(border=True):
     col_img, col_info, col_edit, col_menu = st.columns([0.8, 7.2, 1, 1])
 
@@ -52,8 +52,8 @@ def render_trade_card(trade, df):
       )
 
     with col_edit:
-      # ჩასწორების ღილაკი ხსნის დეტალების მოდალს/ფანჯარას
-      if st.button("✏️", key=f"edit_btn_{trade_id}", help="დეტალები / ჩასწორება"):
+      # „ჩასწორება“ ღილაკი ხსნის ერთიან „დეტალები“ ფანჯარას
+      if st.button("✏️", key=f"edit_btn_{trade_id}", help="დეტალები და ჩასწორება"):
         st.session_state[state_key] = (
             "details" if current_mode != "details" else None
         )
@@ -66,12 +66,12 @@ def render_trade_card(trade, df):
           st.session_state[state_key] = "delete"
           st.rerun()
 
-    # 🪟 ერთიანი „დეტალები“ ფანჯარა (ისტორია + ახალი მოქმედების დამატება)
+    # 🪟 ერთიანი „დეტალები“ ფანჯარა (ისტორია + ახალი ჩანაწერი)
     if current_mode == "details":
       st.divider()
       st.markdown(f"#### 🔍 გარიგების დეტალები: {pair} ({side})")
 
-      # 1. არსებული ისტორიის ჩვენება
+      # 1. ისტორიის სექცია ერთიან ფანჯარაში
       if not sub_actions.empty:
         st.markdown("**📋 ეტაპების ისტორია:**")
         for _, sub in sub_actions.iterrows():
@@ -83,7 +83,7 @@ def render_trade_card(trade, df):
         st.caption("ამ გარიგებაზე დამატებითი ეტაპები ჯერ არ არის.")
 
       st.markdown("---")
-      st.markdown("**➕ ახალი ჩანაწერის შეტანა (Scale In / Exit):**")
+      st.markdown("**➕ ახალი ეტაპის დამატება (Scale In / Exit):**")
 
       sub_action_type = st.selectbox(
           "მოქმედების ტიპი",
@@ -121,7 +121,7 @@ def render_trade_card(trade, df):
         col_s1, col_s2 = st.columns(2)
         with col_s1:
           submitted = st.form_submit_button(
-              "💾 ჩანაწერის დამატება", use_container_width=True
+              "💾 შენახვა", use_container_width=True
           )
         with col_s2:
           if st.form_submit_button("❌ ფანჯრის დახურვა", use_container_width=True):
