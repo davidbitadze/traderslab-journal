@@ -13,6 +13,7 @@ def render_trade_card(trade, df):
   entry_price = trade.get("Entry Price", 0)
   formation = trade.get("Formation", "N/A")
   risk_val = trade.get("Risk (\$)", 5.85)
+  screenshot = trade.get("Screenshot", "No Screenshot")
 
   is_finalized = trade.get("Finalized", False)
   if isinstance(is_finalized, str):
@@ -30,43 +31,49 @@ def render_trade_card(trade, df):
   pnl = calculate_trade_pnl(entry_price, exit_price, risk_val, side)
   status_icon = "🟢" if pnl > 0 else ("🔴" if pnl < 0 else "⚪")
 
-  # სესიის გასაღებები ამ კონკრეტული ბარათისთვის
   state_key = f"mode_{trade_id}"
   current_mode = st.session_state.get(state_key, None)
 
-  # კომპაქტური კონტეინერი (მინიმალური ვერტიკალური ადგილი)
+  # ultra-compact container
   with st.container(border=True):
-    col_main, col_menu = st.columns([11, 1])
+    col_img, col_info, col_actions = [
+        st.columns([1, 7, 3])[0],
+        st.columns([1, 7, 3])[1],
+        st.columns([1, 7, 3])[2],
+    ]
 
-    with col_main:
-      # მინიმალისტური, ერთხაზიანი პრავიუ (Glide სტილში)
+    with col_img:
+      # პატარა აკონი ან იკონკა სკრინშოტის მაგივრად
+      st.markdown("🖼️" if screenshot != "No Screenshot" else "📁")
+
+    with col_info:
+      # ერთიანი ჰორიზონტალური ხაზი Glide-ის მსგავსად
       st.markdown(
-          f"### {status_icon} **{pair}** &nbsp;&nbsp;|&nbsp;&nbsp; `{side}`"
-          f" &nbsp;&nbsp; **{pnl:+.2f}\$**"
+          f"### {status_icon} **{pair}** &nbsp; `{side}` &nbsp;"
+          f" **{pnl:+.2f}\$**"
       )
       st.caption(
           f"📅 {entry_date} &nbsp;•&nbsp; 🏷️ {formation} &nbsp;•&nbsp; 💵 შესვლა:"
-          f" {entry_price} &nbsp;•&nbsp; სტატუსი:"
-          f" {'✅ დასრულებული' if is_finalized else '⏳ აქტიური'}"
+          f" {entry_price}"
       )
 
-    with col_menu:
-      with st.popover("⋯"):
-        col_btn1, col_btn2 = st.columns(2)
-        with col_btn1:
-          if st.button("✏️", key=f"edit_btn_{trade_id}", help="ჩასწორება"):
-            st.session_state[state_key] = (
-                "edit" if current_mode != "edit" else None
-            )
-            st.rerun()
-        with col_btn2:
-          if st.button("🗑️", key=f"del_btn_{trade_id}", help="წაშლა"):
-            st.session_state[state_key] = (
-                "delete" if current_mode != "delete" else None
-            )
+    with col_actions:
+      # მარჯვენა მხარეს: "ჩასწორება" და "..." ღილაკები ერთ ხაზზე
+      col_a1, col_a2 = st.columns(2)
+      with col_a1:
+        if st.button("✏️", key=f"edit_btn_{trade_id}", help="ჩასწორება"):
+          st.session_state[state_key] = (
+              "edit" if current_mode != "edit" else None
+          )
+          st.rerun()
+      with col_a2:
+        with st.popover("⋯"):
+          st.write(f"**მართვა: {pair}**")
+          if st.button("🗑️ გარიგების წაშლა", key=f"del_menu_{trade_id}"):
+            st.session_state[state_key] = "delete"
             st.rerun()
 
-    # თუ არჩეულია ჩასწორება, იხსნება კომპაქტური შიდა სექცია
+    # ჩასწორების ფორმა (თუ აქტიურია)
     if current_mode == "edit":
       st.divider()
       st.markdown("##### ⚙️ პოზიციის მართვა / დამატება / ჩახურვა")
@@ -135,7 +142,7 @@ def render_trade_card(trade, df):
             del st.session_state[state_key]
             st.rerun()
 
-    # თუ არჩეულია წაშლა
+    # წაშლის დადასტურება
     elif current_mode == "delete":
       st.divider()
       st.error(
@@ -143,17 +150,21 @@ def render_trade_card(trade, df):
       )
       col_d1, col_d2 = st.columns(2)
       with col_d1:
-        if st.button("დიახ, წაშლა (OK)", key=f"conf_del_{trade_id}", use_container_width=True):
+        if st.button(
+            "დიახ, წაშლა", key=f"conf_del_{trade_id}", use_container_width=True
+        ):
           if delete_trade(trade_id):
             st.success("წაიშალა!")
             del st.session_state[state_key]
             st.rerun()
       with col_d2:
-        if st.button("გაუქმება (Cancel)", key=f"canc_del_{trade_id}", use_container_width=True):
+        if st.button(
+            "გაუქმება", key=f"canc_del_{trade_id}", use_container_width=True
+        ):
           del st.session_state[state_key]
           st.rerun()
 
-    # დეტალური ისტორია ძალიან კომპაქტურად
+    # დეტალური ისტორია კომპაქტურად
     if not sub_actions.empty:
       with st.expander(f"📋 ისტორია ({len(sub_actions)} ქვემოქმედება)"):
         for _, sub in sub_actions.iterrows():
