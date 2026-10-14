@@ -22,7 +22,7 @@ def show_trade_details_dialog(trade, df):
   st.markdown(f"### {pair} — **{side}**")
   st.divider()
 
-# 1. არსებული ისტორია ჩასწორების და წაშლის ღილაკებით
+# 1. არსებული ისტორია
   if not sub_actions.empty:
     st.markdown("**📋 ეტაპების ისტორია:**")
     for _, sub in sub_actions.iterrows():
@@ -35,22 +35,18 @@ def show_trade_details_dialog(trade, df):
         )
       with col_h2:
         if st.button("✏️", key=f"edit_sub_{sub_id}", help="ამ ეტაპის ჩასწორება"):
-          st.session_state[f"editing_sub_{sub_id}"] = not st.session_state.get(
-              f"editing_sub_{sub_id}", False
-          )
-          st.rerun()
+          st.session_state["active_edit_sub"] = sub_id
+          # აქ აღარ ვუძახებთ st.rerun()-ს პირდაპირ, რომ არ დახუროს დიალოგი
       with col_h3:
         if st.button("🗑️", key=f"del_sub_{sub_id}", help="ამ ეტაპის წაშლა"):
           if delete_trade(sub_id):
             st.success("ჩანაწერი წაიშალა!")
             st.rerun()
-          else:
-            st.error("ვერ წაიშალა.")
 
-      # თუ ჩასწორების რეჟიმი აქტიურია ამ კონკრეტული სუბ-ჩანაწერისთვის
-      if st.session_state.get(f"editing_sub_{sub_id}", False):
-        with st.form(f"form_edit_sub_{sub_id}"):
-          st.markdown(f"**ჩასწორება: {sub.get('ActionType')}**")
+      # თუ ზუსტად ამ სუბ-ჩანაწერის ედიტირებაა არჩეული, ვხსნით იქვე ფორმას
+      if st.session_state.get("active_edit_sub") == sub_id:
+        with st.form(f"form_edit_sub_inline_{sub_id}"):
+          st.markdown(f"**✏️ ჩასწორება: {sub.get('ActionType')}**")
           edit_price = st.number_input(
               "ფასი",
               value=float(sub.get("Entry Price", 1.0850))
@@ -81,13 +77,11 @@ def show_trade_details_dialog(trade, df):
               }
               if update_trade(sub_id, update_data):
                 st.success("წარმატებით განახლდა!")
-                st.session_state[f"editing_sub_{sub_id}"] = False
+                st.session_state["active_edit_sub"] = None
                 st.rerun()
-              else:
-                st.error("განახლება ვერ მოხერხდა.")
           with col_es2:
             if st.form_submit_button("❌ გაუქმება", use_container_width=True):
-              st.session_state[f"editing_sub_{sub_id}"] = False
+              st.session_state["active_edit_sub"] = None
               st.rerun()
   else:
     st.caption("ამ გარიგებაზე დამატებითი ეტაპები ჯერ არ არის.")
