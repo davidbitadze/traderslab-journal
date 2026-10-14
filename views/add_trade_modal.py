@@ -25,6 +25,9 @@ def render_add_trade_modal():
         entry_price = st.number_input(
             "შესვლის ფასი (Price)", value=1.0850, format="%.5f"
         )
+        risk_dollar = st.number_input(
+            "რისკი დოლარში (Risk $)", value=10.0, step=1.0
+        )
         qty = st.number_input("მოცულობა (Qty)", value=6000.0, step=100.0)
 
       with col2:
