@@ -22,24 +22,73 @@ def show_trade_details_dialog(trade, df):
   st.markdown(f"### {pair} — **{side}**")
   st.divider()
 
-# 1. არსებული ისტორია წაშლის ღილაკებით
+# 1. არსებული ისტორია ჩასწორების და წაშლის ღილაკებით
   if not sub_actions.empty:
     st.markdown("**📋 ეტაპების ისტორია:**")
     for _, sub in sub_actions.iterrows():
       sub_id = sub.get("Trade ID")
-      col_h1, col_h2 = st.columns([8, 1])
+      col_h1, col_h2, col_h3 = st.columns([7, 1, 1])
       with col_h1:
         st.info(
             f"• **{sub.get('ActionType')}** | ფასი: {sub.get('Entry Price')} |"
             f" მოც.: {sub.get('Qty')} | დრო: {sub.get('Entry Date')}"
         )
       with col_h2:
+        if st.button("✏️", key=f"edit_sub_{sub_id}", help="ამ ეტაპის ჩასწორება"):
+          st.session_state[f"editing_sub_{sub_id}"] = not st.session_state.get(
+              f"editing_sub_{sub_id}", False
+          )
+          st.rerun()
+      with col_h3:
         if st.button("🗑️", key=f"del_sub_{sub_id}", help="ამ ეტაპის წაშლა"):
           if delete_trade(sub_id):
             st.success("ჩანაწერი წაიშალა!")
             st.rerun()
           else:
             st.error("ვერ წაიშალა.")
+
+      # თუ ჩასწორების რეჟიმი აქტიურია ამ კონკრეტული სუბ-ჩანაწერისთვის
+      if st.session_state.get(f"editing_sub_{sub_id}", False):
+        with st.form(f"form_edit_sub_{sub_id}"):
+          st.markdown(f"**ჩასწორება: {sub.get('ActionType')}**")
+          edit_price = st.number_input(
+              "ფასი",
+              value=float(sub.get("Entry Price", 1.0850))
+              if str(sub.get("Entry Price", "1.0850"))
+              .replace(".", "", 1)
+              .isdigit()
+              else 1.0850,
+              format="%.5f",
+          )
+          edit_qty = st.number_input(
+              "მოცულობა",
+              value=float(sub.get("Qty", 1000.0))
+              if str(sub.get("Qty", "1000")).replace(".", "", 1).isdigit()
+              else 1000.0,
+              step=100.0,
+          )
+          edit_date = st.text_input(
+              "თარიღი და დრო", value=sub.get("Entry Date", "")
+          )
+
+          col_es1, col_es2 = st.columns(2)
+          with col_es1:
+            if st.form_submit_button("💾 შენახვა", use_container_width=True):
+              update_data = {
+                  "Entry Price": str(edit_price),
+                  "Qty": str(edit_qty),
+                  "Entry Date": edit_date,
+              }
+              if update_trade(sub_id, update_data):
+                st.success("წარმატებით განახლდა!")
+                st.session_state[f"editing_sub_{sub_id}"] = False
+                st.rerun()
+              else:
+                st.error("განახლება ვერ მოხერხდა.")
+          with col_es2:
+            if st.form_submit_button("❌ გაუქმება", use_container_width=True):
+              st.session_state[f"editing_sub_{sub_id}"] = False
+              st.rerun()
   else:
     st.caption("ამ გარიგებაზე დამატებითი ეტაპები ჯერ არ არის.")
 
