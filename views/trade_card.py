@@ -256,7 +256,7 @@ def render_trade_card(trade, df):
       if current_toggle_state and exits.empty:
         st.toast(
             "⚠️ გარიგება დასრულებულია, გამოსვლის (Exit) დეტალები არ არის"
-            "ამიტომაც, მითითებული (PnL = 0$)",
+            "\nამიტომაც, მითითებულია (PnL = 0$)",
             icon="ℹ️",
         )
 
