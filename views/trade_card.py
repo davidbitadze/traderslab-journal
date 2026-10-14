@@ -22,14 +22,24 @@ def show_trade_details_dialog(trade, df):
   st.markdown(f"### {pair} — **{side}**")
   st.divider()
 
-  # 1. არსებული ისტორია
+# 1. არსებული ისტორია წაშლის ღილაკებით
   if not sub_actions.empty:
     st.markdown("**📋 ეტაპების ისტორია:**")
     for _, sub in sub_actions.iterrows():
-      st.info(
-          f"• **{sub.get('ActionType')}** | ფასი: {sub.get('Entry Price')} |"
-          f" მოც.: {sub.get('Qty')} | დრო: {sub.get('Entry Date')}"
-      )
+      sub_id = sub.get("Trade ID")
+      col_h1, col_h2 = st.columns([8, 1])
+      with col_h1:
+        st.info(
+            f"• **{sub.get('ActionType')}** | ფასი: {sub.get('Entry Price')} |"
+            f" მოც.: {sub.get('Qty')} | დრო: {sub.get('Entry Date')}"
+        )
+      with col_h2:
+        if st.button("🗑️", key=f"del_sub_{sub_id}", help="ამ ეტაპის წაშლა"):
+          if delete_trade(sub_id):
+            st.success("ჩანაწერი წაიშალა!")
+            st.rerun()
+          else:
+            st.error("ვერ წაიშალა.")
   else:
     st.caption("ამ გარიგებაზე დამატებითი ეტაპები ჯერ არ არის.")
 
