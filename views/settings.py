@@ -1,6 +1,10 @@
+from datetime import datetime
 from database import (
+    add_balance_transaction,
     add_setting_item,
+    delete_balance_transaction,
     delete_setting_item,
+    fetch_balance_transactions,
     fetch_settings,
     update_setting_item,
 )
@@ -11,27 +15,63 @@ def render_settings_view(lang="ka"):
   st.title("⚙️ კონფიგურაცია და პარამეტრები (Settings)")
   st.write(
       "მართეთ პლატფორმის ძირითადი ცნობარები, სავაჭრო ელემენტები და ფინანსური"
-      " პარამეტრები."
+      " ბალანსი."
   )
 
-  # --- ახალი ფინანსური პარამეტრების სექცია (საწყისი დეპოზიტი) ---
-  st.markdown("### 💰 საწყისი დეპოზიტის მართვა")
-  current_deposit = st.session_state.get("initial_deposit", 500.0)
+  # --- ბალანსის ტრანზაქციების (შევსება / გამოტანა) მართვა ---
+  st.markdown("### 💰 დეპოზიტისა და ბალანსის ისტორია")
 
-  col_dep1, col_dep2 = st.columns([2, 1])
-  with col_dep1:
-    initial_deposit = st.number_input(
-        "საწყისი დეპოზიტი ($)",
-        value=float(current_deposit),
-        step=50.0,
-        key="inp_initial_deposit",
-    )
-  with col_dep2:
-    st.write("")  # გასწორებისთვის
-    st.write("")
-    if st.button("💾 დეპოზიტის შენახვა", use_container_width=True):
-      st.session_state["initial_deposit"] = initial_deposit
-      st.success("საწყისი დეპოზიტი წარმატებით განახლდა!")
+  with st.form("form_add_transaction"):
+    col_t1, col_t2, col_t3 = st.columns(3)
+    with col_t1:
+      txn_date = st.text_input(
+          "თარიღი და დრო", value=datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+      )
+    with col_t2:
+      txn_amount = st.number_input(
+          "თანხა ($) (+ შევსება, - გამოტანა)", value=500.0, step=50.0
+      )
+    with col_t3:
+      txn_desc = st.text_input("შენიშვნა (მაგ. საწყისი დეპოზიტი)")
+
+    if st.form_submit_button("➕ ტრანზაქციის დამატება", use_container_width=True):
+      import uuid
+
+      new_txn = {
+          "Transaction ID": str(uuid.uuid4()),
+          "Date": txn_date,
+          "Amount": str(txn_amount),
+          "Description": txn_desc,
+      }
+      if add_balance_transaction(new_txn):
+        st.success("ტრანზაქცია წარმატებით დაემატა!")
+        st.rerun()
+
+  # ტრანზაქციების სიის ჩვენება
+  df_txn = fetch_balance_transactions()
+  if not df_txn.empty:
+    st.markdown("**📋 ტრანზაქციების ჟურნალი:**")
+    for _, txn in df_txn.iterrows():
+      t_id = txn.get("Transaction ID")
+      col_r1, col_r2, col_r3, col_r4 = st.columns([2, 2, 4, 1])
+      with col_r1:
+        st.write(txn.get("Date"))
+      with col_r2:
+        amount_val = float(txn.get("Amount", 0))
+        color = "green" if amount_val >= 0 else "red"
+        st.markdown(
+            f"<b style='color:{color};'>{amount_val:+.2f}$</b>",
+            unsafe_allow_html=True,
+        )
+      with col_r3:
+        st.write(txn.get("Description", ""))
+      with col_r4:
+        if st.button("🗑️", key=f"del_txn_{t_id}"):
+          if delete_balance_transaction(t_id):
+            st.toast("ტრანზაქცია წაიშალა!", icon="🗑️")
+            st.rerun()
+  else:
+    st.info("ბალანსის ტრანზაქციები ჯერ არ არის მითითებული.")
 
   st.divider()
 
