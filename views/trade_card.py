@@ -5,6 +5,110 @@ import streamlit as st
 from utils.formulas import calculate_trade_pnl
 
 
+# 🪟 Streamlit-ის ოფიციალური ოვერლეი ფანჯარა (Dialog) დეტალებისა და მართვისთვის
+@st.dialog("🔍 გარიგების დეტალები და მართვა")
+def show_trade_details_dialog(trade, df):
+  trade_id = trade.get("Trade ID") or trade.get("Parent Trade ID")
+  pair = trade.get("Pair", "N/A")
+  side = trade.get("Side", "N/A")
+  entry_price = trade.get("Entry Price", 0)
+
+  is_finalized = trade.get("Finalized", False)
+  if isinstance(is_finalized, str):
+    is_finalized = is_finalized.lower() == "true"
+
+  sub_actions = df[df["Parent Trade ID"] == trade_id]
+
+  st.markdown(f"### {pair} — **{side}**")
+  st.divider()
+
+  # 1. არსებული ისტორია
+  if not sub_actions.empty:
+    st.markdown("**📋 ეტაპების ისტორია:**")
+    for _, sub in sub_actions.iterrows():
+      st.info(
+          f"• **{sub.get('ActionType')}** | ფასი: {sub.get('Entry Price')} |"
+          f" მოც.: {sub.get('Qty')} | დრო: {sub.get('Entry Date')}"
+      )
+  else:
+    st.caption("ამ გარიგებაზე დამატებითი ეტაპები ჯერ არ არის.")
+
+  st.markdown("---")
+  st.markdown("**➕ ახალი ეტაპის დამატება (Scale In / Exit):**")
+
+  sub_action_type = st.selectbox(
+      "მოქმედების ტიპი",
+      [
+          "Scale In (დამატება)",
+          "Partial Exit (ნაწილობრივი ჩახურვა)",
+          "Full Exit (სრული ჩახურვა)",
+      ],
+      key=f"dialog_act_{trade_id}",
+  )
+
+  with st.form(f"form_sub_dialog_{trade_id}"):
+    col_f1, col_f2 = st.columns(2)
+    with col_f1:
+      default_sub_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+      sub_date = st.text_input(
+          "თარიღი და დრო",
+          value=default_sub_time,
+          key=f"dialog_date_{trade_id}",
+      )
+      sub_price = st.number_input(
+          "ფასი",
+          value=float(entry_price)
+          if str(entry_price).replace(".", "", 1).isdigit()
+          else 1.0850,
+          format="%.5f",
+          key=f"dialog_price_{trade_id}",
+      )
+    with col_f2:
+      sub_qty = st.number_input(
+          "მოცულობა", value=1000.0, step=100.0, key=f"dialog_qty_{trade_id}"
+      )
+      mark_finalized = st.checkbox(
+          "გარიგება დასრულებულია (Finalized)",
+          value=is_finalized,
+          key=f"dialog_fin_{trade_id}",
+      )
+
+    sub_desc = st.text_input(
+        "შენიშვნა / კომენტარი", key=f"dialog_desc_{trade_id}"
+    )
+    sub_screenshot = st.file_uploader(
+        "სკრინშოტი (დადარებისთვის)",
+        type=["png", "jpg", "jpeg"],
+        key=f"dialog_file_{trade_id}",
+    )
+
+    submitted = st.form_submit_button(
+        "💾 ცვლილებების შენახვა", use_container_width=True
+    )
+
+    if submitted:
+      screenshot_name = (
+          sub_screenshot.name if sub_screenshot else "No Screenshot"
+      )
+      child_trade_data = {
+          "Trade ID": str(uuid.uuid4()),
+          "Parent Trade ID": trade_id,
+          "Entry Date": sub_date,
+          "Pair": pair,
+          "Side": side,
+          "Entry Price": str(sub_price),
+          "Qty": str(sub_qty),
+          "ActionType": sub_action_type,
+          "Description": sub_desc,
+          "Screenshot": screenshot_name,
+      }
+      update_trade(trade_id, {"Finalized": str(mark_finalized)})
+
+      if insert_trade(child_trade_data):
+        st.success("წარმატებით დაემატა!")
+        st.rerun()
+
+
 def render_trade_card(trade, df):
   trade_id = trade.get("Trade ID") or trade.get("Parent Trade ID")
   pair = trade.get("Pair", "N/A")
@@ -12,7 +116,7 @@ def render_trade_card(trade, df):
   entry_date = trade.get("Entry Date", "N/A")
   entry_price = trade.get("Entry Price", 0)
   formation = trade.get("Formation", "N/A")
-  risk_val = trade.get("Risk (\$)", 5.85)
+  risk_val = trade.get("Risk ($)", 5.85)
   screenshot = trade.get("Screenshot", "No Screenshot")
 
   is_finalized = trade.get("Finalized", False)
@@ -34,30 +138,34 @@ def render_trade_card(trade, df):
   state_key = f"mode_{trade_id}"
   current_mode = st.session_state.get(state_key, None)
 
-  # კომპაქტური ბარათი ჰორიზონტალური განლაგებით
+  # კომპაქტური ბარათი
   with st.container(border=True):
-    col_img, col_info, col_edit, col_menu = st.columns([0.8, 7.2, 1, 1])
+    col_img, col_info, col_edit, col_menu = st.columns([0.6, 7.4, 1, 1])
 
     with col_img:
-      st.markdown("🖼️" if screenshot != "No Screenshot" else "📁")
+      st.markdown(
+          "🖼️" if screenshot != "No Screenshot" else "📁",
+          help="სკრინშოტი არსებობს",
+      )
 
     with col_info:
+      # HTML-ის მეშვეობით ზუსტად ვაპატარავებთ წყვილის სახელს და თანხას, რომ მიმართულების ზომას ერგოს
       st.markdown(
-          f"### {status_icon} **{pair}** &nbsp; `{side}` &nbsp;"
-          f" **{pnl:+.2f}\$**"
+          f"<span style='font-size: 1.1rem;'>{status_icon} <b>{pair}</b></span>"
+          f" &nbsp; <code style='font-size: 0.85rem;'>{side}</code> &nbsp;"
+          f" <span style='font-size: 1.1rem;'><b>{pnl:+.2f}$</b></span>",
+          unsafe_allow_html=True,
       )
+      # ქვედა დეტალები რჩება იდეალურ ზომაზე
       st.caption(
           f"📅 {entry_date} &nbsp;•&nbsp; 🏷️ {formation} &nbsp;•&nbsp; 💵 შესვლა:"
           f" {entry_price}"
       )
 
     with col_edit:
-      # „ჩასწორება“ ღილაკი ხსნის ერთიან „დეტალები“ ფანჯარას
-      if st.button("✏️", key=f"edit_btn_{trade_id}", help="დეტალები და ჩასწორება"):
-        st.session_state[state_key] = (
-            "details" if current_mode != "details" else None
-        )
-        st.rerun()
+      # ჩასწორების ღილაკზე დაჭერისას იხსნება ზემოდან მცურავი ოვერლეი დიალოგი
+      if st.button("✏️", key=f"edit_btn_{trade_id}", help="დეტალები / ჩასწორება"):
+        show_trade_details_dialog(trade, df)
 
     with col_menu:
       with st.popover("⋯"):
@@ -66,93 +174,8 @@ def render_trade_card(trade, df):
           st.session_state[state_key] = "delete"
           st.rerun()
 
-    # 🪟 ერთიანი „დეტალები“ ფანჯარა (ისტორია + ახალი ჩანაწერი)
-    if current_mode == "details":
-      st.divider()
-      st.markdown(f"#### 🔍 გარიგების დეტალები: {pair} ({side})")
-
-      # 1. ისტორიის სექცია ერთიან ფანჯარაში
-      if not sub_actions.empty:
-        st.markdown("**📋 ეტაპების ისტორია:**")
-        for _, sub in sub_actions.iterrows():
-          st.info(
-              f"• **{sub.get('ActionType')}** | ფასი: {sub.get('Entry Price')}"
-              f" | მოც.: {sub.get('Qty')} | დრო: {sub.get('Entry Date')}"
-          )
-      else:
-        st.caption("ამ გარიგებაზე დამატებითი ეტაპები ჯერ არ არის.")
-
-      st.markdown("---")
-      st.markdown("**➕ ახალი ეტაპის დამატება (Scale In / Exit):**")
-
-      sub_action_type = st.selectbox(
-          "მოქმედების ტიპი",
-          [
-              "Scale In (დამატება)",
-              "Partial Exit (ნაწილობრივი ჩახურვა)",
-              "Full Exit (სრული ჩახურვა)",
-          ],
-          key=f"act_{trade_id}",
-      )
-
-      with st.form(f"form_sub_{trade_id}"):
-        col_f1, col_f2 = st.columns(2)
-        with col_f1:
-          default_sub_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-          sub_date = st.text_input("თარიღი და დრო", value=default_sub_time)
-          sub_price = st.number_input(
-              "ფასი",
-              value=float(entry_price)
-              if str(entry_price).replace(".", "", 1).isdigit()
-              else 1.0850,
-              format="%.5f",
-          )
-        with col_f2:
-          sub_qty = st.number_input("მოცულობა", value=1000.0, step=100.0)
-          mark_finalized = st.checkbox(
-              "გარიგება დასრულებულია (Finalized)", value=is_finalized
-          )
-
-        sub_desc = st.text_input("შენიშვნა / კომენტარი")
-        sub_screenshot = st.file_uploader(
-            "სკრინშოტი (დადარებისთვის)", type=["png", "jpg", "jpeg"]
-        )
-
-        col_s1, col_s2 = st.columns(2)
-        with col_s1:
-          submitted = st.form_submit_button(
-              "💾 შენახვა", use_container_width=True
-          )
-        with col_s2:
-          if st.form_submit_button("❌ ფანჯრის დახურვა", use_container_width=True):
-            del st.session_state[state_key]
-            st.rerun()
-
-        if submitted:
-          screenshot_name = (
-              sub_screenshot.name if sub_screenshot else "No Screenshot"
-          )
-          child_trade_data = {
-              "Trade ID": str(uuid.uuid4()),
-              "Parent Trade ID": trade_id,
-              "Entry Date": sub_date,
-              "Pair": pair,
-              "Side": side,
-              "Entry Price": str(sub_price),
-              "Qty": str(sub_qty),
-              "ActionType": sub_action_type,
-              "Description": sub_desc,
-              "Screenshot": screenshot_name,
-          }
-          update_trade(trade_id, {"Finalized": str(mark_finalized)})
-
-          if insert_trade(child_trade_data):
-            st.success("წარმატებით დაემატა!")
-            del st.session_state[state_key]
-            st.rerun()
-
-    # წაშლის დადასტურება
-    elif current_mode == "delete":
+    # წაშლის დადასტურება ბარათშივე
+    if current_mode == "delete":
       st.divider()
       st.error(
           "⚠️ ნამდვილად გსურთ გარიგებისა და მისი ისტორიის წაშლა? მონაცემები"
