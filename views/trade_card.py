@@ -240,12 +240,19 @@ def render_trade_card(trade, df):
       )
 
     with col_toggle:
-      # ვადგენთ მიმდინარე მნიშვნელობას session_state-იდან ან ბაზიდან
-      current_toggle_state = st.session_state.get(
-          f"toggle_fin_{trade_id}", is_finalized
+      new_status = st.toggle(
+          "დასრულებული" if is_finalized else "მიმდინარე",
+          value=is_finalized,
+          key=f"toggle_fin_{trade_id}",
       )
-      # დინამიკური წარწერა: თუ ჩართულია - "დასრულებული", თუ არა - "მიმდინარე"
-      toggle_label = "დასრულებული" if current_toggle_state else "მიმდინარე"
+      if new_status != is_finalized:
+        update_trade(trade_id, {"Finalized": str(new_status)})
+        
+        # თუ ტოიგლი გადაიყვანა დასრულებულზე, მაგრამ Exit არ მოიძებნა
+        if new_status and exits.empty:
+          st.toast("⚠️ გარიგება დასრულებულია, მაგრამ გამოსვლის (Exit) დეტალები არ არის მითითებული (PnL = 0$)", icon="ℹ️")
+        
+        st.rerun()
 
       st.toggle(
           toggle_label,
