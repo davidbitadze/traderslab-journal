@@ -21,8 +21,8 @@ def show_trade_details_dialog(trade, df):
 
   st.markdown(f"### {pair} — **{side}**")
   st.divider()
-  
-# 1. არსებული ისტორია წაშლისა და ედიტირების ღილაკებით (ფანჯრის დაუხურავად)
+
+  # 1. არსებული ისტორია წაშლისა და ედიტირების ღილაკებით (ფანჯრის დაუხურავად)
   if not sub_actions.empty:
     st.markdown("**📋 ეტაპების ისტორია:**")
     for _, sub in sub_actions.iterrows():
@@ -40,7 +40,7 @@ def show_trade_details_dialog(trade, df):
         if st.button("🗑️", key=f"del_sub_{sub_id}", help="ამ ეტაპის წაშლა"):
           if delete_trade(sub_id):
             st.toast("ჩანაწერი წაიშალა!", icon="🗑️")
-            st.rerun()
+            # აღარ ვიყენებთ st.rerun()-ს, რომ დიალოგი არ დაიხუროს და იუზერმა შეძლოს თავისუფლად მუშაობა
 
       # თუ ზუსტად ამ სუბ-ჩანაწერის ედიტირებაა არჩეული
       if st.session_state.get("active_edit_sub") == sub_id:
@@ -114,7 +114,7 @@ def show_trade_details_dialog(trade, df):
       key=f"dialog_act_{trade_id}",
   )
 
-with st.form(f"form_sub_dialog_{trade_id}"):
+  with st.form(f"form_sub_dialog_{trade_id}"):
     col_f1, col_f2 = st.columns(2)
     with col_f1:
       default_sub_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -177,6 +177,7 @@ with st.form(f"form_sub_dialog_{trade_id}"):
         st.success("წარმატებით დაემატა!")
         st.rerun()
 
+
 def render_trade_card(trade, df):
   trade_id = trade.get("Trade ID") or trade.get("Parent Trade ID")
   pair = trade.get("Pair", "N/A")
@@ -203,15 +204,15 @@ def render_trade_card(trade, df):
   pnl = calculate_trade_pnl(entry_price, exit_price, risk_val, side)
   status_icon = "🟢" if pnl > 0 else ("🔴" if pnl < 0 else "⚪")
 
-  # ვიზუალური სტატუსის ტექსტი
-  status_label = "დასრულებული" if is_finalized else "მიმდინარე"
-  status_badge = "⚪ დასრულებული" if is_finalized else "🟢 მიმდინარე"
+  # ვიზუალური სტატუსის ტექსტი და ბეიჯი
+  status_badge = "დასრულებული" if is_finalized else "მიმდინარე"
 
   state_key = f"mode_{trade_id}"
   current_mode = st.session_state.get(state_key, None)
 
+  # სუპერ-კომპაქტური ჰორიზონტალური ბარათი სტატუსის გადამრთველით
   with st.container(border=True):
-    col_img, col_info, col_toggle, col_menu = st.columns([0.6, 6.4, 2, 1])
+    col_img, col_info, col_toggle, col_menu = st.columns([0.6, 5.4, 3.0, 1.0])
 
     with col_img:
       st.markdown(
@@ -239,7 +240,7 @@ def render_trade_card(trade, df):
       if new_status != is_finalized:
         update_trade(trade_id, {"Finalized": str(new_status)})
         st.rerun()
-    
+
     with col_menu:
       with st.popover("⋯"):
         st.write(f"**მართვა: {pair}**")
