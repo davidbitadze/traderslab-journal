@@ -40,7 +40,6 @@ def show_trade_details_dialog(trade, df):
         if st.button("🗑️", key=f"del_sub_{sub_id}", help="ამ ეტაპის წაშლა"):
           if delete_trade(sub_id):
             st.toast("ჩანაწერი წაიშალა!", icon="🗑️")
-            # აღარ ვიყენებთ st.rerun()-ს, რომ დიალოგი არ დაიხუროს და იუზერმა შეძლოს თავისუფლად მუშაობა
 
       # თუ ზუსტად ამ სუბ-ჩანაწერის ედიტირებაა არჩეული
       if st.session_state.get("active_edit_sub") == sub_id:
@@ -204,9 +203,6 @@ def render_trade_card(trade, df):
   pnl = calculate_trade_pnl(entry_price, exit_price, risk_val, side)
   status_icon = "🟢" if pnl > 0 else ("🔴" if pnl < 0 else "⚪")
 
-  # ვიზუალური სტატუსის ტექსტი და ბეიჯი
-  status_badge = "დასრულებული" if is_finalized else "მიმდინარე"
-
   state_key = f"mode_{trade_id}"
   current_mode = st.session_state.get(state_key, None)
 
@@ -233,10 +229,13 @@ def render_trade_card(trade, df):
       )
 
     with col_toggle:
-      # სწრაფი გადამრთველი ბარათზევე (იუზერი აკონტროლებს სტატუსს ახალი ჩანაწერის გარეშე)
+      # სტატიკური ტექსტით გადამრთველი, რომელიც არ იწვევს ციკლურ რეფრეშს
       new_status = st.toggle(
-          status_badge, value=is_finalized, key=f"toggle_fin_{trade_id}"
+          "დასრულებული" if is_finalized else "მიმდინარე",
+          value=is_finalized,
+          key=f"toggle_fin_{trade_id}",
       )
+      # ვანახლებთ მხოლოდ მაშინ, როდესაც რეალურად შეიცვალა მნიშვნელობა
       if new_status != is_finalized:
         update_trade(trade_id, {"Finalized": str(new_status)})
         st.rerun()
