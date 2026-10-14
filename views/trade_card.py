@@ -46,20 +46,15 @@ def render_trade_card(trade, df):
       )
 
     with col_menu:
-      # Glide-ის სტილის სამწტილიანი მენიუ ზუსტად ორი ღილაკით
       with st.popover("⋯"):
         st.subheader(f"მართვა: {pair}")
 
-        # ორი ძირითადი ღილაკი ერთმანეთის მიყოლებით
         col_btn1, col_btn2 = st.columns(2)
         with col_btn1:
           edit_clicked = st.button("✏️ ჩასწორება", key=f"edit_btn_{trade_id}")
         with col_btn2:
-          delete_clicked = st.button(
-              "🗑️ წაშლა", key=f"del_btn_{trade_id}"
-          )
+          delete_clicked = st.button("🗑️ წაშლა", key=f"del_btn_{trade_id}")
 
-        # სესიის მეხსიერებაში ვინახავთ რომელ ღილაკზე დააკლიკა იუზერმა
         state_key = f"mode_{trade_id}"
         if edit_clicked:
           st.session_state[state_key] = "edit"
@@ -70,9 +65,8 @@ def render_trade_card(trade, df):
 
         st.divider()
 
-        # თუ არჩეულია ჩასწორება
         if current_mode == "edit":
-          st.write("**პოზიციის მართვა / ჩასწორება**")
+          st.write("**პოზიციის მართვა / დამატება / ჩახურვა**")
 
           sub_action_type = st.selectbox(
               "მოქმედება",
@@ -85,6 +79,12 @@ def render_trade_card(trade, df):
           )
 
           with st.form(f"form_sub_{trade_id}"):
+            default_sub_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            sub_date = st.text_input(
+                "თარიღი და დრო (მაგ: 2026-10-13 16:38:00)",
+                value=default_sub_time,
+                key=f"d_{trade_id}",
+            )
             sub_price = st.number_input(
                 "ფასი",
                 value=float(entry_price)
@@ -96,10 +96,14 @@ def render_trade_card(trade, df):
             sub_qty = st.number_input(
                 "მოცულობა", value=1000.0, step=100.0, key=f"q_{trade_id}"
             )
-            sub_date = st.date_input(
-                "თარიღი", datetime.today(), key=f"d_{trade_id}"
-            )
             sub_desc = st.text_input("შენიშვნა", key=f"desc_{trade_id}")
+
+            # სკრინშოტი ჩახურვისთვის / მოქმედებისთვის
+            sub_screenshot = st.file_uploader(
+                "მოქმედების სკრინშოტი (დადარებისთვის)",
+                type=["png", "jpg", "jpeg"],
+                key=f"file_{trade_id}",
+            )
 
             mark_finalized = st.checkbox(
                 "გარიგება დასრულებულია (Finalized)",
@@ -108,16 +112,20 @@ def render_trade_card(trade, df):
             )
 
             if st.form_submit_button("ცვლილებების შენახვა"):
+              screenshot_name = (
+                  sub_screenshot.name if sub_screenshot else "No Screenshot"
+              )
               child_trade_data = {
                   "Trade ID": str(uuid.uuid4()),
                   "Parent Trade ID": trade_id,
-                  "Entry Date": str(sub_date),
+                  "Entry Date": sub_date,
                   "Pair": pair,
                   "Side": side,
                   "Entry Price": str(sub_price),
                   "Qty": str(sub_qty),
                   "ActionType": sub_action_type,
                   "Description": sub_desc,
+                  "Screenshot": screenshot_name,
               }
               update_trade(trade_id, {"Finalized": str(mark_finalized)})
 
@@ -126,7 +134,6 @@ def render_trade_card(trade, df):
                 del st.session_state[state_key]
                 st.rerun()
 
-        # თუ არჩეულია წაშლა
         elif current_mode == "delete":
           st.error(
               "⚠️ ნამდვილად გსურთ წაშლა? წაშლის შემდეგ მონაცემები ვეღარ"
@@ -145,11 +152,11 @@ def render_trade_card(trade, df):
               del st.session_state[state_key]
               st.rerun()
 
-    # დეტალური ისტორია ბარათის ქვეშ
     if not sub_actions.empty:
       with st.expander(f"📋 დეტალური ისტორია ({len(sub_actions)} ქვემოქმედება)"):
         for _, sub in sub_actions.iterrows():
           st.markdown(
               f"- **{sub.get('ActionType')}**: ფასი: {sub.get('Entry Price')}"
-              f" | მოცულობა: {sub.get('Qty')} | თარიღი: {sub.get('Entry Date')}"
+              f" | მოცულობა: {sub.get('Qty')} | დრო: {sub.get('Entry Date')}"
+              f" | სკრინშოტი: {sub.get('Screenshot', 'არა')}"
           )
