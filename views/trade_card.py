@@ -21,8 +21,8 @@ def show_trade_details_dialog(trade, df):
 
   st.markdown(f"### {pair} — **{side}**")
   st.divider()
-
-  # 1. არსებული ისტორია
+  
+# 1. არსებული ისტორია წაშლისა და ედიტირების ღილაკებით (ფანჯრის დაუხურავად)
   if not sub_actions.empty:
     st.markdown("**📋 ეტაპების ისტორია:**")
     for _, sub in sub_actions.iterrows():
@@ -39,14 +39,13 @@ def show_trade_details_dialog(trade, df):
       with col_h3:
         if st.button("🗑️", key=f"del_sub_{sub_id}", help="ამ ეტაპის წაშლა"):
           if delete_trade(sub_id):
-            st.toast("ჩანაწერი წარმატებით წაიშალა!", icon="🗑️")
-            # აღარ ვიყენებთ st.rerun()-ს, რომ დიალოგი არ დაიხუროს და იუზერმა შეძლოს თავისუფლად მუშაობა
+            st.toast("ჩანაწერი წაიშალა!", icon="🗑️")
+            st.rerun()
 
-      # თუ ზუსტად ამ სუბ-ჩანაწერის ედიტირებაა არჩეული, ვხსნით იქვე ფორმას
+      # თუ ზუსტად ამ სუბ-ჩანაწერის ედიტირებაა არჩეული
       if st.session_state.get("active_edit_sub") == sub_id:
         with st.form(f"form_edit_sub_inline_{sub_id}"):
           st.markdown(f"**✏️ ჩასწორება: {sub.get('ActionType')}**")
-
           is_start_row = "Start Row" in str(sub.get("ActionType", ""))
 
           edit_price = st.number_input(
@@ -103,7 +102,7 @@ def show_trade_details_dialog(trade, df):
     st.caption("ამ გარიგებაზე დამატებითი ეტაპები ჯერ არ არის.")
 
   st.markdown("---")
-  st.markdown("**➕ ახალი ეტაპის დამატება (Scale In / Exit):**")
+  st.markdown("**➕ ახალი ეტაპის დამატება:**")
 
   sub_action_type = st.selectbox(
       "მოქმედების ტიპი",
@@ -115,7 +114,7 @@ def show_trade_details_dialog(trade, df):
       key=f"dialog_act_{trade_id}",
   )
 
-  with st.form(f"form_sub_dialog_{trade_id}"):
+with st.form(f"form_sub_dialog_{trade_id}"):
     col_f1, col_f2 = st.columns(2)
     with col_f1:
       default_sub_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -146,14 +145,15 @@ def show_trade_details_dialog(trade, df):
         key=f"dialog_file_{trade_id}",
     )
 
-    col_btn1, col_btn2 = st.columns(2)
-    with col_btn1:
+    col_sub_btn1, col_sub_btn2 = st.columns(2)
+    with col_sub_btn1:
       submitted = st.form_submit_button(
-          "💾 ცვლილებების შენახვა", use_container_width=True
+          "💾 შენახვა", use_container_width=True
       )
-    with col_btn2:
-      cancelled = st.form_submit_button("❌ გაუქმება", use_container_width=True)
-
+    with col_sub_btn2:
+      cancelled = st.form_submit_button(
+          "❌ გაუქმება", use_container_width=True
+      )
     if cancelled:
       st.rerun()
 
@@ -176,7 +176,6 @@ def show_trade_details_dialog(trade, df):
       if insert_trade(child_trade_data):
         st.success("წარმატებით დაემატა!")
         st.rerun()
-
 
 def render_trade_card(trade, df):
   trade_id = trade.get("Trade ID") or trade.get("Parent Trade ID")
@@ -204,12 +203,15 @@ def render_trade_card(trade, df):
   pnl = calculate_trade_pnl(entry_price, exit_price, risk_val, side)
   status_icon = "🟢" if pnl > 0 else ("🔴" if pnl < 0 else "⚪")
 
+  # ვიზუალური სტატუსის ტექსტი
+  status_label = "დასრულებული" if is_finalized else "მიმდინარე"
+  status_badge = "⚪ დასრულებული" if is_finalized else "🟢 მიმდინარე"
+
   state_key = f"mode_{trade_id}"
   current_mode = st.session_state.get(state_key, None)
 
-  # სუპერ-კომპაქტური ჰორიზონტალური ბარათი სტატუსის გადამრთველით
   with st.container(border=True):
-    col_img, col_info, col_toggle, col_menu = st.columns([0.6, 5.4, 3.0, 1.0])
+    col_img, col_info, col_toggle, col_menu = st.columns([0.6, 6.4, 2, 1])
 
     with col_img:
       st.markdown(
@@ -230,16 +232,14 @@ def render_trade_card(trade, df):
       )
 
     with col_toggle:
-      # აშკარა და თვალსაჩინო გადამრთველი ბარათზევე
+      # სწრაფი გადამრთველი ბარათზევე (იუზერი აკონტროლებს სტატუსს ახალი ჩანაწერის გარეშე)
       new_status = st.toggle(
-          "დასრულებული" if is_finalized else "მიმდინარე",
-          value=is_finalized,
-          key=f"toggle_fin_{trade_id}",
+          status_badge, value=is_finalized, key=f"toggle_fin_{trade_id}"
       )
       if new_status != is_finalized:
         update_trade(trade_id, {"Finalized": str(new_status)})
         st.rerun()
-
+    
     with col_menu:
       with st.popover("⋯"):
         st.write(f"**მართვა: {pair}**")
