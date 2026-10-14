@@ -1,15 +1,18 @@
-from database import fetch_trades
+from database import fetch_balance_transactions, fetch_trades
 import streamlit as st
 from utils.formulas import calculate_trade_pnl
 from views.add_trade_modal import render_add_trade_modal
-from views.trade_card import render_trade_card  # ახალი ცალკეული კომპონენტი
+from views.trade_card import render_trade_card
 
 
 def render_journal_view(lang="ka"):
-  # 1. ვიღებთ საწყის დეპოზიტს session_state-იდან (ნაგულისხმევად 500.0$)
-  initial_deposit = st.session_state.get("initial_deposit", 500.0)
+  # 1. ვიღებთ დეპოზიტების/ტრანზაქციების ჯამს
+  df_txn = fetch_balance_transactions()
+  total_deposits = 500.0  # ნაგულისხმევად თუ ტრანზაქცია არ არის
+  if not df_txn.empty and "Amount" in df_txn.columns:
+    total_deposits = pd.to_numeric(df_txn["Amount"], errors="coerce").sum()
 
-  # 2. მონაცემების წამოღება
+  # 2. მონაცემების წამოღება გარიგებებიდან
   df = fetch_trades()
 
   # 3. ვთვლით ჯამურ PnL-ს ყველა გარიგებიდან
@@ -47,8 +50,8 @@ def render_journal_view(lang="ka"):
       pnl = calculate_trade_pnl(entry_price, exit_price, risk_val, side)
       total_pnl += pnl
 
-  # 4. საბოლოო ბალანსი = საწყისი დეპოზიტი + ჯამური PnL
-  final_balance = initial_deposit + total_pnl
+  # 4. საბოლოო ბალანსი = დეპოზიტების ჯამი + ჯამური PnL
+  final_balance = total_deposits + total_pnl
 
   # 5. დინამიკური სათაური ბალანსით
   st.title(f"📊 სავაჭრო ჟურნალი — {final_balance:.2f}$")
