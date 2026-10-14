@@ -34,20 +34,15 @@ def render_trade_card(trade, df):
   state_key = f"mode_{trade_id}"
   current_mode = st.session_state.get(state_key, None)
 
-  # ultra-compact container
+  # კომპაქტური ბარათი მინიმალური ვერტიკალური სივრცით
   with st.container(border=True):
-    col_img, col_info, col_actions = [
-        st.columns([1, 7, 3])[0],
-        st.columns([1, 7, 3])[1],
-        st.columns([1, 7, 3])[2],
-    ]
+    col_img, col_info, col_edit, col_menu = st.columns([0.8, 7.2, 1, 1])
 
     with col_img:
-      # პატარა აკონი ან იკონკა სკრინშოტის მაგივრად
       st.markdown("🖼️" if screenshot != "No Screenshot" else "📁")
 
     with col_info:
-      # ერთიანი ჰორიზონტალური ხაზი Glide-ის მსგავსად
+      # ერთიანი ჰორიზონტალური ხაზი Glide სტილში
       st.markdown(
           f"### {status_icon} **{pair}** &nbsp; `{side}` &nbsp;"
           f" **{pnl:+.2f}\$**"
@@ -57,23 +52,19 @@ def render_trade_card(trade, df):
           f" {entry_price}"
       )
 
-    with col_actions:
-      # მარჯვენა მხარეს: "ჩასწორება" და "..." ღილაკები ერთ ხაზზე
-      col_a1, col_a2 = st.columns(2)
-      with col_a1:
-        if st.button("✏️", key=f"edit_btn_{trade_id}", help="ჩასწორება"):
-          st.session_state[state_key] = (
-              "edit" if current_mode != "edit" else None
-          )
-          st.rerun()
-      with col_a2:
-        with st.popover("⋯"):
-          st.write(f"**მართვა: {pair}**")
-          if st.button("🗑️ გარიგების წაშლა", key=f"del_menu_{trade_id}"):
-            st.session_state[state_key] = "delete"
-            st.rerun()
+    with col_edit:
+      if st.button("✏️", key=f"edit_btn_{trade_id}", help="ჩასწორება"):
+        st.session_state[state_key] = "edit" if current_mode != "edit" else None
+        st.rerun()
 
-    # ჩასწორების ფორმა (თუ აქტიურია)
+    with col_menu:
+      with st.popover("⋯"):
+        st.write(f"**მართვა: {pair}**")
+        if st.button("🗑️ გარიგების წაშლა", key=f"del_menu_{trade_id}"):
+          st.session_state[state_key] = "delete"
+          st.rerun()
+
+    # ჩასწორების ფორმა
     if current_mode == "edit":
       st.divider()
       st.markdown("##### ⚙️ პოზიციის მართვა / დამატება / ჩახურვა")
