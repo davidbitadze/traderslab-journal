@@ -21,6 +21,8 @@ TRANSLATIONS = {
         "success_save": "გარიგება წარმატებით შეინახა ბაზაში!",
         "analytics_title": "📈 სტატისტიკა და ანალიტიკა",
         "total_trades": "სულ გარიგებები",
+        "status_ongoing": "მიმდინარე",
+        "status_finalized": "დასრულებული",
     },
     "en": {
         "page_title": "Traders Lab - Trading Journal",
@@ -42,6 +44,8 @@ TRANSLATIONS = {
         "success_save": "Trade successfully saved to database!",
         "analytics_title": "📈 Statistics & Analytics",
         "total_trades": "Total Trades",
+        "status_ongoing": "Ongoing",
+        "status_finalized": "Finalized",
     },
 }
 
