@@ -119,10 +119,6 @@ def render_trade_card(trade, df):
   risk_val = trade.get("Risk ($)", 5.85)
   screenshot = trade.get("Screenshot", "No Screenshot")
 
-  is_finalized = trade.get("Finalized", False)
-  if isinstance(is_finalized, str):
-    is_finalized = is_finalized.lower() == "true"
-
   sub_actions = df[df["Parent Trade ID"] == trade_id]
   exit_price = entry_price
 
@@ -138,9 +134,9 @@ def render_trade_card(trade, df):
   state_key = f"mode_{trade_id}"
   current_mode = st.session_state.get(state_key, None)
 
-  # კომპაქტური ბარათი
+  # სუპერ-კომპაქტური ჰორიზონტალური ბარათი (ფანქრის ღილაკის გარეშე)
   with st.container(border=True):
-    col_img, col_info, col_edit, col_menu = st.columns([0.6, 7.4, 1, 1])
+    col_img, col_info, col_menu = st.columns([0.8, 8.2, 1])
 
     with col_img:
       st.markdown(
@@ -149,27 +145,25 @@ def render_trade_card(trade, df):
       )
 
     with col_info:
-      # HTML-ის მეშვეობით ზუსტად ვაპატარავებთ წყვილის სახელს და თანხას, რომ მიმართულების ზომას ერგოს
       st.markdown(
           f"<span style='font-size: 1.1rem;'>{status_icon} <b>{pair}</b></span>"
           f" &nbsp; <code style='font-size: 0.85rem;'>{side}</code> &nbsp;"
           f" <span style='font-size: 1.1rem;'><b>{pnl:+.2f}$</b></span>",
           unsafe_allow_html=True,
       )
-      # ქვედა დეტალები რჩება იდეალურ ზომაზე
       st.caption(
           f"📅 {entry_date} &nbsp;•&nbsp; 🏷️ {formation} &nbsp;•&nbsp; 💵 შესვლა:"
           f" {entry_price}"
       )
 
-    with col_edit:
-      # ჩასწორების ღილაკზე დაჭერისას იხსნება ზემოდან მცურავი ოვერლეი დიალოგი
-      if st.button("✏️", key=f"edit_btn_{trade_id}", help="დეტალები / ჩასწორება"):
-        show_trade_details_dialog(trade, df)
-
     with col_menu:
+      # მთელი მართვა გადატანილია სამ წერტილში (⋯)
       with st.popover("⋯"):
         st.write(f"**მართვა: {pair}**")
+
+        if st.button("🔍 დეტალები / ჩასწორება", key=f"det_menu_{trade_id}"):
+          show_trade_details_dialog(trade, df)
+
         if st.button("🗑️ გარიგების წაშლა", key=f"del_menu_{trade_id}"):
           st.session_state[state_key] = "delete"
           st.rerun()
