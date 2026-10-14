@@ -43,10 +43,14 @@ def show_trade_details_dialog(trade, df):
             st.success("ჩანაწერი წაიშალა!")
             st.rerun()
 
-      # თუ ზუსტად ამ სუბ-ჩანაწერის ედიტირებაა არჩეული, ვხსნით იქვე ფორმას
+# თუ ზუსტად ამ სუბ-ჩანაწერის ედიტირებაა არჩეული, ვხსნით იქვე ფორმას
       if st.session_state.get("active_edit_sub") == sub_id:
         with st.form(f"form_edit_sub_inline_{sub_id}"):
           st.markdown(f"**✏️ ჩასწორება: {sub.get('ActionType')}**")
+          
+          # ვამოწმებთ, არის თუ არა ეს მთავარი შესვლა (Start Row)
+          is_start_row = "Start Row" in str(sub.get("ActionType", ""))
+
           edit_price = st.number_input(
               "ფასი",
               value=float(sub.get("Entry Price", 1.0850))
@@ -63,6 +67,18 @@ def show_trade_details_dialog(trade, df):
               else 1000.0,
               step=100.0,
           )
+
+          # თუ მთავარი შესვლაა, ვამატებთ რისკის ველსაც
+          edit_risk = 10.0
+          if is_start_row:
+            edit_risk = st.number_input(
+                "რისკი დოლარში (Risk $)",
+                value=float(sub.get("Risk ($)", 10.0))
+                if str(sub.get("Risk ($)", "10")).replace(".", "", 1).isdigit()
+                else 10.0,
+                step=1.0,
+            )
+
           edit_date = st.text_input(
               "თარიღი და დრო", value=sub.get("Entry Date", "")
           )
@@ -75,6 +91,9 @@ def show_trade_details_dialog(trade, df):
                   "Qty": str(edit_qty),
                   "Entry Date": edit_date,
               }
+              if is_start_row:
+                update_data["Risk ($)"] = str(edit_risk)
+
               if update_trade(sub_id, update_data):
                 st.success("წარმატებით განახლდა!")
                 st.session_state["active_edit_sub"] = None
