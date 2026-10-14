@@ -39,8 +39,8 @@ def show_trade_details_dialog(trade, df):
       with col_h3:
         if st.button("🗑️", key=f"del_sub_{sub_id}", help="ამ ეტაპის წაშლა"):
           if delete_trade(sub_id):
-            st.toast("ჩანაწერი წაიშალა!", icon="🗑️")
-            # აღარ ვხურავთ ფანჯარს rerun-ით, რომ იუზერმა შეძლოს რამდენიმეს წაშლა
+            st.toast("ჩანაწერი წარმატებით წაიშალა!", icon="🗑️")
+            # აღარ ვიყენებთ st.rerun()-ს, რომ დიალოგი არ დაიხუროს და იუზერმა შეძლოს თავისუფლად მუშაობა
 
       # თუ ზუსტად ამ სუბ-ჩანაწერის ედიტირებაა არჩეული, ვხსნით იქვე ფორმას
       if st.session_state.get("active_edit_sub") == sub_id:
@@ -204,14 +204,12 @@ def render_trade_card(trade, df):
   pnl = calculate_trade_pnl(entry_price, exit_price, risk_val, side)
   status_icon = "🟢" if pnl > 0 else ("🔴" if pnl < 0 else "⚪")
 
-  status_badge = "⚪ დასრულებული" if is_finalized else "🟢 მიმდინარე"
-
   state_key = f"mode_{trade_id}"
   current_mode = st.session_state.get(state_key, None)
 
   # სუპერ-კომპაქტური ჰორიზონტალური ბარათი სტატუსის გადამრთველით
   with st.container(border=True):
-    col_img, col_info, col_toggle, col_menu = st.columns([0.6, 6.4, 2, 1])
+    col_img, col_info, col_toggle, col_menu = st.columns([0.6, 5.4, 3.0, 1.0])
 
     with col_img:
       st.markdown(
@@ -232,16 +230,17 @@ def render_trade_card(trade, df):
       )
 
     with col_toggle:
-      # სწრაფი გადამრთველი ბარათზევე (მიმდინარე / დასრულებული)
+      # აშკარა და თვალსაჩინო გადამრთველი ბარათზევე
       new_status = st.toggle(
-          status_badge, value=is_finalized, key=f"toggle_fin_{trade_id}"
+          "დასრულებული" if is_finalized else "მიმდინარე",
+          value=is_finalized,
+          key=f"toggle_fin_{trade_id}",
       )
       if new_status != is_finalized:
         update_trade(trade_id, {"Finalized": str(new_status)})
         st.rerun()
 
     with col_menu:
-      # მთელი მართვა გადატანილია სამ წერტილში (⋯)
       with st.popover("⋯"):
         st.write(f"**მართვა: {pair}**")
 
@@ -252,7 +251,6 @@ def render_trade_card(trade, df):
           st.session_state[state_key] = "delete"
           st.rerun()
 
-    # წაშლის დადასტურება ბარათშივე
     if current_mode == "delete":
       st.divider()
       st.error(
