@@ -103,3 +103,36 @@ def delete_trade(trade_id):
     return True
   except Exception as e:
     return False
+# საწყისი დეპოზიტის/ტრანზაქციების წამოღება ბაზიდან
+def fetch_balance_transactions():
+  """ბრუნავს ტრანზაქციების DataFrame-ს ან სიას."""
+  try:
+    # მაგალითად, თუ იყენებთ Supabase ცხრილს "balance_transactions"
+    response = supabase.table("balance_transactions").select("*").execute()
+    return pd.DataFrame(response.data)
+  except Exception as e:
+    # თუ ცხრილი ჯერ არ არსებობს ან ცარიელია, აბრუნებს ცარიელ DataFrame-ს
+    return pd.DataFrame(
+        columns=["Transaction ID", "Date", "Amount", "Description"]
+    )
+
+
+def add_balance_transaction(data):
+  """ახალი ტრანზაქციის (შევსება/გამოტანა) დამატება ბაზაში."""
+  try:
+    supabase.table("balance_transactions").insert(data).execute()
+    return True
+  except Exception as e:
+    st.error(fრთხომის შეცდომა: {e}")
+    return False
+
+
+def delete_balance_transaction(txn_id):
+  """ტრანზაქციის წაშლა ID-ის მიხედვით."""
+  try:
+    supabase.table("balance_transactions").delete().eq(
+        "Transaction ID", txn_id
+    ).execute()
+    return True
+  except Exception as e:
+    return False
