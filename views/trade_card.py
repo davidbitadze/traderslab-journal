@@ -7,6 +7,64 @@ from utils.formulas import calculate_trade_pnl
 
 # 🪟 Streamlit-ის ოფიციალური ოვერლეი ფანჯარა (Dialog) დეტალებისა და მართვისთვის
 @st.dialog("🔍 გარიგების დეტალები და მართვა")
+def _to_float(value, default=0.0):
+  try:
+    if value is None or str(value).strip() in ("", "None", "nan"):
+      return default
+    return float(value)
+  except (ValueError, TypeError):
+    return default
+
+
+def recalc_net_pnl(parent_id):
+  """ითვლის გარიგების Net P/L-ს ბაზის ახალი მონაცემებით და წერს Supabase-ში."""
+  df = fetch_trades()
+  if df.empty:
+    return
+
+  main_df = df[df["Trade ID"] == parent_id]
+  if main_df.empty:
+    return
+  main = main_df.iloc[0]
+
+  side = main.get("Side", "")
+  risk_v = _to_float(main.get("Risk ($)"), 5.85)
+  subs = df[df["Parent Trade ID"] == parent_id]
+
+  # შესვლა: საწყისი რიგი + Scale In-ები (საშუალო შეწონილი ფასი)
+  entry_legs = [(_to_float(main.get("Entry Price")), _to_float(main.get("Qty")))]
+  for _, s in subs.iterrows():
+    if "Scale In" in str(s.get("ActionType", "")):
+      entry_legs.append(
+          (_to_float(s.get("Entry Price")), _to_float(s.get("Qty")))
+      )
+
+  entry_qty = sum(q for _, q in entry_legs)
+  if entry_qty > 0:
+    entry_p = sum(p * q for p, q in entry_legs) / entry_qty
+  else:
+    entry_p = entry_legs[0][0]
+
+  exits = [
+      (_to_float(s.get("Entry Price"), entry_p), _to_float(s.get("Qty")))
+      for _, s in subs.iterrows()
+      if "Exit" in str(s.get("ActionType", ""))
+  ]
+
+  if not exits:
+    update_trade(parent_id, {"Net P/L": None})
+    return
+
+  # თუ შესვლის მოცულობა არ არის ჩაწერილი, წილებს გასვლების ჯამიდან ვითვლით
+  denom = entry_qty if entry_qty > 0 else sum(q for _, q in exits)
+
+  total_pnl = 0.0
+  for ex_p, ex_q in exits:
+    share = (ex_q / denom) if denom > 0 else 1.0
+    total_pnl += calculate_trade_pnl(entry_p, ex_p, risk_v, side) * share
+
+  update_trade(parent_id, {"Net P/L": str(round(total_pnl, 2))})
+
 def show_trade_details_dialog(trade, df):
   df = fetch_trades()  # ახალი მონაცემები ყოველ ფრაგმენტულ rerun-ზე
   trade_id = trade.get("Trade ID") or trade.get("Parent Trade ID")
@@ -45,6 +103,7 @@ def show_trade_details_dialog(trade, df):
       with col_h3:
         if st.button("🗑️", key=f"del_sub_{sub_id}", help="ამ ეტაპის წაშლა"):
           if delete_trade(sub_id):
+            recalc_net_pnl(trade_id)
             st.toast("ჩანაწერი წაიშალა!", icon="🗑️")
             st.rerun(scope="fragment")
 
@@ -98,30 +157,11 @@ def show_trade_details_dialog(trade, df):
 
               # სწორი ინდენტაცია
               if update_trade(sub_id, update_data):
-                # ამოვიღოთ ზუსტად მთავარი გარიგების ID მიმდინარე დიალოგიდან
-                parent_main_id = trade.get("Trade ID") or sub.get("Parent Trade ID")
-                
-                # ვკრიბავთ ამ მთავარი გარიგების ყველა ეტაპს
-                all_subs = df[(df["Parent Trade ID"] == parent_main_id) | (df["Trade ID"] == parent_main_id)]
-                
-                # ვპოვოთ მთავარი რიგი ბაზის მონაცემებიდან
-                main_row = df[df["Trade ID"] == parent_main_id]
-                entry_p = float(entry_price or 0)
-                risk_v = 5.85
-                if not main_row.empty:
-                  entry_p = float(main_row.iloc[0].get("Entry Price", 0) or 0)
-                  risk_v = float(main_row.iloc[0].get("Risk ($)", 5.85) or 5.85)
-
-                total_pnl = 0.0
-                for _, ex in all_subs.iterrows():
-                  if "Exit" in str(ex.get("ActionType", "")):
-                    ex_p = edit_price if ex.get("Trade ID") == sub_id else float(ex.get("Entry Price", entry_p) or entry_p)
-                    total_pnl += calculate_trade_pnl(entry_p, ex_p, risk_v, side)
-
-                # ვწერთ Net P/L-ს პირდაპირ მთავარ გარიგებაზე
-                update_trade(parent_main_id, {"Net P/L": str(round(total_pnl, 2))})
-
+                recalc_net_pnl(trade_id)
                 st.success("წარმატებით განახლდა!")
+                st.session_state["active_edit_sub"] = None
+                st.rerun(scope="fragment")
+                
                 st.session_state["active_edit_sub"] = None
                 st.rerun(scope="fragment")
           
@@ -208,27 +248,13 @@ def show_trade_details_dialog(trade, df):
             "Description": sub_desc,
             "Screenshot": screenshot_name,
         }
+
         if insert_trade(child_trade_data):
-          entry_p = float(entry_price or 0)
-          risk_v = float(trade.get("Risk ($)", 5.85) or 5.85)
-
-          all_exits_list = []
-          for _, ex in sub_actions.iterrows():
-            if "Exit" in str(ex.get("ActionType", "")):
-              all_exits_list.append(ex)
-          if "Exit" in str(sub_action_type):
-            all_exits_list.append(child_trade_data)
-
-          total_pnl = 0.0
-          if all_exits_list:
-            for ex in all_exits_list:
-              ex_p = float(ex.get("Entry Price", entry_p) or entry_p)
-              total_pnl += calculate_trade_pnl(entry_p, ex_p, risk_v, side)
-
-          update_trade(trade_id, {"Net P/L": str(round(total_pnl, 2))})
-
+          recalc_net_pnl(trade_id)
           st.success("წარმატებით დაემატა!")
           st.rerun(scope="fragment")
+
+
 # ქოლბექი ტოიგლის ცვლილებისთვის
 def handle_toggle_change(t_id):
   new_val = st.session_state.get(f"toggle_fin_{t_id}", False)
