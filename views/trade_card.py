@@ -81,7 +81,7 @@ def show_trade_details_dialog(trade, df):
           )
 
           col_es1, col_es2 = st.columns(2)
-          with col_es1:
+with col_es1:
             if st.form_submit_button("💾 შენახვა", use_container_width=True):
               update_data = {
                   "Entry Price": str(edit_price),
@@ -92,25 +92,35 @@ def show_trade_details_dialog(trade, df):
                 update_data["Risk ($)"] = str(edit_risk)
 
               if update_trade(sub_id, update_data):
-                # Net P/L-ის გადათვლა და შენახვა
+                # ვპოულობთ მთავარ ID-ს (თუ ეს სუბ-ჩანაწერია, მისი Parent Trade ID არის მთავარი, თუ მთავარია - თავისივე Trade ID)
+                target_main_id = sub.get("Parent Trade ID")
+                if not target_main_id or pd.isna(target_main_id) or str(target_main_id).strip() == "":
+                  target_main_id = sub_id
+
+                # ვკრიბავთ ყველა სუბ-მოქმედებას ამ მთავარი ID-სთვის
+                all_subs = df[(df["Parent Trade ID"] == target_main_id) | (df["Trade ID"] == target_main_id)]
+                
+                # ვპოულობთ მთავარ რიგს რისკის და შესვლის ფასისთვის
+                main_row = df[df["Trade ID"] == target_main_id]
                 entry_p = float(entry_price or 0)
-                risk_v = float(trade.get("Risk ($)", 5.85) or 5.85)
+                risk_v = 5.85
+                if not main_row.empty:
+                  entry_p = float(main_row.iloc[0].get("Entry Price", 0) or 0)
+                  risk_v = float(main_row.iloc[0].get("Risk ($)", 5.85) or 5.85)
 
                 total_pnl = 0.0
-                for _, ex in sub_actions.iterrows():
+                for _, ex in all_subs.iterrows():
                   if "Exit" in str(ex.get("ActionType", "")):
-                    ex_p = (
-                        edit_price
-                        if ex.get("Trade ID") == sub_id
-                        else float(ex.get("Entry Price", entry_p) or entry_p)
-                    )
+                    ex_p = edit_price if ex.get("Trade ID") == sub_id else float(ex.get("Entry Price", entry_p) or entry_p)
                     total_pnl += calculate_trade_pnl(entry_p, ex_p, risk_v, side)
 
-                update_trade(trade_id, {"Net P/L": str(round(total_pnl, 2))})
+                # ვწერთ ბაზაში ზუსტად მთავარ ჩანაწერზე
+                update_trade(target_main_id, {"Net P/L": str(round(total_pnl, 2))})
 
                 st.success("წარმატებით განახლდა!")
                 st.session_state["active_edit_sub"] = None
                 st.rerun()
+          
           with col_es2:
             if st.form_submit_button("❌ გაუქმება", use_container_width=True):
               st.session_state["active_edit_sub"] = None
