@@ -1,6 +1,7 @@
 from database import fetch_trades, insert_trade
 import streamlit as st
 from utils.translations import t
+from views.analytics import render_analytics_view  # <-- აქ დავამატეთ იმპორტი
 from views.journal import render_journal_view
 from views.settings import render_settings_view
 
@@ -25,7 +26,7 @@ if selected_lang != st.session_state.lang:
 
 lang = st.session_state.lang
 
-# მთავარი მენიუ (დაემატა სეტინგების გვერდი)
+# მთავარი მენიუ
 st.sidebar.title(t("nav_header", lang))
 menu = st.sidebar.selectbox(
     "აირჩიეთ გვერდი",
@@ -39,9 +40,4 @@ elif menu == "⚙️ სეტინგები და ცნობარებ
   render_settings_view(lang)
 
 elif menu == "📈 ანალიტიკა":
-  st.title("📈 სტატისტიკა და ანალიტიკა")
-  df = fetch_trades()
-  if not df.empty:
-    st.metric(label="სულ გარიგებები", value=len(df))
-  else:
-    st.info("მონაცემები არ არის.")
+  render_analytics_view(lang)  # <-- აქ გამოვძახეთ ჩვენი სრული ანალიტიკის ფუნქცია
