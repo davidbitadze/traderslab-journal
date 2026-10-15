@@ -13,15 +13,12 @@ def render_analytics_view(lang="ka"):
     st.info("ანალიტიკისთვის მონაცემები ჯერ არ არის ჟურნალში.")
     return
 
-  # მთავარი გარიგებების იდენტიფიკაცია (სადაც ActionType შეიცავს Start Row-ს ან Parent Trade ID ცარიელია)
+  # 1. მთავარი გარიგებების იდენტიფიკაცია (Start Row)
   main_trades = df[
       df["ActionType"].str.contains("Start Row", case=False, na=False)
   ]
   if main_trades.empty:
-    if "Parent Trade ID" in df.columns:
-      main_trades = df[df["Parent Trade ID"].isna() | (df["Parent Trade ID"] == "")]
-    else:
-      main_trades = df
+    main_trades = df.drop_duplicates(subset=["Parent Trade ID"])
 
   analyzed_trades = []
 
@@ -37,12 +34,19 @@ def render_analytics_view(lang="ka"):
     if pd.isna(trigger) or not trigger:
       trigger = "N/A"
 
-    # ვკრიბავთ Net P/L-ს ამ გარიგებისთვის (მთავარი რიგი + მისი სუბ-მოქმედებები)
+    # ვამოწმებთ Finalized სტატუსს
+    is_fin = trade.get("Finalized", False)
+    if isinstance(is_fin, str):
+      is_fin = is_fin.lower() == "true"
+
+    # თუ გარიგება არ არის დასრულებული (Finalized არ არის True), გამოვტოვებთ ანალიტიკიდან
+    if not is_fin:
+      continue
+
+    # ვკრიბავთ Net P/L-ს ბაზიდან
     sub_actions = df[
         (df["Parent Trade ID"] == trade_id) | (df["Trade ID"] == trade_id)
     ]
-    
-    # ვცდილობთ ამოვიღოთ Net P/L და გადავაქციოთ რიცხვად
     total_pnl = 0.0
     for _, sub in sub_actions.iterrows():
       pnl_val = sub.get("Net P/L", 0)
@@ -74,7 +78,6 @@ def render_analytics_view(lang="ka"):
         else 0
     )
 
-    # მთავარი მეტრიკები (KPIs)
     col1, col2, col3, col4 = st.columns(4)
     with col1:
       st.metric("ჯამური PnL", f"{total_pnl:+.2f}$")
@@ -87,7 +90,6 @@ def render_analytics_view(lang="ka"):
 
     st.divider()
 
-    # პატერნების მიხედვით დაჯგუფება
     st.subheader("📌 პატერნების ანალიზი (Patterns)")
     pattern_grouped = (
         df_analytics.groupby("Pattern")
@@ -100,7 +102,6 @@ def render_analytics_view(lang="ka"):
     )
     st.dataframe(pattern_grouped, use_container_width=True)
 
-    # ტრიგერების მიხედვით დაჯგუფება
     st.subheader("⚡ ტრიგერების ანალიზი (Triggers)")
     trigger_grouped = (
         df_analytics.groupby("Trigger")
@@ -114,4 +115,6 @@ def render_analytics_view(lang="ka"):
     st.dataframe(trigger_grouped, use_container_width=True)
 
   else:
-    st.info("ანალიტიკური მონაცემები ჯერ ვერ დამუშავდა.")
+    st.info(
+        "დასრულებული (Finalized) გარიგებები ანალიტიკისთვის ჯერ არ მოიძებნა."
+    )
