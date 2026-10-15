@@ -178,35 +178,11 @@ def show_trade_details_dialog(trade, df):
 
 
 # ქოლბექი ტოიგლის ცვლილებისთვის
-def handle_toggle_change(t_id, trade, df):
+def handle_toggle_change(t_id):
   new_val = st.session_state.get(f"toggle_fin_{t_id}", False)
 
-  # ვთვლით PnL-ს
-  entry_price = float(trade.get("Entry Price", 0) or 0)
-  risk_val = float(trade.get("Risk ($)", 5.85) or 5.85)
-  side = trade.get("Side", "Long")
-
-  sub_actions = df[df["Parent Trade ID"] == t_id]
-  exits = sub_actions[
-      sub_actions["ActionType"].str.contains("Exit", case=False, na=False)
-  ]
-
-  exit_price = entry_price
-  if not exits.empty:
-    exit_price = float(
-        exits.iloc[-1].get("Entry Price", entry_price) or entry_price
-    )
-  else:
-    if new_val:
-      exit_price = entry_price
-
-  calculated_pnl = calculate_trade_pnl(entry_price, exit_price, risk_val, side)
-
-  # ვანახლებთ ბაზაში როგორც Finalized სტატუსს, ისე Net P/L-ს
-  update_trade(
-      t_id,
-      {"Finalized": str(new_val), "Net P/L": str(round(calculated_pnl, 2))},
-  )
+  # ვწერთ ბაზაში Finalized სტატუსს
+  update_trade(t_id, {"Finalized": str(new_val)})
 
 def render_trade_card(trade, df):
   trade_id = trade.get("Trade ID") or trade.get("Parent Trade ID")
