@@ -161,10 +161,6 @@ def show_trade_details_dialog(trade, df):
                 st.success("წარმატებით განახლდა!")
                 st.session_state["active_edit_sub"] = None
                 st.rerun(scope="fragment")              
-
-                
-                st.session_state["active_edit_sub"] = None
-                st.rerun(scope="fragment")
           
           with col_es2:
             if st.form_submit_button("❌ გაუქმება", use_container_width=True):
@@ -253,10 +249,7 @@ def show_trade_details_dialog(trade, df):
           recalc_net_pnl(trade_id)
           st.success("წარმატებით დაემატა!")
           st.rerun(scope="fragment")
-          update_trade(trade_id, {"Net P/L": str(round(total_pnl, 2))})
-
-          st.success("წარმატებით დაემატა!")
-          st.rerun(scope="fragment")
+        
 # ქოლბექი ტოიგლის ცვლილებისთვის
 def handle_toggle_change(t_id):
   new_val = st.session_state.get(f"toggle_fin_{t_id}", False)
