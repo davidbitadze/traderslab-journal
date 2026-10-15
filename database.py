@@ -90,11 +90,11 @@ def update_setting_item(category, old_name, new_name):
     return False
 
 def update_trade(trade_id, updated_data):
-  """არსებული გარიგების მონაცემების განახლება Supabase-ში Trade ID-ის ან id-ის მიხედვით"""
+  """არსებული გარიგების მონაცემების განახლება Supabase-ში Trade ID-ის მიხედვით"""
   try:
     supabase = get_supabase_client()
     
-    # 1. ჯერ ვცდილობთ Trade ID სვეტით
+    # ვცდილობთ ზუსტი დამთხვევით
     response = (
         supabase.table("trades")
         .update(updated_data)
@@ -102,9 +102,15 @@ def update_trade(trade_id, updated_data):
         .execute()
     )
     
-    # 2. თუ პასუხი ცარიელია, ვცდილობთ id სვეტით (პრიმარ კეი)
-    if not response.data:
-      supabase.table("trades").update(updated_data).eq("id", trade_id).execute()
+    # თუ ზუსტით ვერ იპოვა, ვცდილობთ პრეფიქსით (თუ ID-ს რამე მოაკლდა)
+    if not response.data and trade_id:
+      short_id = str(trade_id).strip()
+      response = (
+          supabase.table("trades")
+          .update(updated_data)
+          .ilike("Trade ID", f"{short_id}%")
+          .execute()
+      )
 
     return True
   except Exception as e:
