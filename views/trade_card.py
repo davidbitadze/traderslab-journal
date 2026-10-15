@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from database import delete_trade, insert_trade, update_trade
+from database import delete_trade, insert_trade, update_trade, fetch_trades
 import pandas as pd
 import streamlit as st
 from utils.formulas import calculate_trade_pnl
@@ -8,7 +8,13 @@ from utils.formulas import calculate_trade_pnl
 # 🪟 Streamlit-ის ოფიციალური ოვერლეი ფანჯარა (Dialog) დეტალებისა და მართვისთვის
 @st.dialog("🔍 გარიგების დეტალები და მართვა")
 def show_trade_details_dialog(trade, df):
+  df = fetch_trades()  # ახალი მონაცემები ყოველ ფრაგმენტულ rerun-ზე
   trade_id = trade.get("Trade ID") or trade.get("Parent Trade ID")
+
+  fresh = df[df["Trade ID"] == trade_id]
+  if not fresh.empty:
+    trade = fresh.iloc[0].to_dict()
+
   pair = trade.get("Pair", "N/A")
   side = trade.get("Side", "N/A")
   entry_price = trade.get("Entry Price", 0)
@@ -40,7 +46,7 @@ def show_trade_details_dialog(trade, df):
         if st.button("🗑️", key=f"del_sub_{sub_id}", help="ამ ეტაპის წაშლა"):
           if delete_trade(sub_id):
             st.toast("ჩანაწერი წაიშალა!", icon="🗑️")
-            st.rerun()
+            st.rerun(scope="fragment")
 
       # თუ ზუსტად ამ სუბ-ჩანაწერის ედიტირებაა არჩეული
       if st.session_state.get("active_edit_sub") == sub_id:
@@ -117,12 +123,12 @@ def show_trade_details_dialog(trade, df):
 
                 st.success("წარმატებით განახლდა!")
                 st.session_state["active_edit_sub"] = None
-                st.rerun()
+                st.rerun(scope="fragment")
           
           with col_es2:
             if st.form_submit_button("❌ გაუქმება", use_container_width=True):
               st.session_state["active_edit_sub"] = None
-              st.rerun()
+              st.rerun(scope="fragment")
 
 
   
@@ -184,7 +190,7 @@ def show_trade_details_dialog(trade, df):
             "❌ გაუქმება", use_container_width=True
         )
       if cancelled:
-        st.rerun()
+        st.rerun(scope="fragment")
 
       if submitted:
         screenshot_name = (
@@ -222,7 +228,7 @@ def show_trade_details_dialog(trade, df):
           update_trade(trade_id, {"Net P/L": str(round(total_pnl, 2))})
 
           st.success("წარმატებით დაემატა!")
-          st.rerun()
+          st.rerun(scope="fragment")
 # ქოლბექი ტოიგლის ცვლილებისთვის
 def handle_toggle_change(t_id):
   new_val = st.session_state.get(f"toggle_fin_{t_id}", False)
@@ -256,7 +262,11 @@ def render_trade_card(trade, df):
     if is_finalized:
       exit_price = entry_price
 
-  pnl = calculate_trade_pnl(entry_price, exit_price, risk_val, side)
+  raw_net = trade.get("Net P/L")
+  if raw_net is not None and str(raw_net).strip() not in ("", "None", "nan"):
+    pnl = float(raw_net)
+  else:
+    pnl = calculate_trade_pnl(entry_price, exit_price, risk_val, side)
   status_icon = "🟢" if pnl > 0 else ("🔴" if pnl < 0 else "⚪")
 
   state_key = f"mode_{trade_id}"
