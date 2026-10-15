@@ -172,10 +172,32 @@ def show_trade_details_dialog(trade, df):
           "Description": sub_desc,
           "Screenshot": screenshot_name,
       }
-      if insert_trade(child_trade_data):
-        st.success("წარმატებით დაემატა!")
-        st.rerun()
-
+    if insert_trade(child_trade_data):
+          # აქ უკვე შეგვიძლია გადავთვალოთ მთლიანი გარიგების Net P/L
+          # და შევინახოთ ბაზაში მთავარ ჩანაწერზე!
+          updated_sub_actions = pd.concat(
+              [sub_actions, pd.DataFrame([child_trade_data])]
+          )
+          # გამოვთვალოთ ახალი ჯამური PnL
+          entry_p = float(entry_price or 0)
+          risk_v = float(trade.get("Risk ($)", 5.85) or 5.85)
+          exits = updated_sub_actions[
+              updated_sub_actions["ActionType"].str.contains(
+                  "Exit", case=False, na=False
+              )
+          ]
+  
+          total_pnl = 0.0
+          if not exits.empty:
+            for _, ex in exits.iterrows():
+              ex_p = float(ex.get("Entry Price", entry_p) or entry_p)
+              total_pnl += calculate_trade_pnl(entry_p, ex_p, risk_v, side)
+  
+          # ვწერთ Net P/L-ს პირდაპირ ბაზაში მთავარ Trade ID-ზე
+          update_trade(trade_id, {"Net P/L": str(round(total_pnl, 2))})
+  
+          st.success("წარმატებით დაემატა და Net P/L განახლდა!")
+          st.rerun()
 
 # ქოლბექი ტოიგლის ცვლილებისთვის
 def handle_toggle_change(t_id):
