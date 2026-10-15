@@ -22,7 +22,7 @@ def show_trade_details_dialog(trade, df):
   st.markdown(f"### {pair} — **{side}**")
   st.divider()
 
-  # 1. არსებული ისტორია წაშლისა და ედიტირების ღილაკებით (ფანჯრის დაუხურავად)
+  # 1. არსებული ისტორია წაშლისა და ედიტირების ღილაკებით
   if not sub_actions.empty:
     st.markdown("**📋 ეტაპების ისტორია:**")
     for _, sub in sub_actions.iterrows():
@@ -35,11 +35,13 @@ def show_trade_details_dialog(trade, df):
         )
       with col_h2:
         if st.button("✏️", key=f"edit_sub_{sub_id}", help="ამ ეტაპის ჩასწორება"):
+          # ვინახავთ სესიის მდგომარეობად, რომ დიალოგი არ დაიხუროს უაზროდ
           st.session_state["active_edit_sub"] = sub_id
       with col_h3:
         if st.button("🗑️", key=f"del_sub_{sub_id}", help="ამ ეტაპის წაშლა"):
           if delete_trade(sub_id):
             st.toast("ჩანაწერი წაიშალა!", icon="🗑️")
+            st.rerun()
 
       # თუ ზუსტად ამ სუბ-ჩანაწერის ედიტირებაა არჩეული
       if st.session_state.get("active_edit_sub") == sub_id:
@@ -90,14 +92,13 @@ def show_trade_details_dialog(trade, df):
                 update_data["Risk ($)"] = str(edit_risk)
 
               if update_trade(sub_id, update_data):
-                # ===== რედაქტირებისას Net P/L-ის ავტომატური გადათვლა და შენახვა =====
+                # Net P/L-ის გადათვლა და შენახვა
                 entry_p = float(entry_price or 0)
                 risk_v = float(trade.get("Risk ($)", 5.85) or 5.85)
 
                 total_pnl = 0.0
                 for _, ex in sub_actions.iterrows():
                   if "Exit" in str(ex.get("ActionType", "")):
-                    # თუ ეს ზუსტად ის რედაქტირებული ჩანაწერია, ვიყენებთ ახალ edit_price-ს
                     ex_p = (
                         edit_price
                         if ex.get("Trade ID") == sub_id
@@ -106,7 +107,6 @@ def show_trade_details_dialog(trade, df):
                     total_pnl += calculate_trade_pnl(entry_p, ex_p, risk_v, side)
 
                 update_trade(trade_id, {"Net P/L": str(round(total_pnl, 2))})
-                # =================================================================
 
                 st.success("წარმატებით განახლდა!")
                 st.session_state["active_edit_sub"] = None
@@ -119,99 +119,99 @@ def show_trade_details_dialog(trade, df):
     st.caption("ამ გარიგებაზე დამატებითი ეტაპები ჯერ არ არის.")
 
   st.markdown("---")
-  st.markdown("**➕ ახალი ეტაპის დამატება:**")
 
-  sub_action_type = st.selectbox(
-      "მოქმედების ტიპი",
-      [
-          "Full Exit (გამოსვლა)",
-          "Partial Exit (ნაწილობრივ გამოსვლა)",
-          "Scale In (დამატება)",
-      ],
-      key=f"dialog_act_{trade_id}",
-  )
-
-  with st.form(f"form_sub_dialog_{trade_id}"):
-    col_f1, col_f2 = st.columns(2)
-    with col_f1:
-      default_sub_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-      sub_date = st.text_input(
-          "თარიღი და დრო",
-          value=default_sub_time,
-          key=f"dialog_date_{trade_id}",
-      )
-      sub_price = st.number_input(
-          "ფასი",
-          value=float(entry_price)
-          if str(entry_price).replace(".", "", 1).isdigit()
-          else 1.0850,
-          format="%.5f",
-          key=f"dialog_price_{trade_id}",
-      )
-    with col_f2:
-      sub_qty = st.number_input(
-          "მოცულობა", value=1000.0, step=100.0, key=f"dialog_qty_{trade_id}"
-      )
-
-    sub_desc = st.text_input(
-        "შენიშვნა / კომენტარი", key=f"dialog_desc_{trade_id}"
-    )
-    sub_screenshot = st.file_uploader(
-        "სკრინშოტი (დადარებისთვის)",
-        type=["png", "jpg", "jpeg"],
-        key=f"dialog_file_{trade_id}",
+  # 2. ახალი ეტაპის დამატება მოთავსებულია Expander-ში, რომ აკეცილი იყოს
+  with st.expander("➕ ახალი ეტაპის დამატება"):
+    sub_action_type = st.selectbox(
+        "მოქმედების ტიპი",
+        [
+            "Full Exit (გამოსვლა)",
+            "Partial Exit (ნაწილობრივ გამოსვლა)",
+            "Scale In (დამატება)",
+        ],
+        key=f"dialog_act_{trade_id}",
     )
 
-    col_sub_btn1, col_sub_btn2 = st.columns(2)
-    with col_sub_btn1:
-      submitted = st.form_submit_button(
-          "💾 შენახვა", use_container_width=True
+    with st.form(f"form_sub_dialog_{trade_id}"):
+      col_f1, col_f2 = st.columns(2)
+      with col_f1:
+        default_sub_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        sub_date = st.text_input(
+            "თარიღი და დრო",
+            value=default_sub_time,
+            key=f"dialog_date_{trade_id}",
+        )
+        sub_price = st.number_input(
+            "ფასი",
+            value=float(entry_price)
+            if str(entry_price).replace(".", "", 1).isdigit()
+            else 1.0850,
+            format="%.5f",
+            key=f"dialog_price_{trade_id}",
+        )
+      with col_f2:
+        sub_qty = st.number_input(
+            "მოცულობა", value=1000.0, step=100.0, key=f"dialog_qty_{trade_id}"
+        )
+
+      sub_desc = st.text_input(
+          "შენიშვნა / კომენტარი", key=f"dialog_desc_{trade_id}"
       )
-    with col_sub_btn2:
-      cancelled = st.form_submit_button(
-          "❌ გაუქმება", use_container_width=True
+      sub_screenshot = st.file_uploader(
+          "სკრინშოტი (დადარებისთვის)",
+          type=["png", "jpg", "jpeg"],
+          key=f"dialog_file_{trade_id}",
       )
-    if cancelled:
-      st.rerun()
 
-    if submitted:
-      screenshot_name = (
-          sub_screenshot.name if sub_screenshot else "No Screenshot"
-      )
-      child_trade_data = {
-          "Trade ID": str(uuid.uuid4()),
-          "Parent Trade ID": trade_id,
-          "Entry Date": sub_date,
-          "Pair": pair,
-          "Side": side,
-          "Entry Price": str(sub_price),
-          "Qty": str(sub_qty),
-          "ActionType": sub_action_type,
-          "Description": sub_desc,
-          "Screenshot": screenshot_name,
-      }
-      if insert_trade(child_trade_data):
-        # გამოვთვალოთ მიმდინარე ჯამური PnL ყველა არსებული და ახალი გასვლიდან
-        entry_p = float(entry_price or 0)
-        risk_v = float(trade.get("Risk ($)", 5.85) or 5.85)
-
-        all_exits_list = []
-        for _, ex in sub_actions.iterrows():
-          if "Exit" in str(ex.get("ActionType", "")):
-            all_exits_list.append(ex)
-        if "Exit" in str(sub_action_type):
-          all_exits_list.append(child_trade_data)
-
-        total_pnl = 0.0
-        if all_exits_list:
-          for ex in all_exits_list:
-            ex_p = float(ex.get("Entry Price", entry_p) or entry_p)
-            total_pnl += calculate_trade_pnl(entry_p, ex_p, risk_v, side)
-
-        update_trade(trade_id, {"Net P/L": str(round(total_pnl, 2))})
-
-        st.success("წარმატებით დაემატა!")
+      col_sub_btn1, col_sub_btn2 = st.columns(2)
+      with col_sub_btn1:
+        submitted = st.form_submit_button(
+            "💾 შენახვა", use_container_width=True
+        )
+      with col_sub_btn2:
+        cancelled = st.form_submit_button(
+            "❌ გაუქმება", use_container_width=True
+        )
+      if cancelled:
         st.rerun()
+
+      if submitted:
+        screenshot_name = (
+            sub_screenshot.name if sub_screenshot else "No Screenshot"
+        )
+        child_trade_data = {
+            "Trade ID": str(uuid.uuid4()),
+            "Parent Trade ID": trade_id,
+            "Entry Date": sub_date,
+            "Pair": pair,
+            "Side": side,
+            "Entry Price": str(sub_price),
+            "Qty": str(sub_qty),
+            "ActionType": sub_action_type,
+            "Description": sub_desc,
+            "Screenshot": screenshot_name,
+        }
+        if insert_trade(child_trade_data):
+          entry_p = float(entry_price or 0)
+          risk_v = float(trade.get("Risk ($)", 5.85) or 5.85)
+
+          all_exits_list = []
+          for _, ex in sub_actions.iterrows():
+            if "Exit" in str(ex.get("ActionType", "")):
+              all_exits_list.append(ex)
+          if "Exit" in str(sub_action_type):
+            all_exits_list.append(child_trade_data)
+
+          total_pnl = 0.0
+          if all_exits_list:
+            for ex in all_exits_list:
+              ex_p = float(ex.get("Entry Price", entry_p) or entry_p)
+              total_pnl += calculate_trade_pnl(entry_p, ex_p, risk_v, side)
+
+          update_trade(trade_id, {"Net P/L": str(round(total_pnl, 2))})
+
+          st.success("წარმატებით დაემატა!")
+          st.rerun()
         
 # ქოლბექი ტოიგლის ცვლილებისთვის
 def handle_toggle_change(t_id):
