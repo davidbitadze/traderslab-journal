@@ -35,7 +35,6 @@ def show_trade_details_dialog(trade, df):
         )
       with col_h2:
         if st.button("✏️", key=f"edit_sub_{sub_id}", help="ამ ეტაპის ჩასწორება"):
-          # ვინახავთ სესიის მდგომარეობად, რომ დიალოგი არ დაიხუროს უაზროდ
           st.session_state["active_edit_sub"] = sub_id
       with col_h3:
         if st.button("🗑️", key=f"del_sub_{sub_id}", help="ამ ეტაპის წაშლა"):
@@ -81,7 +80,7 @@ def show_trade_details_dialog(trade, df):
           )
 
           col_es1, col_es2 = st.columns(2)
-with col_es1:
+          with col_es1:
             if st.form_submit_button("💾 შენახვა", use_container_width=True):
               update_data = {
                   "Entry Price": str(edit_price),
@@ -92,16 +91,20 @@ with col_es1:
                 update_data["Risk ($)"] = str(edit_risk)
 
               if update_trade(sub_id, update_data):
-                # ვპოულობთ მთავარ ID-ს (თუ ეს სუბ-ჩანაწერია, მისი Parent Trade ID არის მთავარი, თუ მთავარია - თავისივე Trade ID)
                 target_main_id = sub.get("Parent Trade ID")
-                if not target_main_id or pd.isna(target_main_id) or str(target_main_id).strip() == "":
+                if (
+                    not target_main_id
+                    or pd.isna(target_main_id)
+                    or str(target_main_id).strip() == ""
+                ):
                   target_main_id = sub_id
 
-                # ვკრიბავთ ყველა სუბ-მოქმედებას ამ მთავარი ID-სთვის
-                all_subs = df[(df["Parent Trade ID"] == target_main_id) | (df["Trade ID"] == target_main_id)]
-                
-                # ვპოულობთ მთავარ რიგს რისკის და შესვლის ფასისთვის
+                all_subs = df[
+                    (df["Parent Trade ID"] == target_main_id)
+                    | (df["Trade ID"] == target_main_id)
+                ]
                 main_row = df[df["Trade ID"] == target_main_id]
+
                 entry_p = float(entry_price or 0)
                 risk_v = 5.85
                 if not main_row.empty:
@@ -111,16 +114,18 @@ with col_es1:
                 total_pnl = 0.0
                 for _, ex in all_subs.iterrows():
                   if "Exit" in str(ex.get("ActionType", "")):
-                    ex_p = edit_price if ex.get("Trade ID") == sub_id else float(ex.get("Entry Price", entry_p) or entry_p)
+                    ex_p = (
+                        edit_price
+                        if ex.get("Trade ID") == sub_id
+                        else float(ex.get("Entry Price", entry_p) or entry_p)
+                    )
                     total_pnl += calculate_trade_pnl(entry_p, ex_p, risk_v, side)
 
-                # ვწერთ ბაზაში ზუსტად მთავარ ჩანაწერზე
                 update_trade(target_main_id, {"Net P/L": str(round(total_pnl, 2))})
 
                 st.success("წარმატებით განახლდა!")
                 st.session_state["active_edit_sub"] = None
                 st.rerun()
-          
           with col_es2:
             if st.form_submit_button("❌ გაუქმება", use_container_width=True):
               st.session_state["active_edit_sub"] = None
@@ -130,7 +135,7 @@ with col_es1:
 
   st.markdown("---")
 
-  # 2. ახალი ეტაპის დამატება მოთავსებულია Expander-ში, რომ აკეცილი იყოს
+  # 2. ახალი ეტაპის დამატება მოთავსებულია Expander-ში
   with st.expander("➕ ახალი ეტაპის დამატება"):
     sub_action_type = st.selectbox(
         "მოქმედების ტიპი",
@@ -222,7 +227,6 @@ with col_es1:
 
           st.success("წარმატებით დაემატა!")
           st.rerun()
-        
 # ქოლბექი ტოიგლის ცვლილებისთვის
 def handle_toggle_change(t_id):
   new_val = st.session_state.get(f"toggle_fin_{t_id}", False)
