@@ -89,23 +89,27 @@ def update_setting_item(category, old_name, new_name):
   except Exception as e:
     return False
 
-
 def update_trade(trade_id, updated_data):
-  """არსებული გარიგების მონაცემების განახლება Supabase-ში Trade ID-ის მიხედვით"""
+  """არსებული გარიგების მონაცემების განახლება Supabase-ში Trade ID-ის ან id-ის მიხედვით"""
   try:
     supabase = get_supabase_client()
-    # ვცდილობთ განახლებას Trade ID სვეტით
+    
+    # 1. ჯერ ვცდილობთ Trade ID სვეტით განახლებას
     response = (
         supabase.table("trades")
         .update(updated_data)
         .eq("Trade ID", trade_id)
         .execute()
     )
+    
+    # თუ პასუხში ცვლილება არ არის (ანუ Trade ID ვერსად იპოვა), ვცდილობთ id (Primary Key) სვეტით
+    if not response.data:
+      supabase.table("trades").update(updated_data).eq("id", trade_id).execute()
+
     return True
   except Exception as e:
     st.error(f"ბაზის განახლების შეცდომა: {e}")
     return False
-
 
 def delete_trade(trade_id):
   """გარიგების და მასთან დაკავშირებული ქვემოქმედებების წაშლა Trade ID-ის მიხედვით"""
