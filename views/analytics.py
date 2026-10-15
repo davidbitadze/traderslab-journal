@@ -14,7 +14,10 @@ def render_analytics_view(lang="ka"):
     st.info("ანალიტიკისთვის მონაცემები ჯერ არ არის ჟურნალში.")
     return
 
-  # 1. ვფილტრავთ მთავარ გარიგებებს (Start Row ან უნიკალური Parent Trade ID)
+  # სრულად ვნახოთ რა სვეტები გვაქვს ბაზაში
+  # st.write("Columns:", df.columns.tolist())
+
+  # მთავარი გარიგებების პოვნა (როგორც ჟურნალში გვაქვს)
   main_trades = df[
       df["ActionType"].str.contains("Start Row", case=False, na=False)
   ]
@@ -22,32 +25,33 @@ def render_analytics_view(lang="ka"):
     main_trades = df.drop_duplicates(subset=["Parent Trade ID"])
 
   total_trades_count = len(main_trades)
-  st.subheader(f"სულ გარიგებები: {total_trades_count}")
+  st.subheader(f"სულ მთავარი გარიგებები: {total_trades_count}")
 
-  # 2. თითოეული მთავარი გარიგებისთვის ვთვლით ჯამურ PnL-ს და ვაგროვებთ დეტალებს
   analyzed_trades = []
 
   for _, trade in main_trades.iterrows():
     trade_id = trade.get("Trade ID") or trade.get("Parent Trade ID")
     entry_price = float(trade.get("Entry Price", 0) or 0)
-    risk_val = float(trade.get("Risk ($)", 0) or 0)
+    risk_val = float(trade.get("Risk ($)", 5.85) or 5.85)
     side = trade.get("Side", "Long")
-    pattern = trade.get("Formation", "N/A")  # პატერნი
+    # პატერნის ძებნა (შეიძლება იყოს 'Formation' ან სხვა სვეტი)
+    pattern = (
+        trade.get("Formation")
+        or trade.get("Pattern")
+        or trade.get("Description", "N/A")
+    )
     is_fin = str(trade.get("Finalized", "False")).lower() == "true"
 
-    # ვეძებთ ამ გარიგების ყველა სუბ-მოქმედებას (Exits)
+    # ვეძებთ ყველა სუბ-მოქმედებას (Exits) ამ Trade ID-სთვის
     sub_actions = df[df["Parent Trade ID"] == trade_id]
     exits = sub_actions[
         sub_actions["ActionType"].str.contains("Exit", case=False, na=False)
     ]
 
-    # თუ რამდენიმე გასვლაა (ნაწილობრივი და ა.შ.), ვკრიბავთ მათ PnL-ს ან ვიყენებთ ბოლოს
-    # მარტივი და სწორი მიდგომით: თუ არის exits, ვთვლით ჯამურ PnL-ს ყველა გასვლიდან
     trade_pnl = 0.0
     if not exits.empty:
       for _, ex in exits.iterrows():
         ex_price = float(ex.get("Entry Price", entry_price) or entry_price)
-        # ვთვლით ნაწილობრივ ან სრულ PnL-ს
         pnl_part = calculate_trade_pnl(entry_price, ex_price, risk_val, side)
         trade_pnl += pnl_part
     else:
@@ -56,11 +60,11 @@ def render_analytics_view(lang="ka"):
             entry_price, entry_price, risk_val, side
         )
       else:
-        # მიმდინარე გარიგება
         trade_pnl = 0.0
 
     analyzed_trades.append({
         "Trade ID": trade_id,
+        "Pair": trade.get("Pair", "N/A"),
         "Side": side,
         "Pattern": pattern,
         "PnL": trade_pnl,
@@ -69,10 +73,9 @@ def render_analytics_view(lang="ka"):
   df_analytics = pd.DataFrame(analyzed_trades)
 
   if not df_analytics.empty:
-    # ძირითადი მეტრიკები
     total_pnl = df_analytics["PnL"].sum()
     winning_trades = df_analytics[df_analytics["PnL"] > 0]
-losing_trades = df_analytics[df_analytics["PnL"] < 0]
+    losing_trades = df_analytics[df_analytics["PnL"] < 0]
 
     win_rate = (
         (len(winning_trades) / len(df_analytics)) * 100
@@ -92,7 +95,11 @@ losing_trades = df_analytics[df_analytics["PnL"] < 0]
 
     st.divider()
 
-    # პატერნების მიხედვით დაჯგუფება (როგორც სკრინშოტშია)
+    st.subheader("📋 დამუშავებული გარიგებების სია")
+    st.dataframe(df_analytics, use_container_width=True)
+
+    st.divider()
+
     st.subheader("📌 პატერნების ანალიზი")
     pattern_grouped = (
         df_analytics.groupby("Pattern")
