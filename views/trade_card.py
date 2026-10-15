@@ -1,9 +1,9 @@
 import uuid
 from datetime import datetime
 from database import delete_trade, insert_trade, update_trade
+import pandas as pd
 import streamlit as st
 from utils.formulas import calculate_trade_pnl
-
 
 # 🪟 Streamlit-ის ოფიციალური ოვერლეი ფანჯარა (Dialog) დეტალებისა და მართვისთვის
 @st.dialog("🔍 გარიგების დეტალები და მართვა")
