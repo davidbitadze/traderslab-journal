@@ -91,33 +91,29 @@ def show_trade_details_dialog(trade, df):
               if is_start_row:
                 update_data["Risk ($)"] = str(edit_risk)
 
-              # 1. ვანახლებთ თავად სუბ-ჩანაწერს
-              if update_trade(sub_id, update_data):
+                if update_trade(sub_id, update_data):
+                # ამოვიღოთ ზუსტად მთავარი გარიგების ID მიმდინარე დიალოგიდან
+                parent_main_id = trade.get("Trade ID") or sub.get("Parent Trade ID")
                 
-                # 2. ვპოულობთ მთავარ Trade ID-ს (რადგან sub-ს აქვს Parent Trade ID)
-                parent_main_id = sub.get("Parent Trade ID")
+                # ვკრიბავთ ამ მთავარი გარიგების ყველა ეტაპს
+                all_subs = df[(df["Parent Trade ID"] == parent_main_id) | (df["Trade ID"] == parent_main_id)]
                 
-                if parent_main_id and not pd.isna(parent_main_id):
-                  # ვკრიბავთ ამ მთავარი გარიგების ყველა ეტაპს/სუბ-მოქმედებას
-                  all_subs = df[(df["Parent Trade ID"] == parent_main_id) | (df["Trade ID"] == parent_main_id)]
-                  
-                  # ვპოულობთ მთავარი გარიგების მონაცემებს (რისკი და შესვლის ფასი)
-                  main_row = df[df["Trade ID"] == parent_main_id]
-                  entry_p = float(entry_price or 0)
-                  risk_v = 5.85
-                  if not main_row.empty:
-                    entry_p = float(main_row.iloc[0].get("Entry Price", 0) or 0)
-                    risk_v = float(main_row.iloc[0].get("Risk ($)", 5.85) or 5.85)
+                # ვპოვოთ მთავარი რიგი ბაზის მონაცემებიდან
+                main_row = df[df["Trade ID"] == parent_main_id]
+                entry_p = float(entry_price or 0)
+                risk_v = 5.85
+                if not main_row.empty:
+                  entry_p = float(main_row.iloc[0].get("Entry Price", 0) or 0)
+                  risk_v = float(main_row.iloc[0].get("Risk ($)", 5.85) or 5.85)
 
-                  total_pnl = 0.0
-                  for _, ex in all_subs.iterrows():
-                    if "Exit" in str(ex.get("ActionType", "")):
-                      # თუ ეს ზუსტად ის ეტაპია, რომელსაც ვარედაქტირებთ, ვიყენებთ edit_price-ს
-                      ex_p = edit_price if ex.get("Trade ID") == sub_id else float(ex.get("Entry Price", entry_p) or entry_p)
-                      total_pnl += calculate_trade_pnl(entry_p, ex_p, risk_v, side)
+                total_pnl = 0.0
+                for _, ex in all_subs.iterrows():
+                  if "Exit" in str(ex.get("ActionType", "")):
+                    ex_p = edit_price if ex.get("Trade ID") == sub_id else float(ex.get("Entry Price", entry_p) or entry_p)
+                    total_pnl += calculate_trade_pnl(entry_p, ex_p, risk_v, side)
 
-                  # 3. ვწერთ Net P/L-ს პირდაპირ მთავარ გარიგებაზე (Parent Trade ID-ით)
-                  update_trade(parent_main_id, {"Net P/L": str(round(total_pnl, 2))})
+                # ვწერთ Net P/L-ს პირდაპირ მთავარ გარიგებაზე
+                update_trade(parent_main_id, {"Net P/L": str(round(total_pnl, 2))})
 
                 st.success("წარმატებით განახლდა!")
                 st.session_state["active_edit_sub"] = None
