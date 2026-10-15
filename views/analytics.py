@@ -14,21 +14,10 @@ def render_analytics_view(lang="ka"):
     st.info("ანალიტიკისთვის მონაცემები ჯერ არ არის ჟურნალში.")
     return
 
-  # 1. მთავარი გარიგებების ზუსტი ფილტრაცია (სადაც Parent Trade ID ცარიელია)
-  if "Parent Trade ID" in df.columns:
-    main_trades = df[
-        df["Parent Trade ID"].isna()
-        | (df["Parent Trade ID"] == "")
-        | (df["Parent Trade ID"].astype(str).str.lower() == "none")
-    ]
-  else:
-    main_trades = pd.DataFrame()
-
-  if main_trades.empty:
-    main_trades = df[
-        df["ActionType"].str.contains("Start Row", case=False, na=False)
-    ]
-
+  # მთავარი გარიგებების ზუსტი ფილტრაცია (იგივე ლოგიკა, რაც ჟურნალშია)
+  main_trades = df[
+      df["ActionType"].str.contains("Start Row", case=False, na=False)
+  ]
   if main_trades.empty:
     main_trades = df.drop_duplicates(subset=["Parent Trade ID"])
 
@@ -37,14 +26,11 @@ def render_analytics_view(lang="ka"):
 
   analyzed_trades = []
 
-  # 2. თითოეული მთავარი გარიგებისთვის სუბ-მოქმედებების (Exits) შეკრება
   for _, trade in main_trades.iterrows():
     trade_id = trade.get("Trade ID") or trade.get("Parent Trade ID")
     entry_price = float(trade.get("Entry Price", 0) or 0)
     risk_val = float(trade.get("Risk ($)", 5.85) or 5.85)
     side = trade.get("Side", "Long")
-
-    # პატერნის იდენტიფიკაცია
     pattern = (
         trade.get("Formation")
         or trade.get("Pattern")
