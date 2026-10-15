@@ -90,13 +90,27 @@ def show_trade_details_dialog(trade, df):
                 update_data["Risk ($)"] = str(edit_risk)
 
               if update_trade(sub_id, update_data):
+                # ===== რედაქტირებისას Net P/L-ის ავტომატური გადათვლა და შენახვა =====
+                entry_p = float(entry_price or 0)
+                risk_v = float(trade.get("Risk ($)", 5.85) or 5.85)
+
+                total_pnl = 0.0
+                for _, ex in sub_actions.iterrows():
+                  if "Exit" in str(ex.get("ActionType", "")):
+                    # თუ ეს ზუსტად ის რედაქტირებული ჩანაწერია, ვიყენებთ ახალ edit_price-ს
+                    ex_p = (
+                        edit_price
+                        if ex.get("Trade ID") == sub_id
+                        else float(ex.get("Entry Price", entry_p) or entry_p)
+                    )
+                    total_pnl += calculate_trade_pnl(entry_p, ex_p, risk_v, side)
+
+                update_trade(trade_id, {"Net P/L": str(round(total_pnl, 2))})
+                # =================================================================
+
                 st.success("წარმატებით განახლდა!")
                 st.session_state["active_edit_sub"] = None
                 st.rerun()
-          with col_es2:
-            if st.form_submit_button("❌ გაუქმება", use_container_width=True):
-              st.session_state["active_edit_sub"] = None
-              st.rerun()
           with col_es2:
             if st.form_submit_button("❌ გაუქმება", use_container_width=True):
               st.session_state["active_edit_sub"] = None
@@ -181,12 +195,10 @@ def show_trade_details_dialog(trade, df):
         entry_p = float(entry_price or 0)
         risk_v = float(trade.get("Risk ($)", 5.85) or 5.85)
 
-        # ვკრიბავთ ძველ და ახლად დამატებულ გასვლებს
         all_exits_list = []
         for _, ex in sub_actions.iterrows():
           if "Exit" in str(ex.get("ActionType", "")):
             all_exits_list.append(ex)
-        # ვამატებთ ახალსაც თუ გასვლაა
         if "Exit" in str(sub_action_type):
           all_exits_list.append(child_trade_data)
 
@@ -196,7 +208,6 @@ def show_trade_details_dialog(trade, df):
             ex_p = float(ex.get("Entry Price", entry_p) or entry_p)
             total_pnl += calculate_trade_pnl(entry_p, ex_p, risk_v, side)
 
-        # ვწერთ Net P/L-ს პირდაპირ ბაზაში მთავარ Trade ID-ზე
         update_trade(trade_id, {"Net P/L": str(round(total_pnl, 2))})
 
         st.success("წარმატებით დაემატა!")
