@@ -79,8 +79,7 @@ def show_trade_details_dialog(trade, df):
               "თარიღი და დრო", value=sub.get("Entry Date", "")
           )
 
-          
-          col_es1, col_es2 = st.columns(2)
+        col_es1, col_es2 = st.columns(2)
           with col_es1:
             if st.form_submit_button("💾 შენახვა", use_container_width=True):
               update_data = {
@@ -91,7 +90,8 @@ def show_trade_details_dialog(trade, df):
               if is_start_row:
                 update_data["Risk ($)"] = str(edit_risk)
 
-                if update_trade(sub_id, update_data):
+              # სწორი ინდენტაცია
+              if update_trade(sub_id, update_data):
                 # ამოვიღოთ ზუსტად მთავარი გარიგების ID მიმდინარე დიალოგიდან
                 parent_main_id = trade.get("Trade ID") or sub.get("Parent Trade ID")
                 
@@ -123,6 +123,9 @@ def show_trade_details_dialog(trade, df):
             if st.form_submit_button("❌ გაუქმება", use_container_width=True):
               st.session_state["active_edit_sub"] = None
               st.rerun()
+
+
+  
   else:
     st.caption("ამ გარიგებაზე დამატებითი ეტაპები ჯერ არ არის.")
 
