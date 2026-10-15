@@ -79,7 +79,7 @@ def show_trade_details_dialog(trade, df):
               "თარიღი და დრო", value=sub.get("Entry Date", "")
           )
 
-        col_es1, col_es2 = st.columns(2)
+          col_es1, col_es2 = st.columns(2)
           with col_es1:
             if st.form_submit_button("💾 შენახვა", use_container_width=True):
               update_data = {
