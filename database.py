@@ -94,7 +94,7 @@ def update_trade(trade_id, updated_data):
   try:
     supabase = get_supabase_client()
     
-    # 1. ჯერ ვცდილობთ Trade ID სვეტით განახლებას
+    # 1. ჯერ ვცდილობთ Trade ID სვეტით
     response = (
         supabase.table("trades")
         .update(updated_data)
@@ -102,7 +102,7 @@ def update_trade(trade_id, updated_data):
         .execute()
     )
     
-    # თუ პასუხში ცვლილება არ არის (ანუ Trade ID ვერსად იპოვა), ვცდილობთ id (Primary Key) სვეტით
+    # 2. თუ პასუხი ცარიელია, ვცდილობთ id სვეტით (პრიმარ კეი)
     if not response.data:
       supabase.table("trades").update(updated_data).eq("id", trade_id).execute()
 
