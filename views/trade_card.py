@@ -79,7 +79,7 @@ def show_trade_details_dialog(trade, df):
           )
 
           col_es1, col_es2 = st.columns(2)
-          with col_es1:
+        with col_es1:
             if st.form_submit_button("💾 შენახვა", use_container_width=True):
               update_data = {
                   "Entry Price": str(edit_price),
@@ -90,6 +90,23 @@ def show_trade_details_dialog(trade, df):
                 update_data["Risk ($)"] = str(edit_risk)
 
               if update_trade(sub_id, update_data):
+                # ===== აქ ვამატებთ Net P/L-ის გადათვლასა და განახლებას =====
+                # განახლების შემდეგ ხელახლა ვკრიბავთ ამ გარიგების ყველა გასვლას
+                refreshed_sub_actions = df[df["Parent Trade ID"] == trade_id]
+                
+                entry_p = float(entry_price or 0)
+                risk_v = float(trade.get("Risk ($)", 5.85) or 5.85)
+                
+                total_pnl = 0.0
+                for _, ex in refreshed_sub_actions.iterrows():
+                  if "Exit" in str(ex.get("ActionType", "")):
+                    # თუ ეს ზუსტად ის რედაქტირებული ჩანაწერია, ვიყენებთ ახალ edit_price-ს
+                    ex_p = edit_price if ex.get("Trade ID") == sub_id else float(ex.get("Entry Price", entry_p) or entry_p)
+                    total_pnl += calculate_trade_pnl(entry_p, ex_p, risk_v, side)
+
+                update_trade(trade_id, {"Net P/L": str(round(total_pnl, 2))})
+                # ============================================================
+
                 st.success("წარმატებით განახლდა!")
                 st.session_state["active_edit_sub"] = None
                 st.rerun()
