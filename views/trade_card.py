@@ -98,7 +98,6 @@ def recalc_net_pnl(parent_id):
     update_trade(parent_id, {"Net P/L": None})
     return
 
-  # თუ შესვლის მოცულობა არ არის ჩაწერილი, წილებს გასვლების ჯამიდან ვითვლით
   denom = entry_qty if entry_qty > 0 else sum(q for _, q in exits)
 
   total_pnl = 0.0
@@ -112,7 +111,7 @@ def recalc_net_pnl(parent_id):
 # 🪟 Streamlit-ის ოფიციალური ოვერლეი ფანჯარა (Dialog) დეტალებისა და მართვისთვის
 @st.dialog("🔍 გარიგების დეტალები და მართვა", width="large")
 def show_trade_details_dialog(trade, df):
-  df = fetch_trades()  # ახალი მონაცემები ყოველ ფრაგმენტულ rerun-ზე
+  df = fetch_trades()
   trade_id = trade.get("Trade ID") or trade.get("Parent Trade ID")
 
   fresh = df[df["Trade ID"] == trade_id]
@@ -154,7 +153,6 @@ def show_trade_details_dialog(trade, df):
             st.toast("ჩანაწერი წაიშალა!", icon="🗑️")
             st.rerun(scope="fragment")
 
-      # თუ ზუსტად ამ სუბ-ჩანაწერის ედიტირებაა არჩეული
       if st.session_state.get("active_edit_sub") == sub_id:
         with st.form(f"form_edit_sub_inline_{sub_id}"):
           st.markdown(f"**✏️ ჩასწორება: {sub.get('ActionType')}**")
@@ -210,7 +208,7 @@ def show_trade_details_dialog(trade, df):
 
   st.markdown("---")
 
-  # 2. ახალი ეტაპის დამატება მოთავსებულია Expander-ში
+  # 2. ახალი ეტაპის დამატება
   with st.expander("➕ ახალი ეტაპის დამატება"):
     sub_action_type = st.selectbox(
         "მოქმედების ტიპი",
@@ -265,19 +263,22 @@ def show_trade_details_dialog(trade, df):
 
       if submitted:
         screenshot_value = "No Screenshot"
-        if sub_screenshot:
-          ext = os.path.splitext(sub_screenshot.name)[1].lower() or ".png"
-          stamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-          uploaded_url = upload_screenshot(
-              sub_screenshot, f"{pair}_{stamp}_{uuid.uuid4().hex[:6]}{ext}"
-          )
-          if uploaded_url:
-            screenshot_value = uploaded_url
+        if sub_screenshot is not None:
+          try:
+            ext = os.path.splitext(sub_screenshot.name)[1].lower() or ".png"
+            stamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+            uploaded_url = upload_screenshot(
+                sub_screenshot, f"{pair}_{stamp}_{uuid.uuid4().hex[:6]}{ext}"
+            )
+            if uploaded_url:
+              screenshot_value = uploaded_url
+          except Exception as upload_err:
+            st.error(f"სკრინშოტის ატვირთვის შეცდომა: {upload_err}")
 
         child_trade_data = {
             "Trade ID": str(uuid.uuid4()),
             "Parent Trade ID": trade_id,
-            "Entry Date": sub_date,
+            "Entry Date": sub_date,  # გამოყენებულია მომხმარებლის მიერ მითითებული თარიღი!
             "Pair": pair,
             "Side": side,
             "Entry Price": str(sub_price),
@@ -295,8 +296,6 @@ def show_trade_details_dialog(trade, df):
 # ქოლბექი ტოიგლის ცვლილებისთვის
 def handle_toggle_change(t_id):
   new_val = st.session_state.get(f"toggle_fin_{t_id}", False)
-
-  # ვწერთ ბაზაში Finalized სტატუსს
   update_trade(t_id, {"Finalized": str(new_val)})
 
 
@@ -310,9 +309,12 @@ def render_trade_card(trade, df):
   risk_val = trade.get("Risk ($)", 5.85)
   screenshot = trade.get("Screenshot", "No Screenshot")
 
-  is_finalized = trade.get("Finalized", False)
-  if isinstance(is_finalized, str):
-    is_finalized = is_finalized.lower() == "true"
+  # მკაცრი და სწორი Finalized შემოწმება (რომ დეფოლტად True არ გახდეს)
+  raw_fin = trade.get("Finalized", False)
+  if isinstance(raw_fin, str):
+    is_finalized = raw_fin.strip().lower() == "true"
+  else:
+    is_finalized = bool(raw_fin)
 
   sub_actions = df[df["Parent Trade ID"] == trade_id]
   exit_price = entry_price
@@ -372,11 +374,10 @@ def render_trade_card(trade, df):
           args=(trade_id,),
       )
 
-      # თუ დასრულებულზე გადაიყვანა და Exit არ აქვს, ვატყობინებთ
       if current_toggle_state and exits.empty:
         st.toast(
-            f"⚠️{pair} გარიგება დასრულებულია, თუმცა გამოსვლის (Exit) დეტალები არ არის გაწერილი."
-            "\nშესაბამისად, მითითებულია (PnL = 0$)",
+            f"⚠️ {pair} გარიგება დასრულებულია, თუმცა გამოსვლის (Exit) დეტალები"
+            " არ არის გაწერილი.",
             icon="ℹ️",
         )
 
