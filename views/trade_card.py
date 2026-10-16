@@ -310,9 +310,14 @@ def render_trade_card(trade, df):
   risk_val = trade.get("Risk ($)", 5.85)
   screenshot = trade.get("Screenshot", "No Screenshot")
 
-  is_finalized = trade.get("Finalized", False)
-  if isinstance(is_finalized, str):
-    is_finalized = is_finalized.lower() == "true"
+# მკაცრი შემოწმება: მხოლოდ იმ შემთხვევაშია True, თუ ბაზაში მკაფიოდ წერია "true" ან True
+  raw_fin = trade.get("Finalized")
+  if raw_fin is None or str(raw_fin).strip() in ("", "None", "nan", "False", "false"):
+    is_finalized = False
+  elif isinstance(raw_fin, str):
+    is_finalized = raw_fin.strip().lower() in ("true", "1", "yes")
+  else:
+    is_finalized = bool(raw_fin)
 
   sub_actions = df[df["Parent Trade ID"] == trade_id]
   exit_price = entry_price
