@@ -171,3 +171,20 @@ def delete_balance_transaction(txn_id):
   except Exception as e:
     st.error(f"შეცდომა ტრანზაქციის წაშლისას: {e}")
     return False
+
+def upload_screenshot(uploaded_file, file_name):
+  """სურათს Supabase Storage-ში ტვირთავს და აბრუნებს საჯარო ბმულს."""
+  try:
+    supabase = get_supabase_client()
+    supabase.storage.from_("screenshots").upload(
+        file_name,
+        uploaded_file.getvalue(),
+        {
+            "content-type": uploaded_file.type or "image/png",
+            "upsert": "true",
+        },
+    )
+    return supabase.storage.from_("screenshots").get_public_url(file_name)
+  except Exception as e:
+    st.error(f"სურათის ატვირთვის შეცდომა: {e}")
+    return None
