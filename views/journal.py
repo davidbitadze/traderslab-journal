@@ -83,15 +83,16 @@ def render_journal_view(lang="ka"):
     if main_trades.empty:
       main_trades = df.drop_duplicates(subset=["Parent Trade ID"])
   
-    # 🔄 სორტირება: თარიღის მიხედვით ახლიდან ძველისკენ (Descending)
+# 🔄 სორტირება: თარიღის მიხედვით ახლიდან ძველისკენ (Descending)
     if "Entry Date" in main_trades.columns:
-      df["parsed_date"] = pd.to_datetime(
+      main_trades = main_trades.copy()
+      main_trades["parsed_date"] = pd.to_datetime(
           main_trades["Entry Date"], errors="coerce", format="mixed"
       )
       main_trades = main_trades.sort_values(
           by="parsed_date", ascending=False
       ).drop(columns=["parsed_date"])
-  
+      
     # თითოეული გარიგებისთვის გამოვიძახებთ ცალკეულ კომპონენტს
     for index, trade in main_trades.iterrows():
       render_trade_card(trade, df)
