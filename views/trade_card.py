@@ -27,6 +27,10 @@ CARD_CSS = """
     background-color: rgba(255, 255, 255, 0.03);
     border: 1px solid rgba(255, 255, 255, 0.08);
 }
+/* პოპოვერის ფენების მართვა, რომ დიალოგს ზემოდან არ დაეფაროს */
+div[data-testid="stPopoverBody"] {
+    z-index: 99999 !important;
+}
 </style>
 """
 
@@ -181,17 +185,19 @@ def render_trade_card(trade, df):
 
   pnl_color = GREEN if pnl > 0 else (RED if pnl < 0 else GRAY)
   
-  # სტატუსის ვიზუალი მთავარ ბარათზე (მიმდინარე - ნარინჯისფერი, დასრულებული - ნაცრისფერი)
   status_badge = "დასრულებული" if is_finalized else "მიმდინარე"
   badge_color = GRAY if is_finalized else ORANGE
 
+  state_key = f"mode_{trade_id}"
+  current_mode = st.session_state.get(state_key, None)
+
   st.markdown(CARD_CSS, unsafe_allow_html=True)
 
-  # სუფთა, Glide-ის სტილის ჰორიზონტალური ბარათი კონფლიქტური პოპოვერის გარეშე
+  # Ultra-compact Glide style row with Popover menu (`...`)
   with st.container():
     st.markdown("<div class='glide-card'>", unsafe_allow_html=True)
     
-    col_thumb, col_info, col_action = st.columns([1.1, 7.4, 1.5], vertical_alignment="center")
+    col_thumb, col_info, col_menu = st.columns([1.1, 7.4, 1.5], vertical_alignment="center")
 
     with col_thumb:
       if _is_url(screenshot):
@@ -211,8 +217,27 @@ def render_trade_card(trade, df):
           unsafe_allow_html=True,
       )
 
-    with col_action:
-      if st.button("🔍 დეტალები", key=f"det_card_{trade_id}", use_container_width=True):
-        show_trade_details_dialog(trade, df)
+    with col_menu:
+      with st.popover("⋯"):
+        if st.button("📄 დეტალები", key=f"det_menu_{trade_id}", use_container_width=True):
+          show_trade_details_dialog(trade, df)
+        
+        if st.button("🗑️ წაშლა", key=f"del_menu_{trade_id}", use_container_width=True):
+          st.session_state[state_key] = "delete"
+          st.rerun()
 
     st.markdown("</div>", unsafe_allow_html=True)
+
+  if current_mode == "delete":
+    st.error("⚠️ ნამდვილად გსურთ გარიგების წაშლა?")
+    col_d1, col_d2 = st.columns(2)
+    with col_d1:
+      if st.button("დიახ", key=f"conf_del_{trade_id}", use_container_width=True):
+        if delete_trade(trade_id):
+          st.success("წაიშალა!")
+          del st.session_state[state_key]
+          st.rerun()
+    with col_d2:
+      if st.button("გაუქმება", key=f"canc_del_{trade_id}", use_container_width=True):
+        del st.session_state[state_key]
+        st.rerun()
