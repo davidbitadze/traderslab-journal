@@ -34,14 +34,6 @@ def _is_true(value):
   return bool(value)
 
 
-def _trade_date(trade):
-  """ჩატარების თარიღი (Trade Date); თუ არ არის, ჩანაწერის შექმნის დრო (Entry Date)."""
-  value = trade.get("Trade Date")
-  if value is None or pd.isna(value) or str(value).strip() in ("", "None"):
-    return trade.get("Entry Date")
-  return value
-
-
 def _clean_label(value):
   if value is None or pd.isna(value) or not str(value).strip():
     return "N/A"
@@ -74,7 +66,7 @@ def _collect_trades(df):
 
     rows.append({
         "Trade ID": trade_id,
-        "Date": pd.to_datetime(_trade_date(trade), errors="coerce"),
+        "Date": pd.to_datetime(trade.get("Entry Date"), errors="coerce"),
         "Pair": _clean_label(trade.get("Pair")),
         "Side": _clean_label(trade.get("Side")),
         "Pattern": _clean_label(pattern),
