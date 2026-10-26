@@ -19,7 +19,6 @@ ORANGE = "#f97316"
 
 CARD_CSS = """
 <style>
-/* Streamlit-ის ელემენტებს შორის არსებული ვერტიკალური სიცარიელეების სრული გაქრობა */
 div[data-testid="element-container"]:has(> [data-testid="stHorizontalBlock"]) {
     margin-bottom: 2px !important;
     padding-bottom: 0px !important;
@@ -36,7 +35,6 @@ div[data-testid="element-container"]:has(> [data-testid="stHorizontalBlock"]) {
     margin: 0px !important;
     width: 100% !important;
 }
-/* სამწერტილიანი მენიუს მკაცრად მარჯვენა კიდეზე მიწებება */
 [data-testid="stHorizontalBlock"] > div:last-child {
     display: flex !important;
     justify-content: flex-end !important;
@@ -47,16 +45,24 @@ div[data-testid="element-container"]:has(> [data-testid="stHorizontalBlock"]) {
     flex: unset !important;
     min-width: 0 !important;
 }
-.trade-thumb {
-    width: 34px;
-    height: 34px;
+/* სკრინშოტის პატარა თამბნეულის სტილი კვადრატში */
+.trade-thumb-img {
+    width: 36px;
+    height: 36px;
     border-radius: 6px;
     object-fit: cover;
+    background: rgba(255,255,255,0.05);
+    display: block;
+}
+.trade-thumb-placeholder {
+    width: 36px;
+    height: 36px;
+    border-radius: 6px;
     background: rgba(255,255,255,0.05);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.9rem;
+    font-size: 0.95rem;
 }
 div[data-testid="stPopoverBody"] {
     z-index: 99999 !important;
@@ -70,7 +76,8 @@ def _has_value(value):
   )
 
 def _is_url(value):
-  return str(value).startswith("http")
+  s = str(value).strip()
+  return s.startswith("http://") or s.startswith("https://")
 
 def _pretty_date(value):
   try:
@@ -221,7 +228,11 @@ def render_trade_card(trade, df):
   else:
     status_indicator = f"<span style='background-color: {ORANGE}; color: white; font-size: 0.6rem; padding: 1px 4px; border-radius: 3px; font-weight: 500;'>მიმდინარე</span>"
 
-  thumb_html = f"<img src='{screenshot}' class='trade-thumb'>" if _is_url(screenshot) else "<div class='trade-thumb'>📁</div>"
+  # თამბნეულის ლოგიკა: თუ URL არსებობს, ვხატავთ სურათს, თუ არა - საქაღალდის იკონკას
+  if _is_url(screenshot):
+    thumb_html = f"<img src='{screenshot}' class='trade-thumb-img'>"
+  else:
+    thumb_html = "<div class='trade-thumb-placeholder'>📁</div>"
 
   col_thumb, col_info, col_menu = st.columns([0.7, 8.8, 0.5], vertical_alignment="center")
 
@@ -248,10 +259,10 @@ def render_trade_card(trade, df):
 
   with col_menu:
     with st.popover("⋯"):
-      if st.button("დეტალები", key=f"det_menu_{trade_id}", use_container_width=True):
+      if st.button("📄 დეტალები", key=f"det_menu_{trade_id}", use_container_width=True):
         show_trade_details_dialog(trade, df)
       
-      if st.button("წაშლა", key=f"del_menu_{trade_id}", use_container_width=True):
+      if st.button("🗑️ წაშლა", key=f"del_menu_{trade_id}", use_container_width=True):
         st.session_state[state_key] = "delete"
         st.rerun()
 
