@@ -15,19 +15,18 @@ from utils.formulas import calculate_net_pnl, to_float
 GREEN = "#22c55e"
 RED = "#ef4444"
 GRAY = "#94a3b8"
-ORANGE = "#f97316"  # მიმდინარე სტატუსის ფერი
+ORANGE = "#f97316"
 
 CARD_CSS = """
 <style>
-[data-testid="stImage"] img { border-radius: 8px; object-fit: cover; }
+[data-testid="stImage"] img { border-radius: 6px; object-fit: cover; }
 .glide-card {
-    padding: 8px 12px;
-    margin-bottom: 6px;
-    border-radius: 8px;
-    background-color: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 6px 10px;
+    margin-bottom: 4px;
+    border-radius: 6px;
+    background-color: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.06);
 }
-/* პოპოვერის ფენების მართვა, რომ დიალოგს ზემოდან არ დაეფაროს */
 div[data-testid="stPopoverBody"] {
     z-index: 99999 !important;
 }
@@ -82,13 +81,11 @@ def show_trade_details_dialog(trade, df):
   main_screenshot = trade.get("Screenshot", "No Screenshot")
   sub_actions = df[df["Parent Trade ID"] == trade_id]
 
-  # მკაცრი შემოწმება სტატუსისთვის
   raw_fin = trade.get("Finalized")
   is_finalized = str(raw_fin).strip().lower() in ("true", "1", "yes")
 
   st.markdown(f"### {pair} — **{side}**")
   
-  # 🔄 სტატუსის მართვა და წაშლა დეტალების ფანჯარაში
   col_st1, col_st2, col_st3 = st.columns([2.5, 2.5, 2], vertical_alignment="center")
   with col_st1:
     new_status = st.toggle(
@@ -170,7 +167,6 @@ def render_trade_card(trade, df):
   pair = trade.get("Pair", "N/A")
   side = trade.get("Side", "N/A")
   entry_date = trade.get("Entry Date", "N/A")
-  entry_price = trade.get("Entry Price", 0)
   screenshot = trade.get("Screenshot", "No Screenshot")
 
   raw_fin = trade.get("Finalized")
@@ -193,36 +189,36 @@ def render_trade_card(trade, df):
 
   st.markdown(CARD_CSS, unsafe_allow_html=True)
 
-  # Ultra-compact Glide style row with Popover menu (`...`)
+  # Ultra-compact single-row layout optimized for both Mobile and Web
   with st.container():
     st.markdown("<div class='glide-card'>", unsafe_allow_html=True)
     
-    col_thumb, col_info, col_menu = st.columns([1.1, 7.4, 1.5], vertical_alignment="center")
+    # პროპორციები ოპტიმიზებულია ისე, რომ მობილურშიც და ვებშიც ერთ ხაზზე ჩაჯდეს
+    col_thumb, col_info, col_menu = st.columns([0.8, 8.4, 0.8], vertical_alignment="center")
 
     with col_thumb:
       if _is_url(screenshot):
-        st.image(screenshot, width=48)
+        st.image(screenshot, width=38)
       else:
         st.markdown("📁", unsafe_allow_html=True)
 
     with col_info:
       st.markdown(
-          f"<div style='font-size: 0.92rem; line-height: 1.2;'>"
-          f"<b>{pair}</b> &nbsp; <b style='color:{pnl_color}'>{pnl:+.2f}$</b> &nbsp; "
-          f"<span style='font-size: 0.72rem; color: {badge_color}; border: 1px solid {badge_color}; padding: 1px 5px; border-radius: 4px;'>{status_badge}</span>"
-          f"</div>"
-          f"<div style='font-size: 0.76rem; color: #94a3b8; margin-top: 2px;'>"
-          f"{_side_label(side)} • {_pretty_date(entry_date)}"
+          f"<div style='font-size: 0.88rem; line-height: 1.1; display: flex; align-items: center; flex-wrap: wrap; gap: 6px;'>"
+          f"<b>{pair}</b>"
+          f"<b style='color:{pnl_color}'>{pnl:+.2f}$</b>"
+          f"<span style='font-size: 0.68rem; color: {badge_color}; border: 1px solid {badge_color}; padding: 0px 4px; border-radius: 3px;'>{status_badge}</span>"
+          f"<span style='color: #94a3b8; font-size: 0.75rem; margin-left: auto;'>{_side_label(side)} • {_pretty_date(entry_date)}</span>"
           f"</div>",
           unsafe_allow_html=True,
       )
 
     with col_menu:
       with st.popover("⋯"):
-        if st.button("დეტალები", key=f"det_menu_{trade_id}", use_container_width=True):
+        if st.button("📄 დეტალები", key=f"det_menu_{trade_id}", use_container_width=True):
           show_trade_details_dialog(trade, df)
         
-        if st.button("წაშლა", key=f"del_menu_{trade_id}", use_container_width=True):
+        if st.button("🗑️ წაშლა", key=f"del_menu_{trade_id}", use_container_width=True):
           st.session_state[state_key] = "delete"
           st.rerun()
 
