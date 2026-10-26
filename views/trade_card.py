@@ -19,17 +19,51 @@ ORANGE = "#f97316"
 
 CARD_CSS = """
 <style>
-[data-testid="stImage"] img { border-radius: 4px; object-fit: cover; }
-/* Glide-ის სტილის კომპაქტური, უწყვეტი სტრიქონი ცარიელი სივრცეების გარეშე */
-.glide-row {
+/* Glide-ის ზუსტი სტილის მჭიდრო, ორხაზიანი ბარათი */
+.glide-trade-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 8px 12px;
+    padding: 6px 8px;
     margin-bottom: 2px;
-    background-color: rgba(255, 255, 255, 0.018);
+    background-color: rgba(255, 255, 255, 0.015);
     border-bottom: 1px solid rgba(255, 255, 255, 0.05);
     border-radius: 4px;
+    gap: 10px;
+}
+.trade-thumb {
+    width: 36px;
+    height: 36px;
+    border-radius: 4px;
+    object-fit: cover;
+    background: rgba(255,255,255,0.05);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    flex-shrink: 0;
+}
+.trade-info {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    overflow: hidden;
+}
+.trade-top-line {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    line-height: 1.2;
+}
+.trade-bottom-line {
+    font-size: 0.72rem;
+    color: #94a3b8;
+    margin-top: 2px;
+    line-height: 1.1;
 }
 div[data-testid="stPopoverBody"] {
     z-index: 99999 !important;
@@ -185,32 +219,38 @@ def render_trade_card(trade, df):
 
   pnl_color = GREEN if pnl > 0 else (RED if pnl < 0 else GRAY)
   
-  status_badge = "დასრულებული" if is_finalized else "მიმდინარე"
-  badge_color = GRAY if is_finalized else ORANGE
+  if is_finalized:
+    status_display = f"<span style='color:{pnl_color}'>{pnl:+.2f}$</span>"
+  else:
+    status_display = f"<span style='color:{ORANGE}'>მიმდინარე</span>"
 
   state_key = f"mode_{trade_id}"
   current_mode = st.session_state.get(state_key, None)
 
   st.markdown(CARD_CSS, unsafe_allow_html=True)
 
-  # სრულიად მჭიდრო და კომპაქტური ხაზი (Glide List Style)
-  col_thumb, col_info, col_menu = st.columns([0.6, 8.8, 0.6], vertical_alignment="center")
+  # HTML-ზე დაფუძნებული სრულიად მჭიდრო Glide სტილის ბარათი
+  thumb_html = f"<img src='{screenshot}' class='trade-thumb'>" if _is_url(screenshot) else "<div class='trade-thumb'>📁</div>"
+  
+  col_row, col_menu = st.columns([9.2, 0.8], vertical_alignment="center")
 
-  with col_thumb:
-    if _is_url(screenshot):
-      st.image(screenshot, width=32)
-    else:
-      st.markdown("📁", unsafe_allow_html=True)
-
-  with col_info:
+  with col_row:
     st.markdown(
-        f"<div style='font-size: 0.88rem; line-height: 1.1; display: flex; align-items: center; flex-wrap: wrap; gap: 6px;'>"
-        f"<b>{pair}</b>"
-        f"<b style='color:{pnl_color}'>{pnl:+.2f}$</b>"
-        f"<span style='font-size: 0.65rem; color: {badge_color}; border: 1px solid {badge_color}; padding: 0px 3px; border-radius: 3px;'>{status_badge}</span>"
-        f"<span style='color: #94a3b8; font-size: 0.73rem; margin-left: auto;'>{_side_label(side)} • {_pretty_date(entry_date)}</span>"
-        f"</div>",
-        unsafe_allow_html=True,
+        f"""
+        <div class='glide-trade-row'>
+            {thumb_html}
+            <div class='trade-info'>
+                <div class='trade-top-line'>
+                    <span>{pair}</span>
+                    {status_display}
+                </div>
+                <div class='trade-bottom-line'>
+                    {_side_label(side)} • {_pretty_date(entry_date)}
+                </div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True
     )
 
   with col_menu:
