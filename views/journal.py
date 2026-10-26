@@ -62,15 +62,15 @@ def render_journal_view(lang="ka"):
 
 
   # 5. კომპაქტური, მობილურზე მორგებული სათაური (Glide-ის სტილში)
-    st.markdown(
-        f"""
-        <h3 style='margin-bottom: 0px; font-size: 22px; font-weight: 600;'>
-            📊 სავაჭრო ჟურნალი — <span style='color: #4CAF50;'>{final_balance:.2f}$</span>
-        </h3>
-        """,
-        unsafe_allow_html=True
-    )
-  
+  st.markdown(
+      f"""
+      <h3 style='margin-bottom: 0px; font-size: 22px; font-weight: 600;'>
+          📊 სავაჭრო ჟურნალი — <span style='color: #4CAF50;'>{final_balance:.2f}$</span>
+      </h3>
+      """,
+      unsafe_allow_html=True
+  )
+
   # 6. ახალი გარიგების დამატების მოდალი
   render_add_trade_modal()
 
