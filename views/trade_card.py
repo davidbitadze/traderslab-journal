@@ -20,14 +20,11 @@ CARD_CSS = """
 <style>
 [data-testid="stImage"] img { border-radius: 8px; object-fit: cover; }
 .glide-card {
-    padding: 10px 14px;
+    padding: 8px 12px;
     margin-bottom: 6px;
     border-radius: 8px;
     background-color: rgba(255, 255, 255, 0.03);
     border: 1px solid rgba(255, 255, 255, 0.08);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
 }
 </style>
 """
@@ -174,6 +171,7 @@ def render_trade_card(trade, df):
     pnl = calculate_net_pnl(trade, sub_actions) or 0.0
 
   pnl_color = GREEN if pnl > 0 else (RED if pnl < 0 else GRAY)
+  status_dot = "🟢" if pnl > 0 else ("🔴" if pnl < 0 else "⚪")
   status_badge = "🔴 დასრულებული" if is_finalized else "🟢 მიმდინარე"
 
   state_key = f"mode_{trade_id}"
@@ -181,32 +179,51 @@ def render_trade_card(trade, df):
 
   st.markdown(CARD_CSS, unsafe_allow_html=True)
 
-  # სუფთა, Glide-ის სტილის ჰორიზონტალური ბარათი ღილაკის გარეშე (მთლიანი ბარათი ან დეტალების ღილაკი ხსნის დიალოგს)
+  # Ultra-compact Glide style row with Popover menu
   with st.container():
     st.markdown("<div class='glide-card'>", unsafe_allow_html=True)
     
-    col_thumb, col_info, col_action = st.columns([1.1, 7.4, 1.5], vertical_alignment="center")
+    col_thumb, col_info, col_menu = st.columns([1.2, 7.3, 1.5], vertical_alignment="center")
 
     with col_thumb:
       if _is_url(screenshot):
-        st.image(screenshot, width=48)
+        st.image(screenshot, width=54)
       else:
         st.markdown("📁", unsafe_allow_html=True)
 
     with col_info:
       st.markdown(
-          f"<div style='font-size: 0.92rem; line-height: 1.2;'>"
-          f"<b>{pair}</b> &nbsp; <b style='color:{pnl_color}'>{pnl:+.2f}$</b> &nbsp; "
+          f"<div style='font-size: 0.95rem; line-height: 1.2;'>"
+          f"<b>{pair}</b> {status_dot} <b style='color:{pnl_color}'>{pnl:+.2f}$</b> &nbsp; "
           f"<span style='font-size: 0.75rem; color: #94a3b8;'>{status_badge}</span>"
           f"</div>"
-          f"<div style='font-size: 0.76rem; color: #94a3b8; margin-top: 2px;'>"
+          f"<div style='font-size: 0.78rem; color: #94a3b8; margin-top: 2px;'>"
           f"{_side_label(side)} • {_pretty_date(entry_date)}"
           f"</div>",
           unsafe_allow_html=True,
       )
 
-    with col_action:
-      if st.button("🔍 დეტალები", key=f"det_card_{trade_id}", use_container_width=True):
-        show_trade_details_dialog(trade, df)
+    with col_menu:
+      with st.popover("⋯"):
+        if st.button("📄 დეტალები", key=f"det_menu_{trade_id}", use_container_width=True):
+          show_trade_details_dialog(trade, df)
+        
+        if st.button("🗑️ წაშლა", key=f"del_menu_{trade_id}", use_container_width=True):
+          st.session_state[state_key] = "delete"
+          st.rerun()
 
     st.markdown("</div>", unsafe_allow_html=True)
+
+  if current_mode == "delete":
+    st.error("⚠️ ნამდვილად გსურთ გარიგების წაშლა?")
+    col_d1, col_d2 = st.columns(2)
+    with col_d1:
+      if st.button("დიახ", key=f"conf_del_{trade_id}", use_container_width=True):
+        if delete_trade(trade_id):
+          st.success("წაიშალა!")
+          del st.session_state[state_key]
+          st.rerun()
+    with col_d2:
+      if st.button("გაუქმება", key=f"canc_del_{trade_id}", use_container_width=True):
+        del st.session_state[state_key]
+        st.rerun()
