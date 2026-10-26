@@ -96,7 +96,7 @@ def show_trade_details_dialog(trade, df):
       st.toast("სტატუსი განახლდა!", icon="🔄")
       st.rerun(scope="fragment")
   with col_st2:
-    status_badge = "-დასრულებული" if is_finalized else "-მიმდინარე"
+    status_badge = "🔴 დასრულებული" if is_finalized else "🟢 მიმდინარე"
     st.caption(f"მიმდინარე სტატუსი: **{status_badge}**")
 
   st.divider()
@@ -172,7 +172,7 @@ def render_trade_card(trade, df):
 
   pnl_color = GREEN if pnl > 0 else (RED if pnl < 0 else GRAY)
   status_dot = "🟢" if pnl > 0 else ("🔴" if pnl < 0 else "⚪")
-  status_badge = "🔴 დასრულებული" if is_finalized else "🟢 მიმდინარე"
+  status_badge = "-დასრულებული" if is_finalized else "-მიმდინარე"
 
   state_key = f"mode_{trade_id}"
   current_mode = st.session_state.get(state_key, None)
