@@ -73,16 +73,16 @@ def render_journal_view(lang="ka"):
 
 # 6. ახალი გარიგების დამატების მოდალი
   render_add_trade_modal()
-
+  
   st.divider()
-
+  
   if not df.empty:
     main_trades = df[
         df["ActionType"].str.contains("Start Row", case=False, na=False)
     ]
     if main_trades.empty:
       main_trades = df.drop_duplicates(subset=["Parent Trade ID"])
-
+  
     # 🔄 სორტირება: თარიღის მიხედვით ახლიდან ძველისკენ (Descending)
     if "Entry Date" in main_trades.columns:
       df["parsed_date"] = pd.to_datetime(
@@ -91,10 +91,10 @@ def render_journal_view(lang="ka"):
       main_trades = main_trades.sort_values(
           by="parsed_date", ascending=False
       ).drop(columns=["parsed_date"])
-
+  
     # თითოეული გარიგებისთვის გამოვიძახებთ ცალკეულ კომპონენტს
     for index, trade in main_trades.iterrows():
       render_trade_card(trade, df)
-
+  
   else:
     st.info("ჟურნალში გარიგებები ჯერ არ არის. გამოიყენეთ ზედა ღილაკი.")
