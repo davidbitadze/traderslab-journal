@@ -45,7 +45,6 @@ div[data-testid="element-container"]:has(> [data-testid="stHorizontalBlock"]) {
     flex: unset !important;
     min-width: 0 !important;
 }
-/* სკრინშოტის პატარა თამბნეულის სტილი კვადრატში */
 .trade-thumb-img {
     width: 36px;
     height: 36px;
@@ -115,7 +114,6 @@ def show_trade_details_dialog(trade, df):
 
   pair = trade.get("Pair", "N/A")
   side = trade.get("Side", "N/A")
-  entry_price = trade.get("Entry Price", 0)
   main_screenshot = trade.get("Screenshot", "No Screenshot")
   sub_actions = df[df["Parent Trade ID"] == trade_id]
 
@@ -149,8 +147,18 @@ def show_trade_details_dialog(trade, df):
 
   st.divider()
 
+  # სკრინშოტის ჩვენება და განახლება დეტალებში
   if _is_url(main_screenshot):
     st.image(main_screenshot, use_container_width=True)
+  
+  new_img = st.file_uploader("🖼️ სკრინშოტის შეცვლა / ატვირთვა", type=["png", "jpg", "jpeg"], key=f"up_img_{trade_id}")
+  if new_img is not None:
+    img_url = upload_screenshot(new_img)
+    if img_url:
+      update_trade(trade_id, {"Screenshot": img_url})
+      st.toast("სკრინშოტი განახლდა!", icon="🖼️")
+      st.rerun(scope="fragment")
+
   st.divider()
 
   td_current = trade.get("Entry Date")
@@ -180,6 +188,8 @@ def show_trade_details_dialog(trade, df):
 
   if not sub_actions.empty:
     st.markdown("**📋 ეტაპების ისტორია:**")
+    active_edit_sub = st.session_state.get("active_edit_sub")
+    
     for _, sub in sub_actions.iterrows():
       sub_id = sub.get("Trade ID")
       col_h1, col_h2, col_h3 = st.columns([7, 1, 1])
@@ -188,10 +198,24 @@ def show_trade_details_dialog(trade, df):
       with col_h2:
         if st.button("✏️", key=f"edit_sub_{sub_id}"):
           st.session_state["active_edit_sub"] = sub_id
+          st.rerun(scope="fragment")
       with col_h3:
         if st.button("🗑️", key=f"del_sub_{sub_id}"):
           if delete_trade(sub_id):
             recalc_net_pnl(trade_id)
+            st.rerun(scope="fragment")
+
+      # თუ ამ ეტაპზეა რედაქტირება ჩართული
+      if active_edit_sub == sub_id:
+        with st.form(key=f"form_edit_sub_{sub_id}"):
+          st.markdown(f"**ეტაპის რედაქტირება: {sub.get('ActionType')}**")
+          new_price = st.text_input("ფასი", value=str(sub.get('Entry Price', 0)))
+          new_qty = st.text_input("მოცულობა", value=str(sub.get('Qty', 0)))
+          if st.form_submit_button("💾 ცვლილების შენახვა"):
+            update_trade(sub_id, {"Entry Price": to_float(new_price), "Qty": to_float(new_qty)})
+            st.session_state["active_edit_sub"] = None
+            recalc_net_pnl(trade_id)
+            st.success("განახლდა!")
             st.rerun(scope="fragment")
   else:
     st.caption("დამატებითი ეტაპები არ არის.")
@@ -228,7 +252,6 @@ def render_trade_card(trade, df):
   else:
     status_indicator = f"<span style='background-color: {ORANGE}; color: white; font-size: 0.6rem; padding: 1px 4px; border-radius: 3px; font-weight: 500;'>მიმდინარე</span>"
 
-  # თამბნეულის ლოგიკა: თუ URL არსებობს, ვხატავთ სურათს, თუ არა - საქაღალდის იკონკას
   if _is_url(screenshot):
     thumb_html = f"<img src='{screenshot}' class='trade-thumb-img'>"
   else:
