@@ -13,15 +13,15 @@ def render_journal_view(lang="ka"):
   if not df_txn.empty and "Amount" in df_txn.columns:
     total_deposits = pd.to_numeric(df_txn["Amount"], errors="coerce").sum()
 
-# 2. მონაცემების წამოღება გარიგებებიდან
+  # 2. მონაცემების წამოღება გარიგებებიდან
   df = fetch_trades()
   
   if not df.empty and "Entry Date" in df.columns:
-    # ვახდენთ მთლიანი DataFrame-ის სორტირებას თარიღის მიხედვით (ახლიდან ძველისკენ)
-    df["parsed_date"] = pd.to_datetime(df["Entry Date"], errors="coerce")
-    df = df.sort_values(by="parsed_date", ascending=False).drop(columns=["parsed_date"])
+      # mixed ფორმატი უზრუნველყოფს, რომ როგორც 'YYYY-MM-DD', ისე 'MM/DD/YYYY' სწორად დაკონვერტირდეს
+      df["parsed_date"] = pd.to_datetime(df["Entry Date"], errors="coerce", format="mixed")
+      df = df.sort_values(by="parsed_date", ascending=False).drop(columns=["parsed_date"])
+    
 
-  
   # 3. ვთვლით ჯამურ PnL-ს ყველა გარიგებიდან
   total_pnl = 0.0
   if not df.empty:
