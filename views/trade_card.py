@@ -19,19 +19,20 @@ ORANGE = "#f97316"
 
 CARD_CSS = """
 <style>
-/* ვკრძალავთ სვეტების ჩამოშლას მობილურში და ვინარჩუნებთ ერთიან ჰორიზონტალურ ზოლს */
+/* ბარათებს შორის არსებული ცარიელი ადგილების (გაპების) სრული მოხსნა და მიჭედება */
 [data-testid="stHorizontalBlock"] {
-    display: flex !important;
-    flex-direction: row !important;
     align-items: center !important;
-    flex-wrap: nowrap !important;
     background-color: rgba(255, 255, 255, 0.02) !important;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
-    border-radius: 6px !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+    border-radius: 4px !important;
     padding: 4px 8px !important;
-    margin-bottom: 3px !important;
-    gap: 6px !important;
+    margin-bottom: 1px !important;
     width: 100% !important;
+}
+/* სამწერტილიანი მენიუს მიმაგრება მკაცრად მარჯვენა კიდეზე */
+[data-testid="stHorizontalBlock"] > div:last-child {
+    display: flex !important;
+    justify-content: flex-end !important;
 }
 [data-testid="stColumn"] {
     width: auto !important;
@@ -214,7 +215,7 @@ def render_trade_card(trade, df):
 
   thumb_html = f"<img src='{screenshot}' class='trade-thumb'>" if _is_url(screenshot) else "<div class='trade-thumb'>📁</div>"
 
-  # სვეტები მკაცრად ფიქსირდება ერთ ხაზზე როგორც კომპიუტერში, ისე მობილურში
+  # სვეტების გადანაწილება: ცენტრი იკავებს მთელ სივრცეს, ხოლო მენიუ მიდის მარჯვენა კიდეში
   col_thumb, col_info, col_menu = st.columns([0.7, 8.8, 0.5], vertical_alignment="center")
 
   with col_thumb:
