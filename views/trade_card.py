@@ -173,6 +173,7 @@ def render_trade_card(trade, df):
   pnl_color = GREEN if pnl > 0 else (RED if pnl < 0 else GRAY)
   status_dot = "🟢" if pnl > 0 else ("🔴" if pnl < 0 else "⚪")
   status_badge = "დასრულებული" if is_finalized else "მიმდინარე"
+  badge_color = GRAY if is_finalized else ORANGE
 
   state_key = f"mode_{trade_id}"
   current_mode = st.session_state.get(state_key, None)
