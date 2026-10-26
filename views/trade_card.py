@@ -19,19 +19,22 @@ ORANGE = "#f97316"
 
 CARD_CSS = """
 <style>
-/* ბარათებს შორის არსებული ცარიელი ადგილების სრული გაქრობა და მიწებება */
-[data-testid="stHorizontalBlock"] {
-    align-items: center !important;
-    background-color: rgba(255, 255, 255, 0.02) !important;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
-    border-radius: 4px !important;
-    padding: 3px 8px !important;
-    margin-bottom: 0px !important;
-    margin-top: 0px !important;
-    width: 100% !important;
-}
+/* Streamlit-ის ელემენტებს შორის არსებული ვერტიკალური სიცარიელეების სრული გაქრობა */
 div[data-testid="element-container"]:has(> [data-testid="stHorizontalBlock"]) {
     margin-bottom: 2px !important;
+    padding-bottom: 0px !important;
+}
+[data-testid="stVerticalBlock"] {
+    gap: 2px !important;
+}
+[data-testid="stHorizontalBlock"] {
+    align-items: center !important;
+    background-color: rgba(255, 255, 255, 0.025) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
+    border-radius: 4px !important;
+    padding: 4px 10px !important;
+    margin: 0px !important;
+    width: 100% !important;
 }
 /* სამწერტილიანი მენიუს მკაცრად მარჯვენა კიდეზე მიწებება */
 [data-testid="stHorizontalBlock"] > div:last-child {
