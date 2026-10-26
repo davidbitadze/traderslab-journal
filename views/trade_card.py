@@ -10,7 +10,7 @@ from database import (
 )
 import pandas as pd
 import streamlit as st
-from utils.formulas import calculate_trade_pnl
+from utils.formulas import calculate_net_pnl, to_float
 
 GREEN = "#22c55e"
 RED = "#ef4444"
@@ -30,13 +30,16 @@ CARD_CSS = """
 """
 
 
-def _to_float(value, default=0.0):
-  try:
-    if value is None or str(value).strip() in ("", "None", "nan"):
-      return default
-    return float(value)
-  except (ValueError, TypeError):
-    return default
+def _has_value(value):
+  return value is not None and str(value).strip() not in (
+      "", "None", "nan", "NaT", "<NA>"
+  )
+
+
+def _trade_date(trade):
+  """ჩატარების თარიღი (ხელით). თუ არ არის, ვიყენებთ ჩანაწერის შექმნის დროს."""
+  value = trade.get("Trade Date")
+  return value if _has_value(value) else trade.get("Entry Date", "N/A")
 
 
 def _is_url(value):
@@ -60,53 +63,16 @@ def _side_label(side):
 
 
 def recalc_net_pnl(parent_id):
-  """ითვლის გარიგების Net P/L-ს ბაზის ახალი მონაცემებით და წერს Supabase-ში."""
+  """ბაზიდან ახალ მონაცემებს კითხულობს, Net P/L-ს ითვლის და Supabase-ში წერს."""
   df = fetch_trades()
   if df.empty:
     return
-
   main_df = df[df["Trade ID"] == parent_id]
   if main_df.empty:
     return
-  main = main_df.iloc[0]
-
-  side = main.get("Side", "")
-  risk_v = _to_float(main.get("Risk ($)"), 5.85)
   subs = df[df["Parent Trade ID"] == parent_id]
-
-  # შესვლა: საწყისი რიგი + Scale In-ები (საშუალო შეწონილი ფასი)
-  entry_legs = [(_to_float(main.get("Entry Price")), _to_float(main.get("Qty")))]
-  for _, s in subs.iterrows():
-    if "Scale In" in str(s.get("ActionType", "")):
-      entry_legs.append(
-          (_to_float(s.get("Entry Price")), _to_float(s.get("Qty")))
-      )
-
-  entry_qty = sum(q for _, q in entry_legs)
-  if entry_qty > 0:
-    entry_p = sum(p * q for p, q in entry_legs) / entry_qty
-  else:
-    entry_p = entry_legs[0][0]
-
-  exits = [
-      (_to_float(s.get("Entry Price"), entry_p), _to_float(s.get("Qty")))
-      for _, s in subs.iterrows()
-      if "Exit" in str(s.get("ActionType", ""))
-  ]
-
-  if not exits:
-    update_trade(parent_id, {"Net P/L": None})
-    return
-
-  # თუ შესვლის მოცულობა არ არის ჩაწერილი, წილებს გასვლების ჯამიდან ვითვლით
-  denom = entry_qty if entry_qty > 0 else sum(q for _, q in exits)
-
-  total_pnl = 0.0
-  for ex_p, ex_q in exits:
-    share = (ex_q / denom) if denom > 0 else 1.0
-    total_pnl += calculate_trade_pnl(entry_p, ex_p, risk_v, side) * share
-
-  update_trade(parent_id, {"Net P/L": str(round(total_pnl, 2))})
+  net = calculate_net_pnl(main_df.iloc[0], subs)
+  update_trade(parent_id, {"Net P/L": None if net is None else str(net)})
 
 
 # 🪟 Streamlit-ის ოფიციალური ოვერლეი ფანჯარა (Dialog) დეტალებისა და მართვისთვის
@@ -129,6 +95,41 @@ def show_trade_details_dialog(trade, df):
   st.markdown(f"### {pair} — **{side}**")
   if _is_url(main_screenshot):
     st.image(main_screenshot, use_container_width=True)
+  st.divider()
+
+  # 🗓️ გარიგების ჩატარების თარიღი: ტექსტური ველი (კოპირება/ჩასწორება).
+  # Entry Date რჩება ჩანაწერის შექმნის ავტომატურ დროდ.
+  td_current = _trade_date(trade)
+  td_text = st.text_input(
+      "🗓️ გარიგების ჩატარების თარიღი",
+      value=str(td_current) if _has_value(td_current) else "",
+      placeholder="YYYY-MM-DD HH:MM:SS",
+      key=f"td_text_{trade_id}",
+      help="ჩასვი ან ჩაასწორე ტექსტი. ფორმატი: 2026-10-26 16:01:00",
+  )
+  td_parsed = pd.to_datetime(td_text, errors="coerce") if td_text.strip() else pd.NaT
+  td_invalid = bool(pd.isna(td_parsed))
+
+  col_td1, col_td2 = st.columns([4, 2], vertical_alignment="center")
+  with col_td1:
+    if td_invalid:
+      st.caption("⚠️ თარიღი ვერ იკითხება. მაგალითი: 2026-10-26 16:01:00")
+    else:
+      st.caption(
+          f"✅ წაიკითხება როგორც: {td_parsed.strftime('%d %b %Y, %H:%M:%S')}"
+      )
+  with col_td2:
+    if st.button(
+        "💾 თარიღის შენახვა",
+        key=f"td_save_{trade_id}",
+        use_container_width=True,
+        disabled=td_invalid,
+    ):
+      stamp = td_parsed.strftime("%Y-%m-%d %H:%M:%S")
+      if update_trade(trade_id, {"Trade Date": stamp}):
+        st.toast("თარიღი შენახულია!", icon="🗓️")
+        st.rerun(scope="fragment")
+  st.caption(f"🕒 ჩანაწერი შეიქმნა: {_pretty_date(trade.get('Entry Date'))}")
   st.divider()
 
   # 1. არსებული ისტორია წაშლისა და ედიტირების ღილაკებით
@@ -162,12 +163,12 @@ def show_trade_details_dialog(trade, df):
 
           edit_price = st.number_input(
               "ფასი",
-              value=_to_float(sub.get("Entry Price"), 1.0850),
+              value=to_float(sub.get("Entry Price"), 1.0850),
               format="%.5f",
           )
           edit_qty = st.number_input(
               "მოცულობა",
-              value=_to_float(sub.get("Qty"), 1000.0),
+              value=to_float(sub.get("Qty"), 1000.0),
               step=100.0,
           )
 
@@ -175,7 +176,7 @@ def show_trade_details_dialog(trade, df):
           if is_start_row:
             edit_risk = st.number_input(
                 "რისკი დოლარში (Risk $)",
-                value=_to_float(sub.get("Risk ($)"), 10.0),
+                value=to_float(sub.get("Risk ($)"), 10.0),
                 step=1.0,
             )
 
@@ -233,7 +234,7 @@ def show_trade_details_dialog(trade, df):
         )
         sub_price = st.number_input(
             "ფასი",
-            value=_to_float(entry_price, 1.0850),
+            value=to_float(entry_price, 1.0850),
             format="%.5f",
             key=f"dialog_price_{trade_id}",
         )
@@ -304,10 +305,9 @@ def render_trade_card(trade, df):
   trade_id = trade.get("Trade ID") or trade.get("Parent Trade ID")
   pair = trade.get("Pair", "N/A")
   side = trade.get("Side", "N/A")
-  entry_date = trade.get("Entry Date", "N/A")
+  entry_date = _trade_date(trade)
   entry_price = trade.get("Entry Price", 0)
   formation = trade.get("Formation", "N/A")
-  risk_val = trade.get("Risk ($)", 5.85)
   screenshot = trade.get("Screenshot", "No Screenshot")
 
 # მკაცრი შემოწმება: მხოლოდ იმ შემთხვევაშია True, თუ ბაზაში მკაფიოდ წერია "true" ან True
@@ -320,19 +320,16 @@ def render_trade_card(trade, df):
     is_finalized = bool(raw_fin)
 
   sub_actions = df[df["Parent Trade ID"] == trade_id]
-  exit_price = entry_price
 
   exits = sub_actions[
       sub_actions["ActionType"].str.contains("Exit", case=False, na=False)
   ]
-  if not exits.empty:
-    exit_price = exits.iloc[-1].get("Entry Price", entry_price)
 
   raw_net = trade.get("Net P/L")
-  if raw_net is not None and str(raw_net).strip() not in ("", "None", "nan"):
-    pnl = float(raw_net)
+  if _has_value(raw_net):
+    pnl = to_float(raw_net)
   else:
-    pnl = calculate_trade_pnl(entry_price, exit_price, risk_val, side)
+    pnl = calculate_net_pnl(trade, sub_actions) or 0.0
 
   pnl_color = GREEN if pnl > 0 else (RED if pnl < 0 else GRAY)
   status_dot = "🟢" if pnl > 0 else ("🔴" if pnl < 0 else "⚪")
