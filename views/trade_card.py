@@ -172,7 +172,7 @@ def render_trade_card(trade, df):
 
   pnl_color = GREEN if pnl > 0 else (RED if pnl < 0 else GRAY)
   status_dot = "🟢" if pnl > 0 else ("🔴" if pnl < 0 else "⚪")
-  status_badge = "-დასრულებული" if is_finalized else "-მიმდინარე"
+  status_badge = "დასრულებული" if is_finalized else "მიმდინარე"
 
   state_key = f"mode_{trade_id}"
   current_mode = st.session_state.get(state_key, None)
@@ -205,10 +205,10 @@ def render_trade_card(trade, df):
 
     with col_menu:
       with st.popover("⋯"):
-        if st.button("📄 დეტალები", key=f"det_menu_{trade_id}", use_container_width=True):
+        if st.button("დეტალები", key=f"det_menu_{trade_id}", use_container_width=True):
           show_trade_details_dialog(trade, df)
         
-        if st.button("🗑️ წაშლა", key=f"del_menu_{trade_id}", use_container_width=True):
+        if st.button("წაშლა", key=f"del_menu_{trade_id}", use_container_width=True):
           st.session_state[state_key] = "delete"
           st.rerun()
 
