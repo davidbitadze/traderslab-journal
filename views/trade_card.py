@@ -20,11 +20,14 @@ CARD_CSS = """
 <style>
 [data-testid="stImage"] img { border-radius: 8px; object-fit: cover; }
 .glide-card {
-    padding: 8px 12px;
+    padding: 10px 14px;
     margin-bottom: 6px;
     border-radius: 8px;
     background-color: rgba(255, 255, 255, 0.03);
     border: 1px solid rgba(255, 255, 255, 0.08);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
 }
 </style>
 """
@@ -77,7 +80,30 @@ def show_trade_details_dialog(trade, df):
   main_screenshot = trade.get("Screenshot", "No Screenshot")
   sub_actions = df[df["Parent Trade ID"] == trade_id]
 
+  # მკაცრი შემოწმება სტატუსისთვის
+  raw_fin = trade.get("Finalized")
+  is_finalized = str(raw_fin).strip().lower() in ("true", "1", "yes")
+
   st.markdown(f"### {pair} — **{side}**")
+  
+  # 🔄 სტატუსის მართვა პირდაპირ დეტალების ფანჯარაში
+  col_st1, col_st2 = st.columns([2, 4], vertical_alignment="center")
+  with col_st1:
+    new_status = st.toggle(
+        "დასრულებული" if is_finalized else "მიმდინარე",
+        value=is_finalized,
+        key=f"dialog_toggle_fin_{trade_id}"
+    )
+    if new_status != is_finalized:
+      update_trade(trade_id, {"Finalized": str(new_status)})
+      st.toast("სტატუსი განახლდა!", icon="🔄")
+      st.rerun(scope="fragment")
+  with col_st2:
+    status_badge = "🔴 დასრულებული" if is_finalized else "🟢 მიმდინარე პოზიცია"
+    st.caption(f"მიმდინარე სტატუსი: **{status_badge}**")
+
+  st.divider()
+
   if _is_url(main_screenshot):
     st.image(main_screenshot, use_container_width=True)
   st.divider()
@@ -138,10 +164,7 @@ def render_trade_card(trade, df):
   screenshot = trade.get("Screenshot", "No Screenshot")
 
   raw_fin = trade.get("Finalized")
-  if raw_fin is None or str(raw_fin).strip() in ("", "None", "nan", "False", "false"):
-    is_finalized = False
-  else:
-    is_finalized = str(raw_fin).strip().lower() in ("true", "1", "yes")
+  is_finalized = str(raw_fin).strip().lower() in ("true", "1", "yes")
 
   sub_actions = df[df["Parent Trade ID"] == trade_id]
   raw_net = trade.get("Net P/L")
@@ -151,66 +174,39 @@ def render_trade_card(trade, df):
     pnl = calculate_net_pnl(trade, sub_actions) or 0.0
 
   pnl_color = GREEN if pnl > 0 else (RED if pnl < 0 else GRAY)
-  status_dot = "🟢" if pnl > 0 else ("🔴" if pnl < 0 else "⚪")
+  status_badge = "🔴 დასრულებული" if is_finalized else "🟢 მიმდინარე"
 
   state_key = f"mode_{trade_id}"
   current_mode = st.session_state.get(state_key, None)
 
   st.markdown(CARD_CSS, unsafe_allow_html=True)
 
-  # Ultra-compact Glide style row using standard columns inside a clean layout container
+  # სუფთა, Glide-ის სტილის ჰორიზონტალური ბარათი ღილაკის გარეშე (მთლიანი ბარათი ან დეტალების ღილაკი ხსნის დიალოგს)
   with st.container():
     st.markdown("<div class='glide-card'>", unsafe_allow_html=True)
     
-    col_thumb, col_info, col_menu = st.columns([1.2, 7.3, 1.5], vertical_alignment="center")
+    col_thumb, col_info, col_action = st.columns([1.1, 7.4, 1.5], vertical_alignment="center")
 
     with col_thumb:
       if _is_url(screenshot):
-        st.image(screenshot, width=54)
+        st.image(screenshot, width=48)
       else:
         st.markdown("📁", unsafe_allow_html=True)
 
     with col_info:
       st.markdown(
-          f"<div style='font-size: 0.95rem; line-height: 1.2;'>"
-          f"<b>{pair}</b> {status_dot} <b style='color:{pnl_color}'>{pnl:+.2f}$</b>"
+          f"<div style='font-size: 0.92rem; line-height: 1.2;'>"
+          f"<b>{pair}</b> &nbsp; <b style='color:{pnl_color}'>{pnl:+.2f}$</b> &nbsp; "
+          f"<span style='font-size: 0.75rem; color: #94a3b8;'>{status_badge}</span>"
           f"</div>"
-          f"<div style='font-size: 0.78rem; color: #94a3b8; margin-top: 2px;'>"
+          f"<div style='font-size: 0.76rem; color: #94a3b8; margin-top: 2px;'>"
           f"{_side_label(side)} • {_pretty_date(entry_date)}"
           f"</div>",
           unsafe_allow_html=True,
       )
 
-    with col_menu:
-      with st.popover("⋯"):
-        # სტატუსის შეცვლა მენიუდან
-        new_fin_status = not is_finalized
-        status_label = "🏁 დასრულება" if not is_finalized else "🔄 მიმდინარეზე დაბრუნება"
-        if st.button(status_label, key=f"tog_menu_{trade_id}", use_container_width=True):
-          update_trade(trade_id, {"Finalized": str(new_fin_status)})
-          st.rerun()
-        
-        st.divider()
-
-        if st.button("📄 დეტალები", key=f"det_menu_{trade_id}", use_container_width=True):
-          show_trade_details_dialog(trade, df)
-        
-        if st.button("🗑️ წაშლა", key=f"del_menu_{trade_id}", use_container_width=True):
-          st.session_state[state_key] = "delete"
-          st.rerun()
+    with col_action:
+      if st.button("🔍 დეტალები", key=f"det_card_{trade_id}", use_container_width=True):
+        show_trade_details_dialog(trade, df)
 
     st.markdown("</div>", unsafe_allow_html=True)
-
-  if current_mode == "delete":
-    st.error("⚠️ ნამდვილად გსურთ გარიგების წაშლა?")
-    col_d1, col_d2 = st.columns(2)
-    with col_d1:
-      if st.button("დიახ", key=f"conf_del_{trade_id}", use_container_width=True):
-        if delete_trade(trade_id):
-          st.success("წაიშალა!")
-          del st.session_state[state_key]
-          st.rerun()
-    with col_d2:
-      if st.button("გაუქმება", key=f"canc_del_{trade_id}", use_container_width=True):
-        del st.session_state[state_key]
-        st.rerun()
