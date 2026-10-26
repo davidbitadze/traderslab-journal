@@ -19,22 +19,23 @@ ORANGE = "#f97316"
 
 CARD_CSS = """
 <style>
-/* Glide-ის ზუსტი სტილის მჭიდრო, ორხაზიანი ბარათი */
-.glide-trade-row {
+/* სრულიად მჭიდრო, ავტომატურ ზომაზე მორგებული Glide სტილის ბარათი ცარიელი ადგილების გარეშე */
+.glide-trade-card {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 6px 8px;
-    margin-bottom: 2px;
-    background-color: rgba(255, 255, 255, 0.015);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-    border-radius: 4px;
-    gap: 10px;
+    padding: 6px 10px;
+    margin-bottom: 3px;
+    background-color: rgba(255, 255, 255, 0.02);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 6px;
+    gap: 12px;
+    width: 100%;
 }
 .trade-thumb {
-    width: 36px;
-    height: 36px;
-    border-radius: 4px;
+    width: 38px;
+    height: 38px;
+    border-radius: 6px;
     object-fit: cover;
     background: rgba(255,255,255,0.05);
     display: flex;
@@ -43,27 +44,30 @@ CARD_CSS = """
     font-size: 1rem;
     flex-shrink: 0;
 }
-.trade-info {
+.trade-main-content {
     flex-grow: 1;
     display: flex;
     flex-direction: column;
     justify-content: center;
-    overflow: hidden;
+    min-width: 0;
 }
-.trade-top-line {
-    font-size: 0.9rem;
+.trade-top-row {
+    font-size: 0.92rem;
     font-weight: 600;
     color: #ffffff;
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
     gap: 8px;
     line-height: 1.2;
 }
-.trade-bottom-line {
-    font-size: 0.72rem;
+.trade-bottom-row {
+    font-size: 0.74rem;
     color: #94a3b8;
     margin-top: 2px;
-    line-height: 1.1;
+    display: flex;
+    align-items: center;
+    gap: 6px;
 }
 div[data-testid="stPopoverBody"] {
     z-index: 99999 !important;
@@ -217,35 +221,37 @@ def render_trade_card(trade, df):
   else:
     pnl = calculate_net_pnl(trade, sub_actions) or 0.0
 
-  pnl_color = GREEN if pnl > 0 else (RED if pnl < 0 else GRAY)
-  
-  if is_finalized:
-    status_display = f"<span style='color:{pnl_color}'>{pnl:+.2f}$</span>"
-  else:
-    status_display = f"<span style='color:{ORANGE}'>მიმდინარე</span>"
-
   state_key = f"mode_{trade_id}"
   current_mode = st.session_state.get(state_key, None)
 
   st.markdown(CARD_CSS, unsafe_allow_html=True)
 
-  # HTML-ზე დაფუძნებული სრულიად მჭიდრო Glide სტილის ბარათი
-  thumb_html = f"<img src='{screenshot}' class='trade-thumb'>" if _is_url(screenshot) else "<div class='trade-thumb'>📁</div>"
-  
-  col_row, col_menu = st.columns([9.2, 0.8], vertical_alignment="center")
+  # სტატუსის და ფერის ლოგიკა: მიმდინარე -> ნარინჯისფერი ბეჯი; დასრულებული -> მოგება (მწვანე) / წაგება (წითელი)
+  if is_finalized:
+    pnl_color = GREEN if pnl > 0 else (RED if pnl < 0 else GRAY)
+    status_indicator = f"<span style='color:{pnl_color}; font-weight:600;'>{pnl:+.2f}$</span>"
+  else:
+    status_indicator = f"<span style='background-color: {ORANGE}; color: white; font-size: 0.68rem; padding: 1px 6px; border-radius: 4px; font-weight: 500;'>მიმდინარე</span>"
 
-  with col_row:
+  thumb_html = f"<img src='{screenshot}' class='trade-thumb'>" if _is_url(screenshot) else "<div class='trade-thumb'>📁</div>"
+
+  # Streamlit-ის სვეტების გარეშე, ვქმნით ერთ კომპაქტურ ჰორიზონტალურ ბლოკს (Flexbox)
+  col_main, col_menu = st.columns([9.4, 0.6], vertical_alignment="center")
+
+  with col_main:
     st.markdown(
         f"""
-        <div class='glide-trade-row'>
+        <div class='glide-trade-card'>
             {thumb_html}
-            <div class='trade-info'>
-                <div class='trade-top-line'>
+            <div class='trade-main-content'>
+                <div class='trade-top-row'>
                     <span>{pair}</span>
-                    {status_display}
+                    {status_indicator}
                 </div>
-                <div class='trade-bottom-line'>
-                    {_side_label(side)} • {_pretty_date(entry_date)}
+                <div class='trade-bottom-row'>
+                    <span>{_side_label(side)}</span>
+                    <span>•</span>
+                    <span>{_pretty_date(entry_date)}</span>
                 </div>
             </div>
         </div>
