@@ -71,14 +71,12 @@ def render_journal_view(lang="ka"):
       unsafe_allow_html=True
   )
 
-  # 6. ახალი გარიგების დამატების მოდალი
+# 6. ახალი გარიგების დამატების მოდალი
   render_add_trade_modal()
 
   st.divider()
 
   if not df.empty:
-    st.subheader("📋 აქტიური და ისტორიული პოზიციები")
-
     main_trades = df[
         df["ActionType"].str.contains("Start Row", case=False, na=False)
     ]
@@ -87,9 +85,8 @@ def render_journal_view(lang="ka"):
 
     # 🔄 სორტირება: თარიღის მიხედვით ახლიდან ძველისკენ (Descending)
     if "Entry Date" in main_trades.columns:
-      # ვცდილობთ გადავაქციოთ datetime ტიპად სწორი სორტირებისთვის
-      main_trades["parsed_date"] = pd.to_datetime(
-          main_trades["Entry Date"], errors="coerce"
+      df["parsed_date"] = pd.to_datetime(
+          main_trades["Entry Date"], errors="coerce", format="mixed"
       )
       main_trades = main_trades.sort_values(
           by="parsed_date", ascending=False
