@@ -36,12 +36,6 @@ def _has_value(value):
   )
 
 
-def _trade_date(trade):
-  """ჩატარების თარიღი (ხელით). თუ არ არის, ვიყენებთ ჩანაწერის შექმნის დროს."""
-  value = trade.get("Trade Date")
-  return value if _has_value(value) else trade.get("Entry Date", "N/A")
-
-
 def _is_url(value):
   return str(value).startswith("http")
 
@@ -97,11 +91,10 @@ def show_trade_details_dialog(trade, df):
     st.image(main_screenshot, use_container_width=True)
   st.divider()
 
-  # 🗓️ გარიგების ჩატარების თარიღი: ტექსტური ველი (კოპირება/ჩასწორება).
-  # Entry Date რჩება ჩანაწერის შექმნის ავტომატურ დროდ.
-  td_current = _trade_date(trade)
+  # 🗓️ გარიგების თარიღი: ტექსტური ველი (კოპირება/ჩასწორება), წერს "Entry Date"-ში
+  td_current = trade.get("Entry Date")
   td_text = st.text_input(
-      "🗓️ გარიგების ჩატარების თარიღი",
+      "🗓️ გარიგების თარიღი და დრო",
       value=str(td_current) if _has_value(td_current) else "",
       placeholder="YYYY-MM-DD HH:MM:SS",
       key=f"td_text_{trade_id}",
@@ -126,10 +119,14 @@ def show_trade_details_dialog(trade, df):
         disabled=td_invalid,
     ):
       stamp = td_parsed.strftime("%Y-%m-%d %H:%M:%S")
-      if update_trade(trade_id, {"Trade Date": stamp}):
+      if update_trade(trade_id, {"Entry Date": stamp}):
         st.toast("თარიღი შენახულია!", icon="🗓️")
         st.rerun(scope="fragment")
-  st.caption(f"🕒 ჩანაწერი შეიქმნა: {_pretty_date(trade.get('Entry Date'))}")
+
+  # თუ ბაზაში არსებობს created_at სვეტი, ჩანაწერის შექმნის დროსაც ვაჩვენებთ
+  created_raw = trade.get("created_at")
+  if _has_value(created_raw):
+    st.caption(f"🕒 ჩანაწერი შეიქმნა: {_pretty_date(created_raw)}")
   st.divider()
 
   # 1. არსებული ისტორია წაშლისა და ედიტირების ღილაკებით
@@ -292,6 +289,14 @@ def show_trade_details_dialog(trade, df):
           st.success("წარმატებით დაემატა!")
           st.rerun(scope="fragment")
 
+  st.divider()
+  if st.button(
+      "✅ დახურვა და განახლება",
+      key=f"close_dlg_{trade_id}",
+      use_container_width=True,
+  ):
+    st.rerun()  # სრული rerun: დიალოგი იხურება, ბარათები ახალ მონაცემს კითხულობენ
+
 
 # ქოლბექი ტოიგლის ცვლილებისთვის
 def handle_toggle_change(t_id):
@@ -305,7 +310,7 @@ def render_trade_card(trade, df):
   trade_id = trade.get("Trade ID") or trade.get("Parent Trade ID")
   pair = trade.get("Pair", "N/A")
   side = trade.get("Side", "N/A")
-  entry_date = _trade_date(trade)
+  entry_date = trade.get("Entry Date", "N/A")
   entry_price = trade.get("Entry Price", 0)
   formation = trade.get("Formation", "N/A")
   screenshot = trade.get("Screenshot", "No Screenshot")
