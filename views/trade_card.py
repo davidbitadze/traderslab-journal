@@ -19,67 +19,35 @@ ORANGE = "#f97316"
 
 CARD_CSS = """
 <style>
-/* სრულიად მჭიდრო, ერთხაზიანი Glide სტილის ბარათი, რომელიც არასდროს იშლება მობილურშიც კი */
-.glide-trade-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 6px 10px;
-    margin-bottom: 3px;
-    background-color: rgba(255, 255, 255, 0.02);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-    border-radius: 6px;
-    gap: 8px;
-    width: 100%;
+/* ვკრძალავთ სვეტების ჩამოშლას მობილურში და ვინარჩუნებთ ერთიან ჰორიზონტალურ ზოლს */
+[data-testid="stHorizontalBlock"] {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    flex-wrap: nowrap !important;
+    background-color: rgba(255, 255, 255, 0.02) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
+    border-radius: 6px !important;
+    padding: 4px 8px !important;
+    margin-bottom: 3px !important;
+    gap: 6px !important;
+    width: 100% !important;
 }
-.trade-left-group {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    min-width: 0;
-    flex-grow: 1;
+[data-testid="stColumn"] {
+    width: auto !important;
+    flex: unset !important;
+    min-width: 0 !important;
 }
 .trade-thumb {
-    width: 36px;
-    height: 36px;
+    width: 34px;
+    height: 34px;
     border-radius: 6px;
     object-fit: cover;
     background: rgba(255,255,255,0.05);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.95rem;
-    flex-shrink: 0;
-}
-.trade-info-container {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    min-width: 0;
-    flex-grow: 1;
-}
-.trade-top-line {
     font-size: 0.9rem;
-    font-weight: 600;
-    color: #ffffff;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    line-height: 1.2;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-.trade-bottom-line {
-    font-size: 0.73rem;
-    color: #94a3b8;
-    margin-top: 2px;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
 }
 div[data-testid="stPopoverBody"] {
     z-index: 99999 !important;
@@ -242,32 +210,28 @@ def render_trade_card(trade, df):
     pnl_color = GREEN if pnl > 0 else (RED if pnl < 0 else GRAY)
     status_indicator = f"<span style='color:{pnl_color}; font-weight:600;'>{pnl:+.2f}$</span>"
   else:
-    status_indicator = f"<span style='background-color: {ORANGE}; color: white; font-size: 0.65rem; padding: 1px 5px; border-radius: 4px; font-weight: 500;'>მიმდინარე</span>"
+    status_indicator = f"<span style='background-color: {ORANGE}; color: white; font-size: 0.6rem; padding: 1px 4px; border-radius: 3px; font-weight: 500;'>მიმდინარე</span>"
 
   thumb_html = f"<img src='{screenshot}' class='trade-thumb'>" if _is_url(screenshot) else "<div class='trade-thumb'>📁</div>"
 
-  # ვქმნით ერთიან სუფთა კონტეინერს, სადაც ყველაფერი მკაცრად ერთ ხაზზეა (Flexbox)
-  container_id = f"popover_container_{trade_id}"
-  
-  col_row, col_menu = st.columns([10, 1], vertical_alignment="center")
+  # სვეტები მკაცრად ფიქსირდება ერთ ხაზზე როგორც კომპიუტერში, ისე მობილურში
+  col_thumb, col_info, col_menu = st.columns([0.7, 8.8, 0.5], vertical_alignment="center")
 
-  with col_row:
+  with col_thumb:
+    st.markdown(thumb_html, unsafe_allow_html=True)
+
+  with col_info:
     st.markdown(
         f"""
-        <div class='glide-trade-row'>
-            <div class='trade-left-group'>
-                {thumb_html}
-                <div class='trade-info-container'>
-                    <div class='trade-top-line'>
-                        <span>{pair}</span>
-                        {status_indicator}
-                    </div>
-                    <div class='trade-bottom-line'>
-                        <span>{_side_label(side)}</span>
-                        <span>•</span>
-                        <span>{_pretty_date(entry_date)}</span>
-                    </div>
-                </div>
+        <div style='display: flex; flex-direction: column; justify-content: center; min-width: 0;'>
+            <div style='font-size: 0.86rem; font-weight: 600; color: #ffffff; display: flex; align-items: center; gap: 6px; line-height: 1.1;'>
+                <span>{pair}</span>
+                {status_indicator}
+            </div>
+            <div style='font-size: 0.7rem; color: #94a3b8; margin-top: 1px; display: flex; align-items: center; gap: 4px;'>
+                <span>{_side_label(side)}</span>
+                <span>•</span>
+                <span>{_pretty_date(entry_date)}</span>
             </div>
         </div>
         """,
