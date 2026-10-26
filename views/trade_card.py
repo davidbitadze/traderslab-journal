@@ -19,50 +19,52 @@ ORANGE = "#f97316"
 
 CARD_CSS = """
 <style>
-/* სრულიად მჭიდრო, ავტომატურ ზომაზე მორგებული Glide სტილის ბარათი ცარიელი ადგილების გარეშე */
-.glide-trade-card {
+/* სვეტების და შუალედების სრული ოპტიმიზაცია ცარიელი ადგილების მოსასპობად */
+[data-testid="stHorizontalBlock"] {
+    align-items: center !important;
+    gap: 4px !important;
+}
+.glide-trade-row {
     display: flex;
     align-items: center;
-    justify-content: space-between;
     padding: 6px 10px;
-    margin-bottom: 3px;
+    margin-bottom: 2px;
     background-color: rgba(255, 255, 255, 0.02);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
     border-radius: 6px;
-    gap: 12px;
+    gap: 10px;
     width: 100%;
 }
 .trade-thumb {
-    width: 38px;
-    height: 38px;
+    width: 36px;
+    height: 36px;
     border-radius: 6px;
     object-fit: cover;
     background: rgba(255,255,255,0.05);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1rem;
+    font-size: 0.95rem;
     flex-shrink: 0;
 }
-.trade-main-content {
-    flex-grow: 1;
+.trade-info-container {
     display: flex;
     flex-direction: column;
     justify-content: center;
     min-width: 0;
+    flex-grow: 1;
 }
-.trade-top-row {
-    font-size: 0.92rem;
+.trade-top-line {
+    font-size: 0.9rem;
     font-weight: 600;
     color: #ffffff;
     display: flex;
     align-items: center;
-    flex-wrap: wrap;
     gap: 8px;
     line-height: 1.2;
 }
-.trade-bottom-row {
-    font-size: 0.74rem;
+.trade-bottom-line {
+    font-size: 0.73rem;
     color: #94a3b8;
     margin-top: 2px;
     display: flex;
@@ -226,29 +228,29 @@ def render_trade_card(trade, df):
 
   st.markdown(CARD_CSS, unsafe_allow_html=True)
 
-  # სტატუსის და ფერის ლოგიკა: მიმდინარე -> ნარინჯისფერი ბეჯი; დასრულებული -> მოგება (მწვანე) / წაგება (წითელი)
+  # სტატუსის და ფერის ლოგიკა
   if is_finalized:
     pnl_color = GREEN if pnl > 0 else (RED if pnl < 0 else GRAY)
     status_indicator = f"<span style='color:{pnl_color}; font-weight:600;'>{pnl:+.2f}$</span>"
   else:
-    status_indicator = f"<span style='background-color: {ORANGE}; color: white; font-size: 0.68rem; padding: 1px 6px; border-radius: 4px; font-weight: 500;'>მიმდინარე</span>"
+    status_indicator = f"<span style='background-color: {ORANGE}; color: white; font-size: 0.65rem; padding: 1px 5px; border-radius: 4px; font-weight: 500;'>მიმდინარე</span>"
 
   thumb_html = f"<img src='{screenshot}' class='trade-thumb'>" if _is_url(screenshot) else "<div class='trade-thumb'>📁</div>"
 
-  # Streamlit-ის სვეტების გარეშე, ვქმნით ერთ კომპაქტურ ჰორიზონტალურ ბლოკს (Flexbox)
-  col_main, col_menu = st.columns([9.4, 0.6], vertical_alignment="center")
+  # ვანაწილებთ სვეტებს ისე, რომ კონტენტი იყოს მარცხნივ კომპაქტურად, ხოლო მენიუ გვერდით
+  col_card, col_menu = st.columns([11.2, 0.8], vertical_alignment="center")
 
-  with col_main:
+  with col_card:
     st.markdown(
         f"""
-        <div class='glide-trade-card'>
+        <div class='glide-trade-row'>
             {thumb_html}
-            <div class='trade-main-content'>
-                <div class='trade-top-row'>
+            <div class='trade-info-container'>
+                <div class='trade-top-line'>
                     <span>{pair}</span>
                     {status_indicator}
                 </div>
-                <div class='trade-bottom-row'>
+                <div class='trade-bottom-line'>
                     <span>{_side_label(side)}</span>
                     <span>•</span>
                     <span>{_pretty_date(entry_date)}</span>
