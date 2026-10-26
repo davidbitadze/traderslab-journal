@@ -1,4 +1,5 @@
 from database import fetch_trades
+from utils.formulas import calculate_stats
 import pandas as pd
 import streamlit as st
 
@@ -33,6 +34,14 @@ def _is_true(value):
   return bool(value)
 
 
+def _trade_date(trade):
+  """ჩატარების თარიღი (Trade Date); თუ არ არის, ჩანაწერის შექმნის დრო (Entry Date)."""
+  value = trade.get("Trade Date")
+  if value is None or pd.isna(value) or str(value).strip() in ("", "None"):
+    return trade.get("Entry Date")
+  return value
+
+
 def _clean_label(value):
   if value is None or pd.isna(value) or not str(value).strip():
     return "N/A"
@@ -65,7 +74,7 @@ def _collect_trades(df):
 
     rows.append({
         "Trade ID": trade_id,
-        "Date": pd.to_datetime(trade.get("Entry Date"), errors="coerce"),
+        "Date": pd.to_datetime(_trade_date(trade), errors="coerce"),
         "Pair": _clean_label(trade.get("Pair")),
         "Side": _clean_label(trade.get("Side")),
         "Pattern": _clean_label(pattern),
@@ -82,28 +91,7 @@ def _collect_trades(df):
 
 def _stats(d):
   """ძირითადი მაჩვენებლები გარიგებების ნებისმიერი ჩანაკვეთისთვის."""
-  n = len(d)
-  if n == 0:
-    return None
-  wins = d[d["PnL"] > 0]["PnL"]
-  losses = d[d["PnL"] < 0]["PnL"]
-  gross_win = wins.sum()
-  gross_loss = abs(losses.sum())
-  avg_win = wins.mean() if len(wins) else 0.0
-  avg_loss = abs(losses.mean()) if len(losses) else 0.0
-  win_rate = len(wins) / n * 100
-  return {
-      "n": n,
-      "total": d["PnL"].sum(),
-      "win_rate": win_rate,
-      "wins": len(wins),
-      "losses": len(losses),
-      "avg_win": avg_win,
-      "avg_loss": avg_loss,
-      "payoff": (avg_win / avg_loss) if avg_loss > 0 else None,
-      "pf": (gross_win / gross_loss) if gross_loss > 0 else None,
-      "expectancy": d["PnL"].mean(),
-  }
+  return calculate_stats(d["PnL"])
 
 
 def _fmt(value, spec="{:.2f}", suffix=""):
