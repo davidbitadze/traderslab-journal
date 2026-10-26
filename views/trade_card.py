@@ -19,7 +19,7 @@ ORANGE = "#f97316"
 
 CARD_CSS = """
 <style>
-/* სრულიად მჭიდრო, ერთხაზიანი Glide სტილის ბარათი, სადაც მენიუც შიგნითაა */
+/* სრულიად მჭიდრო, ავტომატურ ზომაზე მორგებული Glide სტილის ბარათი ცარიელი ადგილების გარეშე */
 .glide-trade-card {
     display: flex;
     align-items: center;
@@ -29,7 +29,7 @@ CARD_CSS = """
     background-color: rgba(255, 255, 255, 0.02);
     border-bottom: 1px solid rgba(255, 255, 255, 0.06);
     border-radius: 6px;
-    gap: 10px;
+    gap: 12px;
     width: 100%;
 }
 .trade-thumb {
@@ -226,6 +226,7 @@ def render_trade_card(trade, df):
 
   st.markdown(CARD_CSS, unsafe_allow_html=True)
 
+  # სტატუსის და ფერის ლოგიკა: მიმდინარე -> ნარინჯისფერი ბეჯი; დასრულებული -> მოგება (მწვანე) / წაგება (წითელი)
   if is_finalized:
     pnl_color = GREEN if pnl > 0 else (RED if pnl < 0 else GRAY)
     status_indicator = f"<span style='color:{pnl_color}; font-weight:600;'>{pnl:+.2f}$</span>"
@@ -234,15 +235,13 @@ def render_trade_card(trade, df):
 
   thumb_html = f"<img src='{screenshot}' class='trade-thumb'>" if _is_url(screenshot) else "<div class='trade-thumb'>📁</div>"
 
-  # სრულიად მჭიდრო ბარათი, სადაც შიგნითვეა ჩადგმული როგორც კონტენტი, ისე სამწერტილიანი მენიუ
-  st.markdown(f"<div class='glide-trade-card'>", unsafe_allow_html=True)
-  
-  col_content, col_popover = st.columns([9.2, 0.8], vertical_alignment="center")
+  # Streamlit-ის სვეტების გარეშე, ვქმნით ერთ კომპაქტურ ჰორიზონტალურ ბლოკს (Flexbox)
+  col_main, col_menu = st.columns([9.4, 0.6], vertical_alignment="center")
 
-  with col_content:
+  with col_main:
     st.markdown(
         f"""
-        <div style='display: flex; align-items: center; gap: 10px; width: 100%; min-width: 0;'>
+        <div class='glide-trade-card'>
             {thumb_html}
             <div class='trade-main-content'>
                 <div class='trade-top-row'>
@@ -260,7 +259,7 @@ def render_trade_card(trade, df):
         unsafe_allow_html=True
     )
 
-  with col_popover:
+  with col_menu:
     with st.popover("⋯"):
       if st.button("📄 დეტალები", key=f"det_menu_{trade_id}", use_container_width=True):
         show_trade_details_dialog(trade, df)
@@ -268,8 +267,6 @@ def render_trade_card(trade, df):
       if st.button("🗑️ წაშლა", key=f"del_menu_{trade_id}", use_container_width=True):
         st.session_state[state_key] = "delete"
         st.rerun()
-
-  st.markdown(f"</div>", unsafe_allow_html=True)
 
   if current_mode == "delete":
     st.error("⚠️ ნამდვილად გსურთ გარიგების წაშლა?")
