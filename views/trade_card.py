@@ -96,7 +96,7 @@ def show_trade_details_dialog(trade, df):
       st.toast("სტატუსი განახლდა!", icon="🔄")
       st.rerun(scope="fragment")
   with col_st2:
-    status_badge = "🔴 დასრულებული" if is_finalized else "🟢 მიმდინარე პოზიცია"
+    status_badge = "-დასრულებული" if is_finalized else "-მიმდინარე"
     st.caption(f"მიმდინარე სტატუსი: **{status_badge}**")
 
   st.divider()
