@@ -315,7 +315,7 @@ def render_trade_card(trade, df):
   formation = trade.get("Formation", "N/A")
   screenshot = trade.get("Screenshot", "No Screenshot")
 
-# მკაცრი შემოწმება: მხოლოდ იმ შემთხვევაშია True, თუ ბაზაში მკაფიოდ წერია "true" ან True
+  # მკაცრი შემოწმება: მხოლოდ იმ შემთხვევაშია True, თუ ბაზაში მკაფიოდ წერია "true" ან True
   raw_fin = trade.get("Finalized")
   if raw_fin is None or str(raw_fin).strip() in ("", "None", "nan", "False", "false"):
     is_finalized = False
@@ -343,8 +343,9 @@ def render_trade_card(trade, df):
   current_mode = st.session_state.get(state_key, None)
 
   with st.container(border=True):
-    col_thumb, col_info, col_toggle, col_btn, col_menu = st.columns(
-        [1.1, 5, 2.2, 1.7, 0.7], vertical_alignment="center"
+    # სვეტებიდან ამოღებულია ცალკეული დეტალების ღილაკი; დარჩა სურათი, ინფო, ტოგლი და სამწერტილიანი მენიუ
+    col_thumb, col_info, col_toggle, col_menu = st.columns(
+        [1.1, 5.5, 2.4, 1.0], vertical_alignment="center"
     )
 
     with col_thumb:
@@ -379,24 +380,19 @@ def render_trade_card(trade, df):
           args=(trade_id,),
       )
 
-      # თუ დასრულებულზე გადაიყვანა და Exit არ აქვს, ვატყობინებთ
       if current_toggle_state and exits.empty:
         st.toast(
-            f"⚠️{pair} გარიგება დასრულებულია, თუმცა გამოსვლის (Exit) დეტალები არ არის გაწერილი."
-            "\nშესაბამისად, მითითებულია (PnL = 0$)",
+            f"⚠️ {pair} გარიგება დასრულებულია, თუმცა გამოსვლის (Exit) დეტალები არ არის გაწერილი.",
             icon="ℹ️",
         )
 
-    with col_btn:
-      if st.button(
-          "დეტალები", key=f"det_menu_{trade_id}", use_container_width=True
-      ):
-        show_trade_details_dialog(trade, df)
-
     with col_menu:
+      # სამწერტილიანი მენიუ სადაც მოთავსებულია "დეტალები" და "წაშლა" ყოველგვარი ზედმეტი იკონკების გარეშე
       with st.popover("⋯"):
-        st.write(f"**მართვა: {pair}**")
-        if st.button("🗑️ გარიგების წაშლა", key=f"del_menu_{trade_id}"):
+        if st.button("დეტალები", key=f"det_menu_{trade_id}", use_container_width=True):
+          show_trade_details_dialog(trade, df)
+        
+        if st.button("წაშლა", key=f"del_menu_{trade_id}", use_container_width=True):
           st.session_state[state_key] = "delete"
           st.rerun()
 
