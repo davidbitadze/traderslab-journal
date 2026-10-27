@@ -267,10 +267,10 @@ def render_trade_card(trade, df):
       
   img_url = _get_image_url(screenshot)
   if img_url:
-    # Inline სტილები უზრუნველყოფს, რომ ბრაუზერმა ქეშის მიუხედავად აუცილებლად სწორად აჩვენოს
-    thumb_html = f"<img src='{img_url}' style='width: 36px; height: 36px; border-radius: 6px; object-fit: contain; background: #0f172a; display: block; border: 1px solid rgba(255,255,255,0.1);'>"
+    # cover - ზუმდება და ავსებს მთელ კვადრატს, object-position-ით კი ვარეგულიებთ საიდან აიღოს
+    thumb_html = f"<img src='{img_url}' style='width: 36px; height: 36px; border-radius: 6px; object-fit: cover; object-position: 20% center; display: block; border: 1px solid rgba(255,255,255,0.1);'>"
   else:
-    thumb_html = "<div class='trade-thumb-placeholder'>📁</div>"    
+    thumb_html = "<div class='trade-thumb-placeholder'>📁</div>"
     
     
   col_thumb, col_info, col_menu = st.columns([0.7, 8.8, 0.5], vertical_alignment="center")
