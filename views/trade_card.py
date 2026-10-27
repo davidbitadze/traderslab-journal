@@ -45,14 +45,13 @@ div[data-testid="element-container"]:has(> [data-testid="stHorizontalBlock"]) {
     flex: unset !important;
     min-width: 0 !important;
 }
-/* სკრინშოტის პატარა თამბნეული - ოპტიმიზირებულია განიერი გრაფიკებისთვის */
+/* განიერი სკრინშოტების სრულად ჩატევა კვადრატში */
 .trade-thumb-img {
     width: 36px;
     height: 36px;
     border-radius: 6px;
-    object-fit: cover;
-    object-position: left center;
-    background: rgba(255,255,255,0.05);
+    object-fit: contain;
+    background: #0f172a;
     display: block;
     border: 1px solid rgba(255,255,255,0.1);
 }
