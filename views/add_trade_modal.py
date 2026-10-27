@@ -21,17 +21,17 @@ def render_add_trade_modal():
       )
       pair = st.text_input("ვალუტის წყვილი (Pair)", "EURUSD", key="modal_pair")
       entry_price = st.number_input(
-          "შესვლის ფასი (Price)", value=1.0850, format="%.5f", key="modal_entry_price"
+          "შესვლის ფასი (Price)", value=1.0000, format="%.5f", key="modal_entry_price"
       )
-      qty = st.number_input("მოცულობა (Qty)", value=6000.0, step=100.0, key="modal_qty")
+      qty = st.number_input("მოცულობა (Qty)", value=1000.0, step=100.0, key="modal_qty")
       risk_dollar = st.number_input(
           "რისკი დოლარში (Risk $)", value=10.0, step=1.0, key="modal_risk"
       )
       sl_price = st.number_input(
-          "სტოპ ლოსი (SL Price)", value=1.0800, format="%.5f", key="modal_sl"
+          "სტოპ ლოსი (SL Price)", value=1.0000, format="%.5f", key="modal_sl"
       )
       tp_price = st.number_input(
-          "ტეიკ პროფიტი (TP Price)", value=1.0950, format="%.5f", key="modal_tp"
+          "ტეიკ პროფიტი (TP Price)", value=1.0000, format="%.5f", key="modal_tp"
       )
       
       pattern = (
