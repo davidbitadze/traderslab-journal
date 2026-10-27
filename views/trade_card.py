@@ -264,15 +264,18 @@ def render_trade_card(trade, df):
     status_indicator = f"<span style='color:{pnl_color}; font-weight:600;'>{pnl:+.2f}$</span>"
   else:
     status_indicator = f"<span style='background-color: {ORANGE}; color: white; font-size: 0.6rem; padding: 1px 4px; border-radius: 3px; font-weight: 500;'>მიმდინარე</span>"
-
+      
   img_url = _get_image_url(screenshot)
   if img_url:
-    thumb_html = f"<img src='{img_url}' class='trade-thumb-img'>"
+    # Inline სტილები უზრუნველყოფს, რომ ბრაუზერმა ქეშის მიუხედავად აუცილებლად სწორად აჩვენოს
+    thumb_html = f"<img src='{img_url}' style='width: 36px; height: 36px; border-radius: 6px; object-fit: contain; background: #0f172a; display: block; border: 1px solid rgba(255,255,255,0.1);'>"
   else:
-    thumb_html = "<div class='trade-thumb-placeholder'>📁</div>"
-
+    thumb_html = "<div class='trade-thumb-placeholder'>📁</div>"    
+    
+    
   col_thumb, col_info, col_menu = st.columns([0.7, 8.8, 0.5], vertical_alignment="center")
 
+    
   with col_thumb:
     st.markdown(thumb_html, unsafe_allow_html=True)
 
