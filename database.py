@@ -1,6 +1,8 @@
 import pandas as pd
 import streamlit as st
 from supabase import create_client
+import uuid
+import re
 
 
 def get_supabase_client():
@@ -35,9 +37,6 @@ def insert_trade(trade_data):
     return False
 
 
-# database.py-ის დამატებითი ფუნქციები პარამეტრებისთვის
-
-
 def fetch_settings(category):
   """კატეგორიის მიხედვით (მაგ: 'pattern' ან 'trigger') სიის წამოღება ბაზიდან"""
   try:
@@ -50,7 +49,6 @@ def fetch_settings(category):
     )
     return [row["item_name"] for row in response.data] if response.data else []
   except Exception:
-    # საწყისი დეფოლტები თუ ცხრილი ჯერ ცარიელია
     if category == "pattern":
       return ["ვ-შემობრუნება", "ორმაგი წვერი", "თავი მხრები"]
     else:
@@ -89,12 +87,12 @@ def update_setting_item(category, old_name, new_name):
   except Exception as e:
     return False
 
+
 def update_trade(trade_id, updated_data):
   """არსებული გარიგების მონაცემების განახლება Supabase-ში Trade ID-ის ან id-ის მიხედვით"""
   try:
     supabase = get_supabase_client()
     
-    # 1. ვცდილობთ Trade ID სვეტით განახლებას
     response = (
         supabase.table("trades")
         .update(updated_data)
@@ -102,7 +100,6 @@ def update_trade(trade_id, updated_data):
         .execute()
     )
     
-    # 2. თუ response.data ცარიელია, ვცდილობთ id (Primary Key) სვეტით
     if not response.data:
       response = (
           supabase.table("trades")
@@ -116,6 +113,7 @@ def update_trade(trade_id, updated_data):
     st.error(f"ბაზის განახლების შეცდომა: {e}")
     return False
 
+
 def delete_trade(trade_id):
   """გარიგების და მასთან დაკავშირებული ქვემოქმედებების წაშლა Trade ID-ის მიხედვით"""
   try:
@@ -126,9 +124,6 @@ def delete_trade(trade_id):
   except Exception as e:
     st.error(f"ბაზიდან წაშლის შეცდომა: {e}")
     return False
-
-
-# საწყისი დეპოზიტის/ტრანზაქციების წამოღება ბაზიდან
 
 
 def fetch_balance_transactions():
@@ -172,19 +167,29 @@ def delete_balance_transaction(txn_id):
     st.error(f"შეცდომა ტრანზაქციის წაშლისას: {e}")
     return False
 
-def upload_screenshot(uploaded_file, file_name):
+
+def upload_screenshot(uploaded_file, file_name=None):
   """სურათს Supabase Storage-ში ტვირთავს და აბრუნებს საჯარო ბმულს."""
   try:
     supabase = get_supabase_client()
+    
+    # სახელის უსაფრთხო დამუშავება (სფეისების და კონფლიქტური სიმბოლოების მოცილება)
+    if file_name:
+      clean_name = re.sub(r'[^a-zA-Z0-9.\-_]', '_', file_name)
+    else:
+      clean_name = "trade_screenshot.png"
+
+    unique_file_name = f"{uuid.uuid4().hex[:6]}_{clean_name}"
+
     supabase.storage.from_("screenshots").upload(
-        file_name,
+        unique_file_name,
         uploaded_file.getvalue(),
         {
             "content-type": uploaded_file.type or "image/png",
             "upsert": "true",
         },
     )
-    return supabase.storage.from_("screenshots").get_public_url(file_name)
+    return supabase.storage.from_("screenshots").get_public_url(unique_file_name)
   except Exception as e:
     st.error(f"სურათის ატვირთვის შეცდომა: {e}")
     return None
