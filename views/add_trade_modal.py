@@ -12,8 +12,7 @@ def render_add_trade_modal():
   with st.popover("➕ ახალი გარიგების დამატება"):
     st.subheader("მთავარი გარიგების გახსნა")
 
-    with st.form("new_trade_form"):
-      # ველები ლაგდება ზუსტად თქვენი მიმდევრობით, ერთ ვერტიკალურ ხაზად (ან ორ სვეტად მკაცრი გადანაწილებით)
+    with st.form("new_trade_form", clear_on_submit=True):
       default_time_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
       entry_date = st.text_input(
           "თარიღი და დრო (მაგ: 2026-10-13 16:38:00)", 
@@ -65,9 +64,8 @@ def render_add_trade_modal():
           try:
             ext = os.path.splitext(screenshot.name)[1].lower() or ".png"
             stamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-            uploaded_url = upload_screenshot(
-                screenshot, f"{pair}_{stamp}_{uuid.uuid4().hex[:6]}{ext}"
-            )
+            file_safe_name = f"{pair}_{stamp}_{uuid.uuid4().hex[:6]}{ext}"
+            uploaded_url = upload_screenshot(screenshot, file_name=file_safe_name)
             if uploaded_url:
               screenshot_value = uploaded_url
           except Exception as upload_err:
