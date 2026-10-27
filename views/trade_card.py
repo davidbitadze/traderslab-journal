@@ -17,57 +17,90 @@ RED = "#ef4444"
 GRAY = "#94a3b8"
 ORANGE = "#f97316"
 
-CARD_CSS = """
+def get_card_css(scale):
+  if scale == "small":
+    size = "28px"
+    font_main = "0.78rem"
+    font_sub = "0.62rem"
+    padding = "2px 8px"
+  elif scale == "large":
+    size = "46px"
+    font_main = "1.05rem"
+    font_sub = "0.85rem"
+    padding = "8px 12px"
+  else:  # medium (default)
+    size = "36px"
+    font_main = "0.86rem"
+    font_sub = "0.7rem"
+    padding = "4px 10px"
+
+  return f"""
 <style>
-div[data-testid="element-container"]:has(> [data-testid="stHorizontalBlock"]) {
+div[data-testid="element-container"]:has(> [data-testid="stHorizontalBlock"]) {{
     margin-bottom: 2px !important;
     padding-bottom: 0px !important;
-}
-[data-testid="stVerticalBlock"] {
+}}
+[data-testid="stVerticalBlock"] {{
     gap: 2px !important;
-}
-[data-testid="stHorizontalBlock"] {
+}}
+[data-testid="stHorizontalBlock"] {{
     align-items: center !important;
     background-color: rgba(255, 255, 255, 0.025) !important;
     border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
     border-radius: 4px !important;
-    padding: 4px 10px !important;
+    padding: {padding} !important;
     margin: 0px !important;
     width: 100% !important;
-}
-[data-testid="stHorizontalBlock"] > div:last-child {
+}}
+[data-testid="stHorizontalBlock"] > div:last-child {{
     display: flex !important;
     justify-content: flex-end !important;
     margin-left: auto !important;
-}
-[data-testid="stColumn"] {
+}}
+[data-testid="stColumn"] {{
     width: auto !important;
     flex: unset !important;
     min-width: 0 !important;
-}
-/* განიერი სკრინშოტების სრულად ჩატევა კვადრატში */
-.trade-thumb-img {
-    width: 36px;
-    height: 36px;
+}}
+.trade-thumb-img {{
+    width: {size};
+    height: {size};
     border-radius: 6px;
-    object-fit: contain;
-    background: #0f172a;
+    object-fit: cover;
+    object-position: 20% center;
     display: block;
     border: 1px solid rgba(255,255,255,0.1);
-}
-.trade-thumb-placeholder {
-    width: 36px;
-    height: 36px;
+}}
+.trade-thumb-placeholder {{
+    width: {size};
+    height: {size};
     border-radius: 6px;
     background: rgba(255,255,255,0.05);
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 0.95rem;
-}
-div[data-testid="stPopoverBody"] {
+}}
+.trade-main-text {{
+    font-size: {font_main};
+    font-weight: 600;
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    line-height: 1.1;
+}}
+.trade-sub-text {{
+    font-size: {font_sub};
+    color: #94a3b8;
+    margin-top: 1px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}}
+div[data-testid="stPopoverBody"] {{
     z-index: 99999 !important;
-}
+}}
 </style>
 """
 
@@ -257,7 +290,9 @@ def render_trade_card(trade, df):
   state_key = f"mode_{trade_id}"
   current_mode = st.session_state.get(state_key, None)
 
-  st.markdown(CARD_CSS, unsafe_allow_html=True)
+  # მიმდინარე მასშტაბის წაკითხვა სესიიდან (დეფოლტად საშუალო)
+  current_scale = st.session_state.get("ui_scale", "medium")
+  st.markdown(get_card_css(current_scale), unsafe_allow_html=True)
 
   if is_finalized:
     pnl_color = GREEN if pnl > 0 else (RED if pnl < 0 else GRAY)
@@ -267,15 +302,12 @@ def render_trade_card(trade, df):
       
   img_url = _get_image_url(screenshot)
   if img_url:
-    # cover - ზუმდება და ავსებს მთელ კვადრატს, object-position-ით კი ვარეგულიებთ საიდან აიღოს
-    thumb_html = f"<img src='{img_url}' style='width: 36px; height: 36px; border-radius: 6px; object-fit: cover; object-position: 20% center; display: block; border: 1px solid rgba(255,255,255,0.1);'>"
+    thumb_html = f"<img src='{img_url}' class='trade-thumb-img'>"
   else:
     thumb_html = "<div class='trade-thumb-placeholder'>📁</div>"
     
-    
   col_thumb, col_info, col_menu = st.columns([0.7, 8.8, 0.5], vertical_alignment="center")
 
-    
   with col_thumb:
     st.markdown(thumb_html, unsafe_allow_html=True)
 
@@ -283,11 +315,11 @@ def render_trade_card(trade, df):
     st.markdown(
         f"""
         <div style='display: flex; flex-direction: column; justify-content: center; min-width: 0;'>
-            <div style='font-size: 0.86rem; font-weight: 600; color: #ffffff; display: flex; align-items: center; gap: 6px; line-height: 1.1;'>
+            <div class='trade-main-text'>
                 <span>{pair}</span>
                 {status_indicator}
             </div>
-            <div style='font-size: 0.7rem; color: #94a3b8; margin-top: 1px; display: flex; align-items: center; gap: 4px;'>
+            <div class='trade-sub-text'>
                 <span>{_side_label(side)}</span>
                 <span>•</span>
                 <span>{_pretty_date(entry_date)}</span>
