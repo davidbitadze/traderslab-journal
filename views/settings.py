@@ -18,6 +18,29 @@ def render_settings_view(lang="ka"):
       " ბალანსი."
   )
 
+  # --- ინტერფეისის მასშტაბისა და ვიზუალური ზომების მართვა ---
+  st.markdown("### 📱 ეკრანისა და ვიზუალიზაციის ზომები")
+  current_scale = st.session_state.get("ui_scale", "medium")
+  scale_options = {
+      "პატარა (მობილური / კომპაქტური)": "small",
+      "საშუალო (სტანდარტული)": "medium",
+      "დიდი (გაფართოებული)": "large"
+  }
+  
+  selected_scale_label = st.selectbox(
+      "აირჩიეთ ინტერფეისის ზომა",
+      options=list(scale_options.keys()),
+      index=list(scale_options.values()).index(current_scale) if current_scale in scale_options.values() else 1
+  )
+  
+  new_scale = scale_options[selected_scale_label]
+  if new_scale != current_scale:
+    st.session_state["ui_scale"] = new_scale
+    st.success("ინტერფეისის ზომა წარმატებით განახლდა!")
+    st.rerun()
+
+  st.divider()
+
   # --- ბალანსის ტრანზაქციების (შევსება / გამოტანა) მართვა ---
   st.markdown("### 💰 დეპოზიტისა და ბალანსის ისტორია")
 
