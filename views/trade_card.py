@@ -45,13 +45,16 @@ div[data-testid="element-container"]:has(> [data-testid="stHorizontalBlock"]) {
     flex: unset !important;
     min-width: 0 !important;
 }
+/* სკრინშოტის პატარა თამბნეული - ოპტიმიზირებულია განიერი გრაფიკებისთვის */
 .trade-thumb-img {
     width: 36px;
     height: 36px;
     border-radius: 6px;
     object-fit: cover;
+    object-position: left center;
     background: rgba(255,255,255,0.05);
     display: block;
+    border: 1px solid rgba(255,255,255,0.1);
 }
 .trade-thumb-placeholder {
     width: 36px;
@@ -71,12 +74,21 @@ div[data-testid="stPopoverBody"] {
 
 def _has_value(value):
   return value is not None and str(value).strip() not in (
-      "", "None", "nan", "NaT", "<NA>"
+      "", "None", "nan", "NaT", "<NA>", "No Screenshot"
   )
 
-def _is_url(value):
-  s = str(value).strip()
-  return s.startswith("http://") or s.startswith("https://")
+def _get_image_url(val):
+  if not _has_value(val):
+    return None
+  val_str = str(val).strip()
+  if val_str.startswith("http://") or val_str.startswith("https://"):
+    return val_str
+  
+  supabase_url = st.secrets.get("SUPABASE_URL", "")
+  if supabase_url:
+    return f"{supabase_url}/storage/v1/object/public/screenshots/{val_str}"
+  
+  return None
 
 def _pretty_date(value):
   try:
@@ -114,7 +126,7 @@ def show_trade_details_dialog(trade, df):
 
   pair = trade.get("Pair", "N/A")
   side = trade.get("Side", "N/A")
-  main_screenshot = trade.get("Screenshot", "No Screenshot")
+  main_screenshot = trade.get("Screenshot")
   sub_actions = df[df["Parent Trade ID"] == trade_id]
 
   raw_fin = trade.get("Finalized")
@@ -147,15 +159,18 @@ def show_trade_details_dialog(trade, df):
 
   st.divider()
 
-  # სკრინშოტის ჩვენება და განახლება დეტალებში
-  if _is_url(main_screenshot):
-    st.image(main_screenshot, use_container_width=True)
+  img_url = _get_image_url(main_screenshot)
+  if img_url:
+    st.image(img_url, use_container_width=True)
   
   new_img = st.file_uploader("🖼️ სკრინშოტის შეცვლა / ატვირთვა", type=["png", "jpg", "jpeg"], key=f"up_img_{trade_id}")
   if new_img is not None:
-    img_url = upload_screenshot(new_img)
-    if img_url:
-      update_trade(trade_id, {"Screenshot": img_url})
+    ext = os.path.splitext(new_img.name)[1].lower() or ".png"
+    stamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    file_safe_name = f"{pair}_{stamp}_{uuid.uuid4().hex[:6]}{ext}"
+    uploaded_url = upload_screenshot(new_img, file_name=file_safe_name)
+    if uploaded_url:
+      update_trade(trade_id, {"Screenshot": uploaded_url})
       st.toast("სკრინშოტი განახლდა!", icon="🖼️")
       st.rerun(scope="fragment")
 
@@ -205,7 +220,6 @@ def show_trade_details_dialog(trade, df):
             recalc_net_pnl(trade_id)
             st.rerun(scope="fragment")
 
-      # თუ ამ ეტაპზეა რედაქტირება ჩართული
       if active_edit_sub == sub_id:
         with st.form(key=f"form_edit_sub_{sub_id}"):
           st.markdown(f"**ეტაპის რედაქტირება: {sub.get('ActionType')}**")
@@ -229,7 +243,7 @@ def render_trade_card(trade, df):
   pair = trade.get("Pair", "N/A")
   side = trade.get("Side", "N/A")
   entry_date = trade.get("Entry Date", "N/A")
-  screenshot = trade.get("Screenshot", "No Screenshot")
+  screenshot = trade.get("Screenshot")
 
   raw_fin = trade.get("Finalized")
   is_finalized = str(raw_fin).strip().lower() in ("true", "1", "yes")
@@ -252,8 +266,9 @@ def render_trade_card(trade, df):
   else:
     status_indicator = f"<span style='background-color: {ORANGE}; color: white; font-size: 0.6rem; padding: 1px 4px; border-radius: 3px; font-weight: 500;'>მიმდინარე</span>"
 
-  if _is_url(screenshot):
-    thumb_html = f"<img src='{screenshot}' class='trade-thumb-img'>"
+  img_url = _get_image_url(screenshot)
+  if img_url:
+    thumb_html = f"<img src='{img_url}' class='trade-thumb-img'>"
   else:
     thumb_html = "<div class='trade-thumb-placeholder'>📁</div>"
 
