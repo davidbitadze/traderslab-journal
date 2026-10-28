@@ -1,9 +1,9 @@
 from database import fetch_balance_transactions, fetch_trades
 import pandas as pd
 import streamlit as st
-from utils.formulas import calculate_trade_pnl
+from utils.formulas import calculate_net_pnl, to_float
 from views.add_trade_modal import render_add_trade_modal
-from views.trade_card import render_trade_card
+from views.trade_card import recalc_all_net_pnl, render_trade_card
 
 
 def render_journal_view(lang="ka"):
@@ -22,7 +22,7 @@ def render_journal_view(lang="ka"):
       df = df.sort_values(by="parsed_date", ascending=False).drop(columns=["parsed_date"])
     
 
-  # 3. ვთვლით ჯამურ PnL-ს ყველა გარიგებიდან
+  # 3. ჯამური PnL: იგივე ფორმულა, რაც ბარათებზეა (utils/formulas.py)
   total_pnl = 0.0
   if not df.empty:
     main_trades = df[
@@ -33,28 +33,10 @@ def render_journal_view(lang="ka"):
 
     for _, trade in main_trades.iterrows():
       trade_id = trade.get("Trade ID") or trade.get("Parent Trade ID")
-      entry_price = float(trade.get("Entry Price", 0) or 0)
-      risk_val = float(trade.get("Risk ($)", 0) or 0)
-      side = trade.get("Side", "Long")
-      is_fin = (
-          str(trade.get("Finalized", "False")).lower() == "true"
-      )
-
       sub_actions = df[df["Parent Trade ID"] == trade_id]
-      exits = sub_actions[
-          sub_actions["ActionType"].str.contains("Exit", case=False, na=False)
-      ]
-
-      exit_price = entry_price
-      if not exits.empty:
-        exit_price = float(
-            exits.iloc[-1].get("Entry Price", entry_price) or entry_price
-        )
-      else:
-        if is_fin:
-          exit_price = entry_price
-
-      pnl = calculate_trade_pnl(entry_price, exit_price, risk_val, side)
+      pnl = calculate_net_pnl(trade, sub_actions)
+      if pnl is None:
+        pnl = to_float(trade.get("Net P/L"))
       total_pnl += pnl
 
   # 4. საბოლოო ბალანსი = დეპოზიტების ჯამი + ჯამური PnL
@@ -99,3 +81,13 @@ def render_journal_view(lang="ka"):
   
   else:
     st.info("ჟურნალში გარიგებები ჯერ არ არის. გამოიყენეთ ზედა ღილაკი.")
+
+  # 7. სერვისი: ფორმულის შეცვლის შემდეგ ბაზაში შენახული Net P/L-ების გადათვლა
+  with st.expander("🛠️ სერვისი"):
+    recalc_msg = st.session_state.pop("recalc_msg", None)
+    if recalc_msg:
+      st.success(recalc_msg)
+    if st.button("🔁 ყველა გარიგების Net P/L-ის გადათვლა", key="recalc_all_btn"):
+      changed = recalc_all_net_pnl()
+      st.session_state["recalc_msg"] = f"გადათვლილია. განახლდა {changed} გარიგება."
+      st.rerun()
