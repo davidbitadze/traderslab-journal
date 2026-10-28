@@ -22,6 +22,14 @@ def render_journal_view(lang="ka"):
       df = df.sort_values(by="parsed_date", ascending=False).drop(columns=["parsed_date"])
     
 
+  # 2.1 Net P/L-ის სინქრონიზაცია ბაზასთან: ერთხელ სესიაზე (გვერდის ჩატვირთვა/რეფრეში)
+  if not df.empty and not st.session_state.get("net_pnl_synced"):
+    st.session_state["net_pnl_synced"] = True
+    try:
+      recalc_all_net_pnl(df)
+    except Exception:
+      pass  # სინქრონიზაციის შეცდომამ გვერდი არ უნდა გააჩეროს
+
   # 3. ჯამური PnL: იგივე ფორმულა, რაც ბარათებზეა (utils/formulas.py)
   total_pnl = 0.0
   if not df.empty:
@@ -81,13 +89,3 @@ def render_journal_view(lang="ka"):
   
   else:
     st.info("ჟურნალში გარიგებები ჯერ არ არის. გამოიყენეთ ზედა ღილაკი.")
-
-  # 7. სერვისი: ფორმულის შეცვლის შემდეგ ბაზაში შენახული Net P/L-ების გადათვლა
-  with st.expander("🛠️ სერვისი"):
-    recalc_msg = st.session_state.pop("recalc_msg", None)
-    if recalc_msg:
-      st.success(recalc_msg)
-    if st.button("🔁 ყველა გარიგების Net P/L-ის გადათვლა", key="recalc_all_btn"):
-      changed = recalc_all_net_pnl()
-      st.session_state["recalc_msg"] = f"გადათვლილია. განახლდა {changed} გარიგება."
-      st.rerun()
