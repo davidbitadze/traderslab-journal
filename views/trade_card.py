@@ -287,17 +287,18 @@ def show_trade_details_dialog(trade, df):
         ],
         key=f"add_act_type_{trade_id}"
     )
-    
+
+    sub_date = st.text_input(
+        "ეტაპის თარიღი და დრო",
+        value=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        key=f"add_sub_date_{trade_id}"
+      
     col_sub1, col_sub2 = st.columns(2)
     with col_sub1:
       sub_price = st.number_input("ფასი (Price)", value=0.0, step=0.0001, format="%.4f")
     with col_sub2:
       sub_qty = st.number_input("მოცულობა / ოდენობა (Qty)", value=1.0, step=0.1)
 
-    sub_date = st.text_input(
-        "ეტაპის თარიღი და დრო",
-        value=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        key=f"add_sub_date_{trade_id}"
     )
     
     sub_desc = st.text_input("შენიშვნა / აღწერა", key=f"add_sub_desc_{trade_id}")
