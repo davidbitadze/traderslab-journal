@@ -63,19 +63,22 @@ div[data-testid="element-container"]:has(> [data-testid="stHorizontalBlock"]) {{
     min-width: 0 !important;
 }}
 .trade-thumb-img {{
-    width: {size};
-    height: {size};
-    border-radius: 6px;
-    object-fit: cover;
-    object-position: left 30%;
-    transform: scale(1.15);
-    display: block;
-    border: 1px solid rgba(255,255,255,0.1);
+    width: {size} !important;
+    height: {size} !important;
+    min-width: {size} !important;
+    min-height: {size} !important;
+    border-radius: 6px !important;
+    object-fit: cover !important;
+    object-position: 15% center !important;
+    display: block !important;
+    border: 1px solid rgba(255,255,255,0.1) !important;
 }}
 .trade-thumb-placeholder {{
-    width: {size};
-    height: {size};
-    border-radius: 6px;
+    width: {size} !important;
+    height: {size} !important;
+    min-width: {size} !important;
+    min-height: {size} !important;
+    border-radius: 6px !important;
     background: rgba(255,255,255,0.05);
     display: flex;
     align-items: center;
@@ -104,6 +107,8 @@ div[data-testid="stPopoverBody"] {{
 }}
 </style>
 """
+
+
 
 def _has_value(value):
   return value is not None and str(value).strip() not in (
@@ -275,10 +280,10 @@ def show_trade_details_dialog(trade, df):
     act_type = st.selectbox(
         "მოქმედების ტიპი",
         [
-            "დამატებითი შესვლა",
             "ნაწილობრივი დახურვა",
             "სრული დახურვა",
-            "ცვლილება"
+            "ცვლილება",
+            "დამატებითი შესვლა"
         ],
         key=f"add_act_type_{trade_id}"
     )
