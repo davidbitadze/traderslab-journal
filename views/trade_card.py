@@ -275,10 +275,10 @@ def show_trade_details_dialog(trade, df):
     act_type = st.selectbox(
         "მოქმედების ტიპი",
         [
-            "დამატებითი შესვლა",
             "ნაწილობრივი დახურვა",
             "სრული დახურვა",
             "ცვლილება"
+            "დამატებითი შესვლა",
         ],
         key=f"add_act_type_{trade_id}"
     )
