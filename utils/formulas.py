@@ -1,7 +1,6 @@
 import math
 
 # თუ გარიგებას Risk ($) არ აქვს ჩაწერილი, ამ მნიშვნელობით ითვლება.
-# გააზრებულად გადაწყვიტე, გინდა თუ არა ეს დეფოლტი: ის არასწორ რიცხვებს გამოიმუშავებს.
 DEFAULT_RISK_USD = 5.85
 
 _LONG_ALIASES = {"long", "ზრდა (long)", "buy"}
@@ -32,11 +31,7 @@ def normalize_side(side):
 def calculate_trade_pnl(
     entry_price, exit_price, risk_usd, side="Long", round_result=True
 ):
-  """ერთი გასვლის P&L: risk * (ფასის ცვლილება %).
-
-  უცნობი მიმართულების, ნულოვანი შესვლის ფასის ან ნულოვანი რისკის შემთხვევაში 0.0.
-  round_result=False ნიშნავს დამრგვალების გარეშე (ჯამებში დაგროვილი ცდომილების თავიდან ასაცილებლად).
-  """
+  """ერთი გასვლის P&L: risk * (ფასის ცვლილება %)."""
   entry = to_float(entry_price)
   risk = to_float(risk_usd)
   direction = normalize_side(side)
@@ -54,19 +49,16 @@ def calculate_trade_pnl(
 
 
 def calculate_net_pnl(main, subs):
-  """გარიგების Net P/L (რეალიზებული).
-
-  main: მთავარი რიგი (Series ან dict), subs: ამ გარიგების ეტაპების DataFrame.
-  შესვლა = საწყისი რიგი + Scale In-ები (საშუალო შეწონილი ფასი).
-  ყოველი Exit თავისი წილით (Qty / შესვლის მოცულობა) ითვლება.
-  აბრუნებს None-ს, თუ Exit საერთოდ არ არის.
-  """
+  """გარიგების Net P/L (რეალიზებული) - მხარს უჭერს როგორც ქართულ, ისე ინგლისურ ტერმინებს."""
   side = main.get("Side", "")
   risk = to_float(main.get("Risk ($)"), DEFAULT_RISK_USD)
 
   entry_legs = [(to_float(main.get("Entry Price")), to_float(main.get("Qty")))]
+  
   for _, s in subs.iterrows():
-    if "Scale In" in str(s.get("ActionType", "")):
+    act_type = str(s.get("ActionType", ""))
+    # ვამოწმებთ როგორც ქართულ, ისე ძველ ინგლისურ ვარიანტებს
+    if "Scale In" in act_type or "დამატებითი შესვლა" in act_type:
       entry_legs.append(
           (to_float(s.get("Entry Price")), to_float(s.get("Qty")))
       )
@@ -80,8 +72,9 @@ def calculate_net_pnl(main, subs):
   exits = [
       (to_float(s.get("Entry Price"), entry_p), to_float(s.get("Qty")))
       for _, s in subs.iterrows()
-      if "Exit" in str(s.get("ActionType", ""))
+      if any(term in str(s.get("ActionType", "")) for term in ["Exit", "დახურვა", "Close"])
   ]
+  
   if not exits:
     return None
 
@@ -99,7 +92,7 @@ def calculate_net_pnl(main, subs):
 
 
 def calculate_stats(pnls):
-  """ძირითადი მაჩვენებლები P&L-ების სიისთვის. ცარიელზე აბრუნებს None-ს."""
+  """ძირითადი მაჩვენებლები P&L-ების სიისთვის."""
   values = [to_float(p) for p in pnls]
   n = len(values)
   if n == 0:
