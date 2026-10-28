@@ -108,8 +108,6 @@ div[data-testid="stPopoverBody"] {{
 </style>
 """
 
-
-
 def _has_value(value):
   return value is not None and str(value).strip() not in (
       "", "None", "nan", "NaT", "<NA>", "No Screenshot"
@@ -273,7 +271,6 @@ def show_trade_details_dialog(trade, df):
   else:
     st.caption("დამატებითი ეტაპები არ არის.")
 
-  # ფორმა ახალი დამატებითი ეტაპის (Action) დასამატებლად თარიღით და სწორი ქართული თანმიმდევრობით
   with st.form(key=f"form_add_sub_{trade_id}", clear_on_submit=True):
     st.markdown("**➕ ახალი ეტაპის დამატება:**")
     
@@ -300,7 +297,6 @@ def show_trade_details_dialog(trade, df):
     with col_sub2:
       sub_qty = st.number_input("მოცულობა / ოდენობა (Qty)", value=1.0, step=0.1)
 
-    
     sub_desc = st.text_input("შენიშვნა / აღწერა", key=f"add_sub_desc_{trade_id}")
     sub_img = st.file_uploader("🖼️ ეტაპის სკრინშოტი (არასავალდებულო)", type=["png", "jpg", "jpeg"], key=f"add_sub_img_{trade_id}")
 
@@ -345,13 +341,17 @@ def render_trade_card(trade, df):
   is_finalized = str(raw_fin).strip().lower() in ("true", "1", "yes")
 
   sub_actions = df[df["Parent Trade ID"] == trade_id]
-    # ვთვლით მკაცრად დინამიკურად ქვედა ეტაპებიდან
+  
+  # დინამიური კალკულაცია ქვედა ეტაპებიდან
   calculated_pnl = calculate_net_pnl(trade, sub_actions)
   if calculated_pnl is not None:
     pnl = calculated_pnl
   else:
     raw_net = trade.get("Net P/L")
     pnl = to_float(raw_net) if _has_value(raw_net) else 0.0
+
+  state_key = f"mode_{trade_id}"
+  current_mode = st.session_state.get(state_key, None)
 
   current_scale = st.session_state.get("ui_scale", "medium")
   st.markdown(get_card_css(current_scale), unsafe_allow_html=True)
