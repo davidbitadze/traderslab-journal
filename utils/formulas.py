@@ -1,6 +1,5 @@
 import math
 
-# თუ გარიგებას Risk ($) არ აქვს ჩაწერილი, ამ მნიშვნელობით ითვლება.
 DEFAULT_RISK_USD = 5.85
 
 _LONG_ALIASES = {"long", "ზრდა (long)", "buy"}
@@ -19,7 +18,7 @@ def to_float(value, default=0.0):
 
 
 def normalize_side(side):
-  """აბრუნებს 'long', 'short' ან None (თუ მიმართულება უცნობია)."""
+  """აბრუნებს 'long', 'short' ან None."""
   s = str(side or "").strip().lower()
   if s in _LONG_ALIASES:
     return "long"
@@ -31,7 +30,7 @@ def normalize_side(side):
 def calculate_trade_pnl(
     entry_price, exit_price, risk_usd, side="Long", round_result=True
 ):
-  """ერთი გასვლის P&L: risk * (ფასის ცვლილება %)."""
+  """ერთი გასვლის P&L გაანგარიშება."""
   entry = to_float(entry_price)
   risk = to_float(risk_usd)
   direction = normalize_side(side)
@@ -49,46 +48,68 @@ def calculate_trade_pnl(
 
 
 def calculate_net_pnl(main, subs):
-  """გარიგების Net P/L (რეალიზებული) - მხარს უჭერს როგორც ქართულ, ისე ინგლისურ ტერმინებს."""
+  """გარიგების საბოლოო Net P/L ზუსტი კოეფიციენტით და წილებით."""
   side = main.get("Side", "")
   risk = to_float(main.get("Risk ($)"), DEFAULT_RISK_USD)
 
-  entry_legs = [(to_float(main.get("Entry Price")), to_float(main.get("Qty")))]
+  # 1. მთავარი შესვლა
+  main_entry_price = to_float(main.get("Entry Price"))
+  main_qty = to_float(main.get("Qty"))
+
+  entry_legs = [(main_entry_price, main_qty)]
   
+  # 2. დამატებითი შესვლები (Scale In / დამატებითი შესვლა)
   for _, s in subs.iterrows():
     act_type = str(s.get("ActionType", ""))
-    # ვამოწმებთ როგორც ქართულ, ისე ძველ ინგლისურ ვარიანტებს
-    if "Scale In" in act_type or "დამატებითი შესვლა" in act_type:
+    if any(term in act_type for term in ["Scale In", "დამატებითი შესვლა"]):
       entry_legs.append(
           (to_float(s.get("Entry Price")), to_float(s.get("Qty")))
       )
 
-  entry_qty = sum(q for _, q in entry_legs)
-  if entry_qty > 0:
-    entry_p = sum(p * q for p, q in entry_legs) / entry_qty
+  total_entry_qty = sum(q for _, q in entry_legs)
+  if total_entry_qty > 0:
+    avg_entry_price = sum(p * q for p, q in entry_legs) / total_entry_qty
   else:
-    entry_p = entry_legs[0][0]
+    avg_entry_price = main_entry_price
 
-  exits = [
-      (to_float(s.get("Entry Price"), entry_p), to_float(s.get("Qty")))
-      for _, s in subs.iterrows()
-      if any(term in str(s.get("ActionType", "")) for term in ["Exit", "დახურვა", "Close"])
-  ]
-  
+  if avg_entry_price == 0:
+    return 0.0
+
+  # 3. გასვლები (Exit / დახურვა)
+  exits = []
+  for _, s in subs.iterrows():
+    act_type = str(s.get("ActionType", ""))
+    if any(term in act_type for term in ["Exit", "დახურვა", "Close"]):
+      exits.append((
+          to_float(s.get("Entry Price"), avg_entry_price),
+          to_float(s.get("Qty"))
+      ))
+
   if not exits:
     return None
 
-  # თუ შესვლის მოცულობა არ არის ჩაწერილი, წილებს გასვლების ჯამიდან ვითვლით
-  denom = entry_qty if entry_qty > 0 else sum(q for _, q in exits)
+  total_pnl = 0.0
+  direction = normalize_side(side)
 
-  total = 0.0
-  for ex_p, ex_q in exits:
-    share = (ex_q / denom) if denom > 0 else 1.0 / len(exits)
-    total += (
-        calculate_trade_pnl(entry_p, ex_p, risk, side, round_result=False)
-        * share
-    )
-  return round(total, 2)
+  # თითოეული დახურვისთვის ვთვლით მის წილს და მოგება/ზარალს
+  for ex_price, ex_qty in exits:
+    if ex_qty <= 0:
+      continue
+    
+    # ფასის ცვლილების კოეფიციენტი (%)
+    if direction == "long":
+      price_diff_pct = (ex_price - avg_entry_price) / avg_entry_price
+    else:
+      price_diff_pct = (avg_entry_price - ex_price) / avg_entry_price
+
+    # ამ კონკრეტული დახურვის მოცულობის წილი მთლიან მოცულობასთან
+    qty_share = ex_qty / total_entry_qty if total_entry_qty > 0 else 1.0
+
+    # საბოლოო დოლარული P/L ამ ეტაპისთვის
+    stage_pnl = risk * price_diff_pct * 100 * qty_share
+    total_pnl += stage_pnl
+
+  return round(total_pnl, 2)
 
 
 def calculate_stats(pnls):
