@@ -27,30 +27,14 @@ def normalize_side(side):
   return None
 
 
-def calculate_trade_pnl(
-    entry_price, exit_price, risk_usd, side="Long", round_result=True
-):
-  """ერთი გასვლის P&L გაანგარიშება."""
-  entry = to_float(entry_price)
-  risk = to_float(risk_usd)
-  direction = normalize_side(side)
-
-  if entry == 0 or risk == 0 or direction is None:
-    return 0.0
-
-  exit_ = to_float(exit_price)
-  if exit_ == 0:
-    exit_ = entry
-
-  diff = (exit_ - entry) if direction == "long" else (entry - exit_)
-  result = risk * (diff / entry) * 100
-  return round(result, 2) if round_result else result
-
-
 def calculate_net_pnl(main, subs):
-  """გარიგების საბოლოო Net P/L ზუსტი კოეფიციენტით და წილებით."""
+  """გარიგების Net P/L ზუსტი შეწონილი კოეფიციენტით და დოლარული რისკით."""
   side = main.get("Side", "")
   risk = to_float(main.get("Risk ($)"), DEFAULT_RISK_USD)
+  direction = normalize_side(side)
+
+  if direction is None:
+    return 0.0
 
   # 1. მთავარი შესვლა
   main_entry_price = to_float(main.get("Entry Price"))
@@ -88,26 +72,34 @@ def calculate_net_pnl(main, subs):
   if not exits:
     return None
 
-  total_pnl = 0.0
-  direction = normalize_side(side)
+  # 4. ზუსტი შეწონილი კოეფიციენტის გამოყვანა შესვლისა და გამოსვლების მიხედვით
+  total_weighted_diff = 0.0
+  total_exit_qty = 0.0
 
-  # თითოეული დახურვისთვის ვთვლით მის წილს და მოგება/ზარალს
   for ex_price, ex_qty in exits:
     if ex_qty <= 0:
       continue
     
-    # ფასის ცვლილების კოეფიციენტი (%)
+    # ფასების სხვაობა მიმართულების მიხედვით (Long-ისთვის: Exit - Entry, Short-ისთვის: Entry - Exit)
     if direction == "long":
-      price_diff_pct = (ex_price - avg_entry_price) / avg_entry_price
+      price_diff = ex_price - avg_entry_price
     else:
-      price_diff_pct = (avg_entry_price - ex_price) / avg_entry_price
+      price_diff = avg_entry_price - ex_price
 
-    # ამ კონკრეტული დახურვის მოცულობის წილი მთლიან მოცულობასთან
-    qty_share = ex_qty / total_entry_qty if total_entry_qty > 0 else 1.0
+    total_weighted_diff += price_diff * ex_qty
+    total_exit_qty += ex_qty
 
-    # საბოლოო დოლარული P/L ამ ეტაპისთვის
-    stage_pnl = risk * price_diff_pct * 100 * qty_share
-    total_pnl += stage_pnl
+  if total_exit_qty == 0:
+    return 0.0
+
+  # საშუალო შეწონილი ცვლილება ერთეულზე
+  avg_price_diff = total_weighted_diff / total_exit_qty
+
+  # კოეფიციენტი (პროცენტული ცვლილება შესვლის ფასთან შედარებით)
+  move_percentage = (avg_price_diff / avg_entry_price) * 100
+
+  # საბოლოო დოლარული P/L = რისკი * კოეფიციენტი
+  total_pnl = risk * move_percentage
 
   return round(total_pnl, 2)
 
