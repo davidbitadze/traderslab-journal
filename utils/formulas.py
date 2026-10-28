@@ -27,6 +27,26 @@ def normalize_side(side):
   return None
 
 
+def calculate_trade_pnl(
+    entry_price, exit_price, risk_usd, side="Long", round_result=True
+):
+  """ერთი გასვლის P&L გაანგარიშება."""
+  entry = to_float(entry_price)
+  risk = to_float(risk_usd)
+  direction = normalize_side(side)
+
+  if entry == 0 or risk == 0 or direction is None:
+    return 0.0
+
+  exit_ = to_float(exit_price)
+  if exit_ == 0:
+    exit_ = entry
+
+  diff = (exit_ - entry) if direction == "long" else (entry - exit_)
+  result = risk * (diff / entry) * 100
+  return round(result, 2) if round_result else result
+
+
 def calculate_net_pnl(main, subs):
   """გარიგების Net P/L ზუსტი შეწონილი კოეფიციენტით და დოლარული რისკით."""
   side = main.get("Side", "")
@@ -80,7 +100,6 @@ def calculate_net_pnl(main, subs):
     if ex_qty <= 0:
       continue
     
-    # ფასების სხვაობა მიმართულების მიხედვით (Long-ისთვის: Exit - Entry, Short-ისთვის: Entry - Exit)
     if direction == "long":
       price_diff = ex_price - avg_entry_price
     else:
@@ -92,13 +111,8 @@ def calculate_net_pnl(main, subs):
   if total_exit_qty == 0:
     return 0.0
 
-  # საშუალო შეწონილი ცვლილება ერთეულზე
   avg_price_diff = total_weighted_diff / total_exit_qty
-
-  # კოეფიციენტი (პროცენტული ცვლილება შესვლის ფასთან შედარებით)
   move_percentage = (avg_price_diff / avg_entry_price) * 100
-
-  # საბოლოო დოლარული P/L = რისკი * კოეფიციენტი
   total_pnl = risk * move_percentage
 
   return round(total_pnl, 2)
