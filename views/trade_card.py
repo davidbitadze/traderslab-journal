@@ -152,7 +152,7 @@ def _txt(value):
   return str(value).strip() if _has_value(value) else ""
 
 
-def recalc_net_pnl(parent_id):
+def recalc_net_pnl(parent_id, clear_if_none=True):
   df = fetch_trades()
   if df.empty:
     return
@@ -161,12 +161,15 @@ def recalc_net_pnl(parent_id):
     return
   subs = df[df["Parent Trade ID"] == parent_id]
   net = calculate_net_pnl(main_df.iloc[0], subs)
+  if net is None and not clear_if_none:
+    return
   update_trade(parent_id, {"Net P/L": None if net is None else str(net)})
 
-def recalc_all_net_pnl():
+def recalc_all_net_pnl(df=None):
   """ყველა გარიგების Net P/L-ს ხელახლა ითვლის და ბაზაში წერს მხოლოდ იქ, სადაც შეიცვალა.
-  გამოიყენება ფორმულის შეცვლის შემდეგ, რომ ბაზაში ძველი რიცხვები არ დარჩეს."""
-  df = fetch_trades()
+  იძახება ჟურნალის ჩატვირთვისას (ერთხელ სესიაზე), რომ ბაზაში ძველი რიცხვები არ დარჩეს."""
+  if df is None:
+    df = fetch_trades()
   if df.empty:
     return 0
   mains = df[df["ActionType"].astype(str).str.contains("Start Row", case=False, na=False)]
@@ -213,6 +216,7 @@ def show_trade_details_dialog(trade, df):
     )
     if new_status != is_finalized:
       update_trade(trade_id, {"Finalized": str(new_status)})
+      recalc_net_pnl(trade_id, clear_if_none=False)  # სტატუსის შეცვლისას Net P/L ახლდება
       st.toast("სტატუსი განახლდა!", icon="🔄")
       st.rerun(scope="fragment")
 
