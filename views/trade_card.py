@@ -292,14 +292,14 @@ def show_trade_details_dialog(trade, df):
         "ეტაპის თარიღი და დრო",
         value=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         key=f"add_sub_date_{trade_id}"
-      
+    )
+        
     col_sub1, col_sub2 = st.columns(2)
     with col_sub1:
       sub_price = st.number_input("ფასი (Price)", value=0.0, step=0.0001, format="%.4f")
     with col_sub2:
       sub_qty = st.number_input("მოცულობა / ოდენობა (Qty)", value=1.0, step=0.1)
 
-    )
     
     sub_desc = st.text_input("შენიშვნა / აღწერა", key=f"add_sub_desc_{trade_id}")
     sub_img = st.file_uploader("🖼️ ეტაპის სკრინშოტი (არასავალდებულო)", type=["png", "jpg", "jpeg"], key=f"add_sub_img_{trade_id}")
