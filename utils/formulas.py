@@ -48,7 +48,7 @@ def calculate_trade_pnl(
 
 
 def calculate_net_pnl(main, subs):
-  """გარიგების Net P/L ზუსტი შეწონილი კოეფიციენტით და დოლარული რისკით."""
+  """გარიგების Net P/L: თითოეული ეტაპის წილობრივი დამოუკიდებელი კალკულაცია."""
   side = main.get("Side", "")
   risk = to_float(main.get("Risk ($)"), DEFAULT_RISK_USD)
   direction = normalize_side(side)
@@ -79,11 +79,11 @@ def calculate_net_pnl(main, subs):
   if avg_entry_price == 0:
     return 0.0
 
-  # 3. გასვლები (Exit / დახურვა)
+  # 3. გასვლები (Exit / დახურვა / ნაწილობრივი / სრული)
   exits = []
   for _, s in subs.iterrows():
     act_type = str(s.get("ActionType", ""))
-    if any(term in act_type for term in ["Exit", "დახურვა", "Close"]):
+    if any(term in act_type for term in ["Exit", "დახურვა", "Close", "ნაწილობრივი", "სრული"]):
       exits.append((
           to_float(s.get("Entry Price"), avg_entry_price),
           to_float(s.get("Qty"))
@@ -92,10 +92,9 @@ def calculate_net_pnl(main, subs):
   if not exits:
     return None
 
-  # 4. ზუსტი შეწონილი კოეფიციენტის გამოყვანა შესვლისა და გამოსვლების მიხედვით
-  total_weighted_diff = 0.0
-  total_exit_qty = 0.0
+  total_pnl = 0.0
 
+  # თითოეული გამოსვლისთვის ვთვლით მის რეალურ წილს და მოგება/ზარალს
   for ex_price, ex_qty in exits:
     if ex_qty <= 0:
       continue
@@ -105,15 +104,15 @@ def calculate_net_pnl(main, subs):
     else:
       price_diff = avg_entry_price - ex_price
 
-    total_weighted_diff += price_diff * ex_qty
-    total_exit_qty += ex_qty
+    # ამ კონკრეტული ეტაპის პროცენტული ცვლილება
+    move_percentage = (price_diff / avg_entry_price) * 100
 
-  if total_exit_qty == 0:
-    return 0.0
+    # ამ ეტაპის წილი მთლიან მოცულობასთან (ანუ რამდენი პროცენტი დაიხურა ამ ნაბიჯით)
+    qty_share = ex_qty / total_entry_qty if total_entry_qty > 0 else 1.0
 
-  avg_price_diff = total_weighted_diff / total_exit_qty
-  move_percentage = (avg_price_diff / avg_entry_price) * 100
-  total_pnl = risk * move_percentage
+    # ამ ეტაპის დოლარული მოგება/ზარალი
+    stage_pnl = risk * move_percentage * qty_share
+    total_pnl += stage_pnl
 
   return round(total_pnl, 2)
 
