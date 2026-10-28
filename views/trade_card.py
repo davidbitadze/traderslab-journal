@@ -10,7 +10,7 @@ from database import (
 )
 import pandas as pd
 import streamlit as st
-from utils.formulas import calculate_net_pnl, to_float
+from utils.formulas import calculate_net_pnl, pnl_breakdown, to_float
 
 GREEN = "#22c55e"
 RED = "#ef4444"
@@ -140,6 +140,18 @@ def _side_label(side):
     return "Short"
   return str(side)
 
+def _parse_num(text):
+  """ტექსტი -> float. მძიმეც მიიღება (177,605). არასწორზე აბრუნებს None-ს."""
+  try:
+    return float(str(text).strip().replace(",", "."))
+  except (ValueError, TypeError):
+    return None
+
+
+def _txt(value):
+  return str(value).strip() if _has_value(value) else ""
+
+
 def recalc_net_pnl(parent_id):
   df = fetch_trades()
   if df.empty:
@@ -150,6 +162,28 @@ def recalc_net_pnl(parent_id):
   subs = df[df["Parent Trade ID"] == parent_id]
   net = calculate_net_pnl(main_df.iloc[0], subs)
   update_trade(parent_id, {"Net P/L": None if net is None else str(net)})
+
+def recalc_all_net_pnl():
+  """ყველა გარიგების Net P/L-ს ხელახლა ითვლის და ბაზაში წერს მხოლოდ იქ, სადაც შეიცვალა.
+  გამოიყენება ფორმულის შეცვლის შემდეგ, რომ ბაზაში ძველი რიცხვები არ დარჩეს."""
+  df = fetch_trades()
+  if df.empty:
+    return 0
+  mains = df[df["ActionType"].astype(str).str.contains("Start Row", case=False, na=False)]
+  changed = 0
+  for _, trade in mains.iterrows():
+    trade_id = trade.get("Trade ID")
+    subs = df[df["Parent Trade ID"] == trade_id]
+    net = calculate_net_pnl(trade, subs)
+    if net is None:  # გასვლა არ არის: არსებულ მნიშვნელობას არ ვეხებით
+      continue
+    old = trade.get("Net P/L")
+    if _has_value(old) and abs(to_float(old) - net) < 0.005:
+      continue
+    if update_trade(trade_id, {"Net P/L": str(net)}):
+      changed += 1
+  return changed
+
 
 @st.dialog("🔍 გარიგების დეტალები და მართვა", width="large")
 def show_trade_details_dialog(trade, df):
@@ -237,6 +271,38 @@ def show_trade_details_dialog(trade, df):
 
   st.divider()
 
+  # --- Net P/L-ის გაანგარიშება (ყველა ნაბიჯი თვალსაჩინოდ) ---
+  breakdown = pnl_breakdown(trade, sub_actions)
+  st.markdown("**🧮 Net P/L-ის გაანგარიშება**")
+  if breakdown is None:
+    st.caption("გასვლის (დახურვის) ეტაპი ჯერ არ არის, ამიტომ Net P/L არ ითვლება.")
+  else:
+    lines = [
+        f"- შესვლა (საშუალო): `{breakdown['entry_avg']:.5f}` × `{breakdown['entry_qty']:g}`",
+    ]
+    if breakdown["exit_avg"] is not None:
+      lines.append(
+          f"- გასვლა (შეწონილი): `{breakdown['exit_avg']:.5f}` × `{breakdown['exit_qty']:g}`"
+          f" · დახურული წილი: `{breakdown['closed_fraction'] * 100:.0f}%`"
+      )
+    if breakdown["method"] == "R":
+      lines.append(
+          f"- სტოპი (SL): `{breakdown['stop_price']:.5f}` · დისტანცია: `{breakdown['stop_dist']:.5f}`"
+      )
+      lines.append(f"- კოეფიციენტი (R): `{breakdown['r_multiple']:.4f}`")
+    lines.append(
+        f"- რისკი: `{breakdown['risk']:g}$` → **Net P/L = {breakdown['pnl']:+.2f}$**"
+    )
+    st.markdown("\n".join(lines))
+    if breakdown["method"] == "legacy":
+      st.warning(
+          "⚠️ SL ფასი არ არის მითითებული ან არასწორია (არასწორ მხარესაა / ძალიან"
+          " შორსაა / ფორმის ნაგულისხმევია), ამიტომ გამოიყენება ძველი %-ზე დაფუძნებული"
+          " გამოთვლა. ჩაასწორე Start Row-ის SL ✏️-ით ქვემოთ."
+      )
+
+  st.divider()
+
   # --- დამატებითი ეტაპების ისტორია და მართვა ---
   st.markdown("**📋 ეტაპების ისტორია და მართვა:**")
   
@@ -260,14 +326,33 @@ def show_trade_details_dialog(trade, df):
       if active_edit_sub == sub_id:
         with st.form(key=f"form_edit_sub_{sub_id}"):
           st.markdown(f"**ეტაპის რედაქტირება: {sub.get('ActionType')}**")
-          new_price = st.text_input("ფასი", value=str(sub.get('Entry Price', 0)))
-          new_qty = st.text_input("მოცულობა", value=str(sub.get('Qty', 0)))
+          is_start_row = "Start Row" in str(sub.get("ActionType", ""))
+          new_price = st.text_input("ფასი", value=_txt(sub.get("Entry Price")))
+          new_qty = st.text_input("მოცულობა", value=_txt(sub.get("Qty")))
+          if is_start_row:
+            new_sl = st.text_input("სტოპ ლოსი (SL ფასი)", value=_txt(sub.get("SL_Price")))
+            new_risk = st.text_input("რისკი დოლარში (Risk $)", value=_txt(sub.get("Risk ($)")))
           if st.form_submit_button("💾 ცვლილების შენახვა"):
-            update_trade(sub_id, {"Entry Price": to_float(new_price), "Qty": to_float(new_qty)})
-            st.session_state["active_edit_sub"] = None
-            recalc_net_pnl(trade_id)
-            st.success("განახლდა!")
-            st.rerun(scope="fragment")
+            fields = {"ფასი": new_price, "მოცულობა": new_qty}
+            if is_start_row:
+              fields.update({"SL": new_sl, "რისკი": new_risk})
+            parsed = {name: _parse_num(text) for name, text in fields.items()}
+            bad = [name for name, val in parsed.items() if val is None]
+            if bad:
+              st.error(f"არასწორი რიცხვი: {', '.join(bad)}. არაფერი შეინახა.")
+            else:
+              data = {
+                  "Entry Price": str(parsed["ფასი"]),
+                  "Qty": str(parsed["მოცულობა"]),
+              }
+              if is_start_row:
+                data["SL_Price"] = str(parsed["SL"])
+                data["Risk ($)"] = str(parsed["რისკი"])
+              update_trade(sub_id, data)
+              st.session_state["active_edit_sub"] = None
+              recalc_net_pnl(trade_id)
+              st.success("განახლდა!")
+              st.rerun(scope="fragment")
   else:
     st.caption("დამატებითი ეტაპები არ არის.")
 
