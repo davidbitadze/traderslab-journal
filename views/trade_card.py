@@ -67,7 +67,8 @@ div[data-testid="element-container"]:has(> [data-testid="stHorizontalBlock"]) {{
     height: {size};
     border-radius: 6px;
     object-fit: cover;
-    object-position: center center;
+    object-position: left 30%;
+    transform: scale(1.15);
     display: block;
     border: 1px solid rgba(255,255,255,0.1);
 }}
@@ -233,7 +234,7 @@ def show_trade_details_dialog(trade, df):
 
   st.divider()
 
-  # --- დამატებითი ეტაპების ისტორია და დამატება ---
+  # --- დამატებითი ეტაპების ისტორია და მართვა ---
   st.markdown("**📋 ეტაპების ისტორია და მართვა:**")
   
   if not sub_actions.empty:
@@ -242,7 +243,7 @@ def show_trade_details_dialog(trade, df):
       sub_id = sub.get("Trade ID")
       col_h1, col_h2, col_h3 = st.columns([7, 1, 1])
       with col_h1:
-        st.info(f"• **{sub.get('ActionType')}** | ფასი: {sub.get('Entry Price')} | მოც.: {sub.get('Qty')}")
+        st.info(f"• **{sub.get('ActionType')}** | ფასი: {sub.get('Entry Price')} | მოც.: {sub.get('Qty')} | დრო: {sub.get('Entry Date')}")
       with col_h2:
         if st.button("✏️", key=f"edit_sub_{sub_id}"):
           st.session_state["active_edit_sub"] = sub_id
@@ -267,20 +268,32 @@ def show_trade_details_dialog(trade, df):
   else:
     st.caption("დამატებითი ეტაპები არ არის.")
 
-  # ფორმა ახალი დამატებითი ეტაპის (Action) დასამატებლად
+  # ფორმა ახალი დამატებითი ეტაპის (Action) დასამატებლად თარიღით და სწორი ქართული თანმიმდევრობით
   with st.form(key=f"form_add_sub_{trade_id}", clear_on_submit=True):
-    st.markdown("**➕ ახალი ეტაპის დამატება (შესვლა / ნაწილობრივი / დახურვა):**")
+    st.markdown("**➕ ახალი ეტაპის დამატება:**")
     
     act_type = st.selectbox(
         "მოქმედების ტიპი",
-        ["Additional Entry (დამატებითი შესვლა)", "Partial Close (ნაწილობრივი დახურვა)", "Full Close (სრული დახურვა)", "Modify (ცვლილება)"],
+        [
+            "დამატებითი შესვლა",
+            "ნაწილობრივი დახურვა",
+            "სრული დახურვა",
+            "ცვლილება"
+        ],
         key=f"add_act_type_{trade_id}"
     )
+    
     col_sub1, col_sub2 = st.columns(2)
     with col_sub1:
       sub_price = st.number_input("ფასი (Price)", value=0.0, step=0.0001, format="%.4f")
     with col_sub2:
       sub_qty = st.number_input("მოცულობა / ოდენობა (Qty)", value=1.0, step=0.1)
+
+    sub_date = st.text_input(
+        "ეტაპის თარიღი და დრო",
+        value=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        key=f"add_sub_date_{trade_id}"
+    )
     
     sub_desc = st.text_input("შენიშვნა / აღწერა", key=f"add_sub_desc_{trade_id}")
     sub_img = st.file_uploader("🖼️ ეტაპის სკრინშოტი (არასავალდებულო)", type=["png", "jpg", "jpeg"], key=f"add_sub_img_{trade_id}")
@@ -298,12 +311,12 @@ def show_trade_details_dialog(trade, df):
           "Parent Trade ID": trade_id,
           "Pair": pair,
           "Side": side,
-          "ActionType": act_type.split(" ")[0],
+          "ActionType": act_type,
           "Entry Price": str(sub_price),
           "Qty": str(sub_qty),
           "Description": sub_desc,
           "Screenshot": sub_screenshot_url,
-          "Entry Date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+          "Entry Date": sub_date,
           "Finalized": "false"
       }
       if insert_trade(new_sub_trade):
