@@ -345,7 +345,7 @@ def render_trade_card(trade, df):
   is_finalized = str(raw_fin).strip().lower() in ("true", "1", "yes")
 
   sub_actions = df[df["Parent Trade ID"] == trade_id]
-# ვთვლით მკაცრად დინამიკურად ქვედა ეტაპებიდან
+    # ვთვლით მკაცრად დინამიკურად ქვედა ეტაპებიდან
   calculated_pnl = calculate_net_pnl(trade, sub_actions)
   if calculated_pnl is not None:
     pnl = calculated_pnl
