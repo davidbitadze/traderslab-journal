@@ -345,13 +345,13 @@ def render_trade_card(trade, df):
   is_finalized = str(raw_fin).strip().lower() in ("true", "1", "yes")
 
   sub_actions = df[df["Parent Trade ID"] == trade_id]
-  # ყოველთვის ვთვლით დინამიკურად, რომ ქვედა ეტაპების ცვლილება მაშინვე აისახოს
-  pnl = calculate_net_pnl(trade, sub_actions)
-  if pnl is None:
+# ვთვლით მკაცრად დინამიკურად ქვედა ეტაპებიდან
+  calculated_pnl = calculate_net_pnl(trade, sub_actions)
+  if calculated_pnl is not None:
+    pnl = calculated_pnl
+  else:
     raw_net = trade.get("Net P/L")
     pnl = to_float(raw_net) if _has_value(raw_net) else 0.0
-  state_key = f"mode_{trade_id}"
-  current_mode = st.session_state.get(state_key, None)
 
   current_scale = st.session_state.get("ui_scale", "medium")
   st.markdown(get_card_css(current_scale), unsafe_allow_html=True)
