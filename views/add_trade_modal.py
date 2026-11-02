@@ -20,6 +20,9 @@ def render_add_trade_modal():
           key="modal_entry_date"
       )
       pair = st.text_input("ვალუტის წყვილი (Pair)", "EURUSD", key="modal_pair")
+      
+      side = st.selectbox("მიმართულება (Side)", ["Long", "Short"], key="modal_side")
+      
       entry_price = st.number_input(
           "შესვლის ფასი (Price)", value=1.0000, format="%.5f", key="modal_entry_price"
       )
@@ -33,6 +36,36 @@ def render_add_trade_modal():
       tp_price = st.number_input(
           "ტეიკ პროფიტი (TP Price)", value=1.0000, format="%.5f", key="modal_tp"
       )
+
+      # --- R/R (Risk/Reward) კოეფიციენტის დინამიური გამოთვლა ---
+      current_side = st.session_state.get("modal_side", side)
+      current_entry = st.session_state.get("modal_entry_price", entry_price)
+      current_sl = st.session_state.get("modal_sl", sl_price)
+      current_tp = st.session_state.get("modal_tp", tp_price)
+
+      rr_text = "გაანგარიშება..."
+      try:
+        if current_side == "Long":
+          risk_diff = current_entry - current_sl
+          reward_diff = current_tp - current_entry
+        else:  # Short
+          risk_diff = current_sl - current_entry
+          reward_diff = current_entry - current_tp
+
+        if risk_diff > 0 and reward_diff > 0:
+          rr_ratio = reward_diff / risk_diff
+          rr_text = f"1:{rr_ratio:.2f} ({rr_ratio:.2f}R)"
+        else:
+          rr_text = "არასწორი ფასები (შეამოწმეთ SL/TP)"
+      except Exception:
+        rr_text = "ვერ გამოიანგარიშა"
+
+      st.markdown(
+          f"📊 **პოტენციური რისკ-მოგება (R/R):** <span style='color: #22c55e; font-weight: bold;'>{rr_text}</span>", 
+          unsafe_allow_html=True
+      )
+      st.divider()
+      # ---------------------------------------------------------
       
       pattern = (
           st.selectbox("პატერნი (Pattern)", patterns_options, key="modal_pattern")
@@ -44,7 +77,6 @@ def render_add_trade_modal():
           if triggers_options
           else ""
       )
-      side = st.selectbox("მიმართულება (Side)", ["Long", "Short"], key="modal_side")
       formation = st.selectbox(
           "ფორმაცია (Formation)", ["ტრენდი", "კონტრ-ტრენდი", "ფლეტი"], key="modal_formation"
       )
