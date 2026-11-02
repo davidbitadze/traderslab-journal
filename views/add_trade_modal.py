@@ -35,28 +35,12 @@ def render_add_trade_modal():
           "ტეიკ პროფიტი (TP Price)", value=1.0000, format="%.5f", key="modal_tp"
       )
       
-      pattern = (
-          st.selectbox("პატერნი (Pattern)", patterns_options, key="modal_pattern")
-          if patterns_options
-          else ""
-      )
-      trigger = (
-          st.selectbox("ტრიგერი (Trigger)", triggers_options, key="modal_trigger")
-          if triggers_options
-          else ""
-      )
-      
-      # გადატანილია ტრიგერსა და ფორმაციას შორის
+      # მიმართულება გადატანილია ფასების ქვემოთ, ტეიკ-პროფიტის მერე
       side = st.selectbox("მიმართულება (Side)", ["Long", "Short"], key="modal_side")
 
-      formation = st.selectbox(
-          "ფორმაცია (Formation)", ["ტრენდი", "კონტრ-ტრენდი", "ფლეტი"], key="modal_formation"
-      )
-
-      # --- R/R კოეფიციენტის ზუსტი დინამიური გამოთვლა ფორმის ველებიდან ---
+      # --- R/R კოეფიციენტის დინამიური გამოთვლა ---
       rr_text = "გაანგარიშება..."
       try:
-        # ვიყენებთ უშუალოდ ფორმის ცვლადებს
         if side == "Long":
           risk_diff = entry_price - sl_price
           reward_diff = tp_price - entry_price
@@ -78,6 +62,20 @@ def render_add_trade_modal():
       )
       st.divider()
       # ---------------------------------------------------------
+
+      pattern = (
+          st.selectbox("პატერნი (Pattern)", patterns_options, key="modal_pattern")
+          if patterns_options
+          else ""
+      )
+      trigger = (
+          st.selectbox("ტრიგერი (Trigger)", triggers_options, key="modal_trigger")
+          if triggers_options
+          else ""
+      )
+      formation = st.selectbox(
+          "ფორმაცია (Formation)", ["ტრენდი", "კონტრ-ტრენდი", "ფლეტი"], key="modal_formation"
+      )
 
       description = st.text_area("აღწერა / კომენტარი (Description)", "", key="modal_desc")
       screenshot = st.file_uploader(
