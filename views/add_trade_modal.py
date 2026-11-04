@@ -35,13 +35,14 @@ def render_add_trade_modal():
           "ტეიკ პროფიტი (TP Price)", value=156.86900, format="%.5f", key="modal_tp"
       )
       
-      # მიმართულება რადიო ღილაკების სახით (ჰორიზონტალურად)
+      # მიმართულება რადიო ღილაკების სახით (on_change-ით უზრუნველყოფს მყისიერ გადათვლას)
       side = st.radio(
           "მიმართულება (Side)", 
           ["Long", "Short"], 
-          index=1, 
+          index=0, 
           horizontal=True, 
-          key="modal_side"
+          key="modal_side",
+          on_change=st.rerun
       )
 
       # --- R/R (Risk/Reward) კოეფიციენტის მყისიერი გამოთვლა ---
