@@ -74,7 +74,6 @@ def render_add_trade_modal():
         f"📊 **პოტენციური რისკ-მოგება (R/R):** <span style='color: #22c55e; font-weight: bold;'>{rr_text}</span>", 
         unsafe_allow_html=True
     )
-    st.divider()
 
     pattern = st.selectbox("პატერნი (Pattern)", patterns_options) if patterns_options else ""
     trigger = st.selectbox("ტრიგერი (Trigger)", triggers_options) if triggers_options else ""
