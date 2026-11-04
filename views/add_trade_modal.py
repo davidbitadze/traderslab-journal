@@ -37,16 +37,21 @@ def render_add_trade_modal():
       
       # მიმართულება გადატანილია ფასების ქვემოთ, ტეიკ-პროფიტის მერე
       side = st.selectbox("მიმართულება (Side)", ["Long", "Short"], key="modal_side")
+      
+      # --- R/R კოეფიციენტის დინამიური გამოთვლა session_state-იდან ---
+      curr_entry = st.session_state.get("modal_entry_price", entry_price)
+      curr_sl = st.session_state.get("modal_sl", sl_price)
+      curr_tp = st.session_state.get("modal_tp", tp_price)
+      curr_side = st.session_state.get("modal_side", side)
 
-      # --- R/R კოეფიციენტის დინამიური გამოთვლა ---
       rr_text = "გაანგარიშება..."
       try:
-        if side == "Long":
-          risk_diff = entry_price - sl_price
-          reward_diff = tp_price - entry_price
+        if curr_side == "Long":
+          risk_diff = curr_entry - curr_sl
+          reward_diff = curr_tp - curr_entry
         else:  # Short
-          risk_diff = sl_price - entry_price
-          reward_diff = entry_price - tp_price
+          risk_diff = curr_sl - curr_entry
+          reward_diff = curr_entry - curr_tp
 
         if risk_diff > 0 and reward_diff > 0:
           rr_ratio = reward_diff / risk_diff
@@ -61,6 +66,7 @@ def render_add_trade_modal():
           unsafe_allow_html=True
       )
       st.divider()
+      
       # ---------------------------------------------------------
 
       pattern = (
