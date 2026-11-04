@@ -12,26 +12,48 @@ def render_add_trade_modal():
   with st.popover("➕ ახალი გარიგების დამატება"):
     st.subheader("მთავარი გარიგების გახსნა")
 
-    # 1. მიმართულება (Side) ფორმის გარეთ, რათა შერჩევამ მყისიერად გადათვალოს R/R
+    # ვინახავთ მონაცემებს სესიაში, რომ ყოველ ცვლილებაზე გვერდმა დაიმახსოვროს
+    if "t_side" not in st.session_state:
+      st.session_state["t_side"] = "Long"
+    if "t_entry" not in st.session_state:
+      st.session_state["t_entry"] = 1.00000
+    if "t_sl" not in st.session_state:
+      st.session_state["t_sl"] = 1.00000
+    if "t_tp" not in st.session_state:
+      st.session_state["t_tp"] = 1.00000
+
+    # 1. მიმართულება
     side = st.radio(
         "მიმართულება (Side)", 
         ["Long", "Short"], 
-        index=0, 
+        index=0 if st.session_state["t_side"] == "Long" else 1, 
         horizontal=True, 
-        key="modal_side_radio"
+        key="t_side_radio",
+        on_change=lambda: st.session_state.update({"t_side": st.session_state["t_side_radio"]})
     )
 
-    # 2. მიმდინარე შეყვანილი ფასების წაკითხვა session_state-იდან (თუ ფორმაში უკვე აკრეფილია)
-    curr_entry = st.session_state.get("modal_entry_price", 1.0000)
-    curr_sl = st.session_state.get("modal_sl", 1.0000)
-    curr_tp = st.session_state.get("modal_tp", 1.0000)
+    default_time_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    entry_date = st.text_input("თარიღი და დრო", value=default_time_str)
+    pair = st.text_input("ვალუტის წყვილი (Pair)", "EURUSD")
+    
+    # 2. ფასები
+    entry_price = st.number_input("შესვლის ფასი (Price)", value=st.session_state["t_entry"], format="%.5f", key="t_entry_num")
+    qty = st.number_input("მოცულობა (Qty)", value=1000.0, step=100.0)
+    risk_dollar = st.number_input("რისკი დოლარში (Risk $)", value=10.0, step=1.0)
+    sl_price = st.number_input("სტოპ ლოსი (SL Price)", value=st.session_state["t_sl"], format="%.5f", key="t_sl_num")
+    tp_price = st.number_input("ტეიკ პროფიტი (TP Price)", value=st.session_state["t_tp"], format="%.5f", key="t_tp_num")
 
-    # 3. R/R (Risk/Reward) კოეფიციენტის მყისიერი გამოთვლა
+    # ვანახლებთ სესიის მნიშვნელობებს
+    st.session_state["t_entry"] = entry_price
+    st.session_state["t_sl"] = sl_price
+    st.session_state["t_tp"] = tp_price
+
+    # 3. R/R კოეფიციენტის მყისიერი გამოთვლა უშუალოდ შეყვანილი ფასებიდან
     rr_text = "გაანგარიშება..."
     try:
-      e_val = float(curr_entry)
-      s_val = float(curr_sl)
-      t_val = float(curr_tp)
+      e_val = float(entry_price)
+      s_val = float(sl_price)
+      t_val = float(tp_price)
 
       if side == "Long":
         risk_diff = e_val - s_val
@@ -43,8 +65,6 @@ def render_add_trade_modal():
       if risk_diff > 0 and reward_diff > 0:
         rr_ratio = reward_diff / risk_diff
         rr_text = f"1:{rr_ratio:.2f} ({rr_ratio:.2f}R)"
-      elif e_val == 1.0 and s_val == 1.0 and t_val == 1.0:
-        rr_text = "შეიყვანეთ ფასები ქვემოთ"
       else:
         if side == "Long":
           rr_text = "არასწორი მანძილები: Long-ისთვის (სტოპი < შესვლა < პროფიტი)"
@@ -59,88 +79,50 @@ def render_add_trade_modal():
     )
     st.divider()
 
-    # 4. მონაცემების შეყვანის ფორმა
-    with st.form("new_trade_form", clear_on_submit=True):
-      default_time_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-      entry_date = st.text_input(
-          "თარიღი და დრო (მაგ: 2026-10-13 16:38:00)", 
-          value=default_time_str, 
-          key="modal_entry_date"
-      )
-      pair = st.text_input("ვალუტის წყვილი (Pair)", "EURUSD", key="modal_pair")
+    pattern = st.selectbox("პატერნი (Pattern)", patterns_options) if patterns_options else ""
+    trigger = st.selectbox("ტრიგერი (Trigger)", triggers_options) if triggers_options else ""
+    formation = st.selectbox("ფორმაცია (Formation)", ["ტრენდი", "კონტრ-ტრენდი", "ფლეტი"])
+
+    description = st.text_area("აღწერა / კომენტარი (Description)", "")
+    screenshot = st.file_uploader("გარიგების სკრინშოტი (Screenshot)", type=["png", "jpg", "jpeg"])
+
+    if st.button("გარიგების შენახვა (Save Trade)", type="primary"):
+      trade_id = str(uuid.uuid4())
       
-      entry_price = st.number_input(
-          "შესვლის ფასი (Price)", value=1.0000, format="%.5f", key="modal_entry_price"
-      )
-      qty = st.number_input("მოცულობა (Qty)", value=1000.0, step=100.0, key="modal_qty")
-      risk_dollar = st.number_input(
-          "რისკი დოლარში (Risk $)", value=10.0, step=1.0, key="modal_risk"
-      )
-      sl_price = st.number_input(
-          "სტოპ ლოსი (SL Price)", value=1.0000, format="%.5f", key="modal_sl"
-      )
-      tp_price = st.number_input(
-          "ტეიკ პროფიტი (TP Price)", value=1.0000, format="%.5f", key="modal_tp"
-      )
+      screenshot_value = "No Screenshot"
+      if screenshot is not None:
+        try:
+          ext = os.path.splitext(screenshot.name)[1].lower() or ".png"
+          stamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+          file_safe_name = f"{pair}_{stamp}_{uuid.uuid4().hex[:6]}{ext}"
+          uploaded_url = upload_screenshot(screenshot, file_name=file_safe_name)
+          if uploaded_url:
+            screenshot_value = uploaded_url
+        except Exception as upload_err:
+          st.error(f"სკრინშოტის ატვირთვის შეცდომა: {upload_err}")
 
-      pattern = (
-          st.selectbox("პატერნი (Pattern)", patterns_options, key="modal_pattern")
-          if patterns_options
-          else ""
-      )
-      trigger = (
-          st.selectbox("ტრიგერი (Trigger)", triggers_options, key="modal_trigger")
-          if triggers_options
-          else ""
-      )
-      formation = st.selectbox(
-          "ფორმაცია (Formation)", ["ტრენდი", "კონტრ-ტრენდი", "ფლეტი"], key="modal_formation"
-      )
+      trade_data = {
+          "Trade ID": trade_id,
+          "Parent Trade ID": trade_id,
+          "Entry Date": str(entry_date),
+          "Pair": pair,
+          "Side": side,
+          "Entry Price": str(entry_price),
+          "Qty": str(qty),
+          "Risk ($)": str(risk_dollar),
+          "SL_Price": str(sl_price),
+          "TP_Price": str(tp_price),
+          "ActionType": "Start Row in Journal (მთავარი შესვლა)",
+          "Pattern": pattern,
+          "Trigger": trigger,
+          "Formation": formation,
+          "Description": description,
+          "Screenshot": screenshot_value,
+          "Finalized": "False",
+      }
 
-      description = st.text_area("აღწერა / კომენტარი (Description)", "", key="modal_desc")
-      screenshot = st.file_uploader(
-          "გარიგების სკრინშოტი (Screenshot)", type=["png", "jpg", "jpeg"], key="modal_screenshot"
-      )
-
-      submitted = st.form_submit_button("გარიგების შენახვა (Save Trade)")
-
-      if submitted:
-        trade_id = str(uuid.uuid4())
-        
-        screenshot_value = "No Screenshot"
-        if screenshot is not None:
-          try:
-            ext = os.path.splitext(screenshot.name)[1].lower() or ".png"
-            stamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-            file_safe_name = f"{pair}_{stamp}_{uuid.uuid4().hex[:6]}{ext}"
-            uploaded_url = upload_screenshot(screenshot, file_name=file_safe_name)
-            if uploaded_url:
-              screenshot_value = uploaded_url
-          except Exception as upload_err:
-            st.error(f"სკრინშოტის ატვირთვის შეცდომა: {upload_err}")
-
-        trade_data = {
-            "Trade ID": trade_id,
-            "Parent Trade ID": trade_id,
-            "Entry Date": str(entry_date),
-            "Pair": pair,
-            "Side": side,
-            "Entry Price": str(entry_price),
-            "Qty": str(qty),
-            "Risk ($)": str(risk_dollar),
-            "SL_Price": str(sl_price),
-            "TP_Price": str(tp_price),
-            "ActionType": "Start Row in Journal (მთავარი შესვლა)",
-            "Pattern": pattern,
-            "Trigger": trigger,
-            "Formation": formation,
-            "Description": description,
-            "Screenshot": screenshot_value,
-            "Finalized": "False",
-        }
-
-        if insert_trade(trade_data):
-          st.success("ახალი გარიგება წარმატებით შეიქმნა!")
-          st.rerun()
-        else:
-          st.error("შენახვა ვერ მოხერხდა.")
+      if insert_trade(trade_data):
+        st.success("ახალი გარიგება წარმატებით შეიქმნა!")
+        st.rerun()
+      else:
+        st.error("შენახვა ვერ მოხერხდა.")
