@@ -43,23 +43,29 @@ def render_add_trade_modal():
       curr_sl = st.session_state.get("modal_sl", sl_price)
       curr_tp = st.session_state.get("modal_tp", tp_price)
       curr_side = st.session_state.get("modal_side", side)
-
+      
+      # --- R/R კოეფიციენტის დინამიური გამოთვლა ---
       rr_text = "გაანგარიშება..."
       try:
-        if curr_side == "Long":
-          risk_diff = curr_entry - curr_sl
-          reward_diff = curr_tp - curr_entry
+        e_val = float(entry_price)
+        s_val = float(sl_price)
+        t_val = float(tp_price)
+
+        if side == "Long":
+          risk_diff = e_val - s_val      # Long-ზე სტოპი უნდა იყოს შესვლაზე დაბალი
+          reward_diff = t_val - e_val  # Long-ზე პროფიტი უნდა იყოს შესვლაზე მაღალი
         else:  # Short
-          risk_diff = curr_sl - curr_entry
-          reward_diff = curr_entry - curr_tp
+          risk_diff = s_val - e_val      # Short-ზე სტოპი უნდა იყოს შესვლაზე მაღალი
+          reward_diff = e_val - t_val  # Short-ზე პროფიტი უნდა იყოს შესვლაზე დაბალი
 
         if risk_diff > 0 and reward_diff > 0:
           rr_ratio = reward_diff / risk_diff
           rr_text = f"1:{rr_ratio:.2f} ({rr_ratio:.2f}R)"
         else:
-          rr_text = "არასწორი ფასები (შეამოწმეთ SL/TP მანძილები)"
+          side_hint = "Long (სტოპი < შესვლა < პროფიტი)" if side == "Long" else "Short (პროფიტი < შესვლა < სტოპი)"
+          rr_text = f"არასწორი მანძილები {side_hint}-სთვის"
       except Exception:
-        rr_text = "ვერ გამოიანგარიშა"
+        rr_text = "შეიყვანეთ რიცხვითი ფასები"
 
       st.markdown(
           f"📊 **პოტენციური რისკ-მოგება (R/R):** <span style='color: #22c55e; font-weight: bold;'>{rr_text}</span>", 
