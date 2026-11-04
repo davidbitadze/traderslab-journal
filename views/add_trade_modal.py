@@ -12,6 +12,57 @@ def render_add_trade_modal():
   with st.popover("➕ ახალი გარიგების დამატება"):
     st.subheader("მთავარი გარიგების გახსნა")
 
+    # ფორმის გარეთ შეგვიძლია გამოვიყენოთ session_state-ში შენახული მნიშვნელობები
+    # პირველ ჯერზე ვანიჭებთ საწყისებს
+    if "m_entry" not in st.session_state:
+      st.session_state["m_entry"] = 0.70096
+    if "m_sl" not in st.session_state:
+      st.session_state["m_sl"] = 0.70240
+    if "m_tp" not in st.session_state:
+      st.session_state["m_tp"] = 0.69664
+    if "m_side" not in st.session_state:
+      st.session_state["m_side"] = "Short"
+
+    # მყისიერი სელექტორი ფორმის გარეთ, რომელიც ატრიალებს გვერდს ცვლილებაზე
+    side = st.selectbox(
+        "მიმართულება (Side)", 
+        ["Long", "Short"], 
+        index=0 if st.session_state["m_side"] == "Long" else 1,
+        key="m_side_select"
+    )
+    st.session_state["m_side"] = side
+
+    # --- R/R კოეფიციენტის მყისიერი დინამიური გამოთვლა ---
+    rr_text = "გაანგარიშება..."
+    try:
+      e_val = float(st.session_state["m_entry"])
+      s_val = float(st.session_state["m_sl"])
+      t_val = float(st.session_state["m_tp"])
+
+      if side == "Long":
+        risk_diff = e_val - s_val
+        reward_diff = t_val - e_val
+      else:  # Short
+        risk_diff = s_val - e_val
+        reward_diff = e_val - t_val
+
+      if risk_diff > 0 and reward_diff > 0:
+        rr_ratio = reward_diff / risk_diff
+        rr_text = f"1:{rr_ratio:.2f} ({rr_ratio:.2f}R)"
+      else:
+        if side == "Long":
+          rr_text = "არასწორი მანძილები: Long-ისთვის (სტოპი < შესვლა < პროფიტი)"
+        else:
+          rr_text = "არასწორი მანძილები: Short-ისთვის (პროფიტი < შესვლა < სტოპი)"
+    except Exception:
+      rr_text = "შეიყვანეთ რიცხვითი ფასები"
+
+    st.markdown(
+        f"📊 **პოტენციური რისკ-მოგება (R/R):** <span style='color: #22c55e; font-weight: bold;'>{rr_text}</span>", 
+        unsafe_allow_html=True
+    )
+    st.divider()
+
     with st.form("new_trade_form", clear_on_submit=True):
       default_time_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
       entry_date = st.text_input(
@@ -22,53 +73,18 @@ def render_add_trade_modal():
       pair = st.text_input("ვალუტის წყვილი (Pair)", "EURUSD", key="modal_pair")
       
       entry_price = st.number_input(
-          "შესვლის ფასი (Price)", value=0.70096, format="%.5f", key="modal_entry_price"
+          "შესვლის ფასი (Price)", value=st.session_state["m_entry"], format="%.5f", key="modal_entry_price"
       )
       qty = st.number_input("მოცულობა (Qty)", value=1000.0, step=100.0, key="modal_qty")
       risk_dollar = st.number_input(
           "რისკი დოლარში (Risk $)", value=10.0, step=1.0, key="modal_risk"
       )
       sl_price = st.number_input(
-          "სტოპ ლოსი (SL Price)", value=0.70240, format="%.5f", key="modal_sl"
+          "სტოპ ლოსი (SL Price)", value=st.session_state["m_sl"], format="%.5f", key="modal_sl"
       )
       tp_price = st.number_input(
-          "ტეიკ პროფიტი (TP Price)", value=0.69664, format="%.5f", key="modal_tp"
+          "ტეიკ პროფიტი (TP Price)", value=st.session_state["m_tp"], format="%.5f", key="modal_tp"
       )
-      
-      # მიმართულების არჩევა, რომელიც ფორმაში იწვევს მყისიერ რეაგირებას
-      side = st.selectbox("მიმართულება (Side)", ["Long", "Short"], key="modal_side")
-
-      # --- R/R კოეფიციენტის დინამიური გამოთვლა ---
-      rr_text = "გაანგარიშება..."
-      try:
-        e_val = float(entry_price)
-        s_val = float(sl_price)
-        t_val = float(tp_price)
-
-        if side == "Long":
-          risk_diff = e_val - s_val
-          reward_diff = t_val - e_val
-        else:  # Short
-          risk_diff = s_val - e_val
-          reward_diff = e_val - t_val
-
-        if risk_diff > 0 and reward_diff > 0:
-          rr_ratio = reward_diff / risk_diff
-          rr_text = f"1:{rr_ratio:.2f} ({rr_ratio:.2f}R)"
-        else:
-          if side == "Long":
-            rr_text = "არასწორი მანძილები: Long-ისთვის (სტოპი < შესვლა < პროფიტი)"
-          else:
-            rr_text = "არასწორი მანძილები: Short-ისთვის (პროფიტი < შესვლა < სტოპი)"
-      except Exception:
-        rr_text = "შეიყვანეთ რიცხვითი ფასები"
-
-      st.markdown(
-          f"📊 **პოტენციური რისკ-მოგება (R/R):** <span style='color: #22c55e; font-weight: bold;'>{rr_text}</span>", 
-          unsafe_allow_html=True
-      )
-      st.divider()
-      # ---------------------------------------------------------
 
       pattern = (
           st.selectbox("პატერნი (Pattern)", patterns_options, key="modal_pattern")
