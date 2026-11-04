@@ -22,24 +22,29 @@ def render_add_trade_modal():
       pair = st.text_input("ვალუტის წყვილი (Pair)", "EURUSD", key="modal_pair")
       
       entry_price = st.number_input(
-          "შესვლის ფასი (Price)", value=0.70096, format="%.5f", key="modal_entry_price"
+          "შესვლის ფასი (Price)", value=155.21100, format="%.5f", key="modal_entry_price"
       )
       qty = st.number_input("მოცულობა (Qty)", value=1000.0, step=100.0, key="modal_qty")
       risk_dollar = st.number_input(
           "რისკი დოლარში (Risk $)", value=10.0, step=1.0, key="modal_risk"
       )
       sl_price = st.number_input(
-          "სტოპ ლოსი (SL Price)", value=0.70240, format="%.5f", key="modal_sl"
+          "სტოპ ლოსი (SL Price)", value=158.32500, format="%.5f", key="modal_sl"
       )
       tp_price = st.number_input(
-          "ტეიკ პროფიტი (TP Price)", value=0.69664, format="%.5f", key="modal_tp"
+          "ტეიკ პროფიტი (TP Price)", value=156.86900, format="%.5f", key="modal_tp"
       )
       
-      # მიმართულება ზის ფასების ქვემოთ
-      side = st.selectbox("მიმართულება (Side)", ["Long", "Short"], index=1, key="modal_side")
+      # მიმართულება რადიო ღილაკების სახით (ჰორიზონტალურად)
+      side = st.radio(
+          "მიმართულება (Side)", 
+          ["Long", "Short"], 
+          index=1, 
+          horizontal=True, 
+          key="modal_side"
+      )
 
-      # --- R/R (Risk/Reward) კოეფიციენტის დინამიური გამოთვლა (ფორმის შიგნით) ---
-      # ვკითხულობთ მიმდინარე მნიშვნელობებს პირდაპირ სესიის ველებიდან
+      # --- R/R (Risk/Reward) კოეფიციენტის მყისიერი გამოთვლა ---
       curr_entry = st.session_state.get("modal_entry_price", entry_price)
       curr_sl = st.session_state.get("modal_sl", sl_price)
       curr_tp = st.session_state.get("modal_tp", tp_price)
