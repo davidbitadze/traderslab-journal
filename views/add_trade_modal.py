@@ -22,28 +22,22 @@ def render_add_trade_modal():
       pair = st.text_input("ვალუტის წყვილი (Pair)", "EURUSD", key="modal_pair")
       
       entry_price = st.number_input(
-          "შესვლის ფასი (Price)", value=1.0000, format="%.5f", key="modal_entry_price"
+          "შესვლის ფასი (Price)", value=0.70096, format="%.5f", key="modal_entry_price"
       )
       qty = st.number_input("მოცულობა (Qty)", value=1000.0, step=100.0, key="modal_qty")
       risk_dollar = st.number_input(
           "რისკი დოლარში (Risk $)", value=10.0, step=1.0, key="modal_risk"
       )
       sl_price = st.number_input(
-          "სტოპ ლოსი (SL Price)", value=1.0000, format="%.5f", key="modal_sl"
+          "სტოპ ლოსი (SL Price)", value=0.70240, format="%.5f", key="modal_sl"
       )
       tp_price = st.number_input(
-          "ტეიკ პროფიტი (TP Price)", value=1.0000, format="%.5f", key="modal_tp"
+          "ტეიკ პროფიტი (TP Price)", value=0.69664, format="%.5f", key="modal_tp"
       )
       
-      # მიმართულება გადატანილია ფასების ქვემოთ, ტეიკ-პროფიტის მერე
+      # მიმართულების არჩევა, რომელიც ფორმაში იწვევს მყისიერ რეაგირებას
       side = st.selectbox("მიმართულება (Side)", ["Long", "Short"], key="modal_side")
-      
-      # --- R/R კოეფიციენტის დინამიური გამოთვლა session_state-იდან ---
-      curr_entry = st.session_state.get("modal_entry_price", entry_price)
-      curr_sl = st.session_state.get("modal_sl", sl_price)
-      curr_tp = st.session_state.get("modal_tp", tp_price)
-      curr_side = st.session_state.get("modal_side", side)
-      
+
       # --- R/R კოეფიციენტის დინამიური გამოთვლა ---
       rr_text = "გაანგარიშება..."
       try:
@@ -52,18 +46,20 @@ def render_add_trade_modal():
         t_val = float(tp_price)
 
         if side == "Long":
-          risk_diff = e_val - s_val      # Long-ზე სტოპი უნდა იყოს შესვლაზე დაბალი
-          reward_diff = t_val - e_val  # Long-ზე პროფიტი უნდა იყოს შესვლაზე მაღალი
+          risk_diff = e_val - s_val
+          reward_diff = t_val - e_val
         else:  # Short
-          risk_diff = s_val - e_val      # Short-ზე სტოპი უნდა იყოს შესვლაზე მაღალი
-          reward_diff = e_val - t_val  # Short-ზე პროფიტი უნდა იყოს შესვლაზე დაბალი
+          risk_diff = s_val - e_val
+          reward_diff = e_val - t_val
 
         if risk_diff > 0 and reward_diff > 0:
           rr_ratio = reward_diff / risk_diff
           rr_text = f"1:{rr_ratio:.2f} ({rr_ratio:.2f}R)"
         else:
-          side_hint = "Long (სტოპი < შესვლა < პროფიტი)" if side == "Long" else "Short (პროფიტი < შესვლა < სტოპი)"
-          rr_text = f"არასწორი მანძილები {side_hint}-სთვის"
+          if side == "Long":
+            rr_text = "არასწორი მანძილები: Long-ისთვის (სტოპი < შესვლა < პროფიტი)"
+          else:
+            rr_text = "არასწორი მანძილები: Short-ისთვის (პროფიტი < შესვლა < სტოპი)"
       except Exception:
         rr_text = "შეიყვანეთ რიცხვითი ფასები"
 
@@ -72,7 +68,6 @@ def render_add_trade_modal():
           unsafe_allow_html=True
       )
       st.divider()
-      
       # ---------------------------------------------------------
 
       pattern = (
