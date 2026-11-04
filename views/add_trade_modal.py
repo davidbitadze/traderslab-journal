@@ -12,7 +12,6 @@ def render_add_trade_modal():
   with st.popover("➕ ახალი გარიგების დამატება"):
     st.subheader("მთავარი გარიგების გახსნა")
 
-    # ვინახავთ მონაცემებს სესიაში, რომ ყოველ ცვლილებაზე გვერდმა დაიმახსოვროს
     if "t_side" not in st.session_state:
       st.session_state["t_side"] = "Long"
     if "t_entry" not in st.session_state:
@@ -22,7 +21,17 @@ def render_add_trade_modal():
     if "t_tp" not in st.session_state:
       st.session_state["t_tp"] = 1.00000
 
-    # 1. მიმართულება
+    default_time_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    entry_date = st.text_input("თარიღი და დრო", value=default_time_str)
+    pair = st.text_input("ვალუტის წყვილი (Pair)", "EURUSD")
+    
+    entry_price = st.number_input("შესვლის ფასი (Price)", value=st.session_state["t_entry"], format="%.5f", key="t_entry_num")
+    qty = st.number_input("მოცულობა (Qty)", value=1000.0, step=100.0)
+    risk_dollar = st.number_input("რისკი დოლარში (Risk $)", value=10.0, step=1.0)
+    sl_price = st.number_input("სტოპ ლოსი (SL Price)", value=st.session_state["t_sl"], format="%.5f", key="t_sl_num")
+    tp_price = st.number_input("ტეიკ პროფიტი (TP Price)", value=st.session_state["t_tp"], format="%.5f", key="t_tp_num")
+
+    # მიმართულება ტეიკ-პროფიტის ქვემოთ
     side = st.radio(
         "მიმართულება (Side)", 
         ["Long", "Short"], 
@@ -32,23 +41,11 @@ def render_add_trade_modal():
         on_change=lambda: st.session_state.update({"t_side": st.session_state["t_side_radio"]})
     )
 
-    default_time_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    entry_date = st.text_input("თარიღი და დრო", value=default_time_str)
-    pair = st.text_input("ვალუტის წყვილი (Pair)", "EURUSD")
-    
-    # 2. ფასები
-    entry_price = st.number_input("შესვლის ფასი (Price)", value=st.session_state["t_entry"], format="%.5f", key="t_entry_num")
-    qty = st.number_input("მოცულობა (Qty)", value=1000.0, step=100.0)
-    risk_dollar = st.number_input("რისკი დოლარში (Risk $)", value=10.0, step=1.0)
-    sl_price = st.number_input("სტოპ ლოსი (SL Price)", value=st.session_state["t_sl"], format="%.5f", key="t_sl_num")
-    tp_price = st.number_input("ტეიკ პროფიტი (TP Price)", value=st.session_state["t_tp"], format="%.5f", key="t_tp_num")
-
-    # ვანახლებთ სესიის მნიშვნელობებს
     st.session_state["t_entry"] = entry_price
     st.session_state["t_sl"] = sl_price
     st.session_state["t_tp"] = tp_price
 
-    # 3. R/R კოეფიციენტის მყისიერი გამოთვლა უშუალოდ შეყვანილი ფასებიდან
+    # R/R კოეფიციენტის მყისიერი გამოთვლა
     rr_text = "გაანგარიშება..."
     try:
       e_val = float(entry_price)
