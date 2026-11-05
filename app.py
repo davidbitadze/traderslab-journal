@@ -65,23 +65,22 @@ supabase = get_supabase_client()
 if "user" not in st.session_state:
   st.session_state.user = None
 
-# --- ავტომატური სესიის აღდგენა URL-დან (Remember Me / Refresh Persistence) ---
-saved_token = st.query_params.get("session_token", None)
+# --- ავტომატური აღდგენა URL-ში შენახული მონაცემებიდან ---
+saved_email = st.query_params.get("saved_email", None)
+saved_uid = st.query_params.get("saved_uid", None)
 
-if st.session_state.user is None and saved_token:
-  try:
-    # ვცდილობთ აღვადგინოთ Supabase სესია შენახული ტოკენით
-    auth_response = supabase.auth.set_session(saved_token)
-    if auth_response and auth_response.user:
-      st.session_state.user = auth_response.user
-  except Exception:
-    # თუ ტოკენი ვადაგასულია, ვასუფთავებთ query params-ს
-    if "session_token" in st.query_params:
-      del st.query_params["session_token"]
+if st.session_state.user is None and saved_email and saved_uid:
+  # ვქმნით იუზერის კონტეინერს შენახული რეალური UUID-ით და მეილით
+  class RestoredUser:
+    def __init__(self, uid, email):
+      self.id = uid
+      self.email = email
+
+  st.session_state.user = RestoredUser(saved_uid, saved_email)
 
 
 def render_auth_screen():
-  """ავტორიზაციისა და რეგისტრაციის უსაფრთხო ფორმა."""
+  """ავტორიზაციისა და რეგისტრაციის ფორმა."""
   col1, col2, col3 = st.columns([1, 2, 1])
   with col2:
     st.title("🔐 Traders Lab - ავტორიზაცია")
@@ -106,11 +105,12 @@ def render_auth_screen():
             response = supabase.auth.sign_in_with_password(
                 {"email": email, "password": password}
             )
-            if response.user and response.session:
+            if response.user:
               st.session_state.user = response.user
               if remember_me:
-                # ვინახავთ სესიის refresh token-ს URL-ში, რაც რეფრეშისას უზრუნველყოფს ავტომატურ შესვლას
-                st.query_params["session_token"] = response.session.refresh_token
+                # ვინახავთ მეილს და რეალურ UUID-ს URL-ში, რაც რეფრეშისას უზრუნველყოფს სესიას
+                st.query_params["saved_email"] = response.user.email
+                st.query_params["saved_uid"] = response.user.id
               st.success("წარმატებით შეხვედით სისტემაში!")
               st.rerun()
           except Exception as e:
@@ -184,8 +184,10 @@ else:
     st.session_state.user = None
     if "user_prefs" in st.session_state:
       del st.session_state["user_prefs"]
-    if "session_token" in st.query_params:
-      del st.query_params["session_token"]
+    if "saved_email" in st.query_params:
+      del st.query_params["saved_email"]
+    if "saved_uid" in st.query_params:
+      del st.query_params["saved_uid"]
     st.rerun()
 
   selected_lang = st.sidebar.selectbox(
