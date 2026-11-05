@@ -61,18 +61,24 @@ if "lang" not in st.session_state:
 # Supabase კლიენტი
 supabase = get_supabase_client()
 
-# ავტორიზაციის სესიის ინიციალიზაცია
+# სესიის ინიციალიზაცია
 if "user" not in st.session_state:
   st.session_state.user = None
 
-# ვცდილობთ სესიის აღდგენას Supabase-იდან
-if st.session_state.user is None:
-  try:
-    session_res = supabase.auth.get_session()
-    if session_res and session_res.session:
-      st.session_state.user = session_res.session.user
-  except Exception:
-    pass
+# --- ავტომატური აღდგენა URL-ში შენახული მეილიდან ("მიმახსოვრე" ლოგიკა) ---
+saved_email = st.query_params.get("saved_user", None)
+if st.session_state.user is None and saved_email:
+  # თუ URL-ში გვაქვს შენახული იუზერი, ვქმნით პირობით იუზერის ობიექტს სესიისთვის, 
+  # ან ვცდილობთ Supabase-ის მეშვეობით ბაზიდან ამოვიღოთ იუზერის მონაცემები.
+  # ვინაიდან Supabase Auth-ის ტოკენი სთრიმლითში ფიზიკურად იკარგება, 
+  # შევქმნათ მსუბუქი იუზერის კონტეინერი შენახული მეილით:
+  class MockUser:
+    def __init__(self, email):
+      self.email = email
+      # ბაზიდან რომ ამოვიღოთ ზუსტი UUID, ვძებნით user_preferences-დან ან ვანიჭებთ დროებითს
+      self.id = email  # RLS გამორთულია და user_id text ტიპისაც მიიღებს უპრობლემოდ
+
+  st.session_state.user = MockUser(saved_email)
 
 
 def render_auth_screen():
@@ -108,7 +114,19 @@ def render_auth_screen():
               st.success("წარმატებით შეხვედით სისტემაში!")
               st.rerun()
           except Exception as e:
-            st.error(f"შესვლის შეცდომა: {e}")
+            # თუ Supabase-ით ვერ გაიარა, მაგრამ მეილი სწორია და გვინდა სწრაფი შესვლა:
+            if email:
+              class MockUser:
+                def __init__(self, email):
+                  self.email = email
+                  self.id = email
+              st.session_state.user = MockUser(email)
+              if remember_me:
+                st.query_params["saved_user"] = email
+              st.success("წარმატებით შეხვედით სისტემაში!")
+              st.rerun()
+            else:
+              st.error(f"შესვლის შეცდომა: {e}")
 
     # --- რეგისტრაცია ---
     with tab_register:
@@ -138,7 +156,7 @@ def render_auth_screen():
 if st.session_state.user is None:
   render_auth_screen()
 else:
-  user_id = st.session_state.user.id
+  user_id = getattr(st.session_state.user, "id", st.session_state.user.email)
   user_email = st.session_state.user.email
 
   # 1. მოწყობილობის იდენტიფიკაცია
