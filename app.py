@@ -58,25 +58,25 @@ def apply_ui_scaling(scale_mode):
 if "lang" not in st.session_state:
   st.session_state.lang = "ka"
 
-# Supabase კლიენტის ინიციალიზაცია
+# Supabase კლიენტი
 supabase = get_supabase_client()
 
-# ავტორიზაციის სესიის შემოწმება
+# ავტორიზაციის სესიის ინიციალიზაცია
 if "user" not in st.session_state:
   st.session_state.user = None
 
-# ვცდილობთ აღვადგინოთ სესია Supabase-ის ავტომატური ტოკენიდან ან სესიიდან
+# ვცდილობთ სესიის აღდგენას Supabase-იდან
 if st.session_state.user is None:
   try:
-    session_response = supabase.auth.get_session()
-    if session_response and session_response.session:
-      st.session_state.user = session_response.session.user
+    session_res = supabase.auth.get_session()
+    if session_res and session_res.session:
+      st.session_state.user = session_res.session.user
   except Exception:
     pass
 
 
 def render_auth_screen():
-  """ავტორიზაციისა და რეგისტრაციის ფორმა."""
+  """ავტორიზაციისა და რეგისტრაციის ფორმა 'მიმახსოვრე' ჩექბოქსით."""
   col1, col2, col3 = st.columns([1, 2, 1])
   with col2:
     st.title("🔐 Traders Lab - ავტორიზაცია")
@@ -93,6 +93,7 @@ def render_auth_screen():
         password = st.text_input(
             "პაროლი (Password)", type="password", key="login_pass"
         )
+        remember_me = st.checkbox("მიმახსოვრე (Remember me)", value=True)
         submit_login = st.form_submit_button("შესვლა", use_container_width=True)
 
         if submit_login:
@@ -102,6 +103,8 @@ def render_auth_screen():
             )
             if response.user:
               st.session_state.user = response.user
+              if remember_me:
+                st.query_params["saved_user"] = email
               st.success("წარმატებით შეხვედით სისტემაში!")
               st.rerun()
           except Exception as e:
