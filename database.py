@@ -193,3 +193,39 @@ def upload_screenshot(uploaded_file, file_name=None):
   except Exception as e:
     st.error(f"სურათის ატვირთვის შეცდომა: {e}")
     return None
+def fetch_user_preferences(user_id):
+  """მოაქვს მომხმარებლის ვიზუალური პარამეტრები ბაზიდან."""
+  try:
+    response = (
+        supabase.table("user_preferences")
+        .select("*")
+        .eq("user_id", user_id)
+        .execute()
+    )
+    if response.data and len(response.data) > 0:
+      return response.data[0]
+    return None
+  except Exception as e:
+    print(f"პარამეტრების წაკითხვის შეცდომა: {e}")
+    return None
+
+
+def upsert_user_preferences(user_id, mobile_mode=None, desktop_mode=None):
+  """ანახლებს ან ამატებს მომხმარებლის პარამეტრებს ბაზაში."""
+  try:
+    data = {"user_id": user_id}
+    if mobile_mode is not None:
+      data["mobile_view_mode"] = mobile_mode
+    if desktop_mode is not None:
+      data["desktop_view_mode"] = desktop_mode
+
+    # upsert ავტომატურად ამატებს თუ არ არსებობს, ან ანახლებს თუ უკვე არსებობს
+    response = (
+        supabase.table("user_preferences")
+        .upsert(data, on_conflict="user_id")
+        .execute()
+    )
+    return True
+  except Exception as e:
+    print(f"პარამეტრების შენახვის შეცდომა: {e}")
+    return False
