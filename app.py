@@ -1,3 +1,4 @@
+from datetime import datetime
 from database import fetch_user_preferences, get_supabase_client
 import streamlit as st
 from utils.translations import t
@@ -70,8 +71,9 @@ saved_email = st.query_params.get("saved_email", None)
 saved_uid = st.query_params.get("saved_uid", None)
 
 if st.session_state.user is None and saved_email and saved_uid:
-  # ვქმნით იუზერის კონტეინერს შენახული რეალური UUID-ით და მეილით
+
   class RestoredUser:
+
     def __init__(self, uid, email):
       self.id = uid
       self.email = email
@@ -108,7 +110,6 @@ def render_auth_screen():
             if response.user:
               st.session_state.user = response.user
               if remember_me:
-                # ვინახავთ მეილს და რეალურ UUID-ს URL-ში, რაც რეფრეშისას უზრუნველყოფს სესიას
                 st.query_params["saved_email"] = response.user.email
                 st.query_params["saved_uid"] = response.user.id
               st.success("წარმატებით შეხვედით სისტემაში!")
@@ -144,13 +145,10 @@ def render_auth_screen():
 if st.session_state.user is None:
   render_auth_screen()
 else:
-  user_id = st.session_state.user.id  # მკაცრად UUID!
+  user_id = st.session_state.user.id
   user_email = st.session_state.user.email
 
-  # 1. მოწყობილობის იდენტიფიკაცია
-  is_mobile = detect_is_mobile()
-
-  # 2. ბაზიდან პრეფერენციების წამოღება (UUID-ით)
+  # 1. ბაზიდან პრეფერენციებისა და გამოწერის მონაცემების წამოღება
   if "user_prefs" not in st.session_state:
     prefs = fetch_user_preferences(user_id)
     if prefs:
@@ -159,10 +157,53 @@ else:
       st.session_state.user_prefs = {
           "mobile_view_mode": "small",
           "desktop_view_mode": "medium",
+          "subscription_expires_at": None,
+          "subscription_status": None,
       }
 
-  # 3. შესაბამისი რეჟიმის შერჩევა და CSS-ის მიწოდება
   current_prefs = st.session_state.user_prefs
+
+  # --- გამოწერისა და წვდომის კონტროლი ---
+  # თუ ბაზაში სვეტი ცარიელია (NULL) ან ვადა გასულია, ვბლოკავთ წვდომას
+  sub_expires = current_prefs.get("subscription_expires_at")
+  sub_status = current_prefs.get("subscription_status")
+
+  is_subscription_valid = True  # საწყისი დაშვება
+
+  if not sub_expires or sub_status != "active":
+    is_subscription_valid = False
+  else:
+    try:
+      # ვამოწმებთ მიმდინარე თარიღს გამოწერის ვადასთან
+      exp_date = datetime.fromisoformat(sub_expires.replace("Z", ""))
+      if datetime.now() > exp_date:
+        is_subscription_valid = False
+    except Exception:
+      pass
+
+  # თუ გამოწერა არ არის აქტიური ან ვადა გავიდა
+  if not is_subscription_valid:
+    st.sidebar.title("⚙️ Settings / პარამეტრები")
+    st.sidebar.write(f"👤 {user_email}")
+    if st.sidebar.button("🚪 გასვლა (Logout)", use_container_width=True):
+      st.session_state.user = None
+      if "user_prefs" in st.session_state:
+        del st.session_state["user_prefs"]
+      if "saved_email" in st.query_params:
+        del st.query_params["saved_email"]
+      if "saved_uid" in st.query_params:
+        del st.query_params["saved_uid"]
+      st.rerun()
+
+    st.error(
+        "⚠️ **თქვენი გამოწერის ვადა ამოწურულია ან აქტიური არ არის.**"
+        " სავაჭრო ჟურნალსა და ანალიტიკაზე წვდომისთვის გთხოვთ განაახლოთ"
+        " გამოწერა."
+    )
+    st.stop()  # აჩერებს დანარჩენი გვერდის რენდერს სანამ გადახდა არ განახლდება
+
+  # 2. მოწყობილობის იდენტიფიკაცია და UI მასშტაბი
+  is_mobile = detect_is_mobile()
   active_scale = (
       current_prefs.get("mobile_view_mode", "small")
       if is_mobile
@@ -170,7 +211,7 @@ else:
   )
   apply_ui_scaling(active_scale)
 
-  # --- ავტორიზებული მომხმარებლის ინტერფეისი ---
+  # --- ავტორიზებული და აქტიურ-გამოწერიანი მომხმარებლის ინტერფეისი ---
   st.sidebar.title("⚙️ Settings / პარამეტრები")
   st.sidebar.write(f"👤 {user_email}")
   device_label = "📱 მობილური" if is_mobile else "💻 დესკტოპი"
