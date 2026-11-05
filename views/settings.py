@@ -7,6 +7,7 @@ from database import (
     fetch_balance_transactions,
     fetch_settings,
     update_setting_item,
+    upsert_user_preferences,
 )
 import streamlit as st
 
@@ -20,24 +21,57 @@ def render_settings_view(lang="ka"):
 
   # --- ინტერფეისის მასშტაბისა და ვიზუალური ზომების მართვა ---
   st.markdown("### 📱 ეკრანისა და ვიზუალიზაციის ზომები")
-  current_scale = st.session_state.get("ui_scale", "medium")
-  scale_options = {
-      "პატარა (მობილური / კომპაქტური)": "small",
-      "საშუალო (სტანდარტული)": "medium",
-      "დიდი (გაფართოებული)": "large"
-  }
-  
-  selected_scale_label = st.selectbox(
-      "აირჩიეთ ინტერფეისის ზომა",
-      options=list(scale_options.keys()),
-      index=list(scale_options.values()).index(current_scale) if current_scale in scale_options.values() else 1
+
+  user_id = st.session_state.user.id if st.session_state.user else None
+  user_prefs = st.session_state.get(
+      "user_prefs",
+      {"mobile_view_mode": "small", "desktop_view_mode": "medium"},
   )
-  
-  new_scale = scale_options[selected_scale_label]
-  if new_scale != current_scale:
-    st.session_state["ui_scale"] = new_scale
-    st.success("ინტერფეისის ზომა წარმატებით განახლდა!")
-    st.rerun()
+
+  scale_options = {
+      "პატარა (კომპაქტური)": "small",
+      "საშუალო (სტანდარტული)": "medium",
+      "დიდი (გაფართოებული)": "large",
+  }
+  options_keys = list(scale_options.keys())
+  options_vals = list(scale_options.values())
+
+  col_m, col_d = st.columns(2)
+
+  with col_m:
+    curr_mob = user_prefs.get("mobile_view_mode", "small")
+    mob_idx = options_vals.index(curr_mob) if curr_mob in options_vals else 0
+    selected_mob = st.selectbox(
+        "📱 მობილურის ვიზუალური ზომა",
+        options=options_keys,
+        index=mob_idx,
+        key="sb_mobile_scale",
+    )
+
+  with col_d:
+    curr_desk = user_prefs.get("desktop_view_mode", "medium")
+    desk_idx = options_vals.index(curr_desk) if curr_desk in options_vals else 1
+    selected_desk = st.selectbox(
+        "💻 დესკტოპის ვიზუალური ზომა",
+        options=options_keys,
+        index=desk_idx,
+        key="sb_desktop_scale",
+    )
+
+  new_mob_val = scale_options[selected_mob]
+  new_desk_val = scale_options[selected_desk]
+
+  if new_mob_val != curr_mob or new_desk_val != curr_desk:
+    if user_id:
+      if upsert_user_preferences(
+          user_id, mobile_mode=new_mob_val, desktop_mode=new_desk_val
+      ):
+        st.session_state.user_prefs["mobile_view_mode"] = new_mob_val
+        st.session_state.user_prefs["desktop_view_mode"] = new_desk_val
+        st.toast("ვიზუალური პარამეტრები შენახულია ბაზაში!", icon="✅")
+        st.rerun()
+      else:
+        st.error("პარამეტრების ბაზაში შენახვა ვერ მოხერხდა.")
 
   st.divider()
 
