@@ -88,7 +88,7 @@ def _rr_html(side, entry, sl, tp, risk_usd):
     )
   if r["sl_too_far"]:
     parts.append(
-        f"<div style='color:{AMBER};font-size:0.85rem;'>⚠️ SL შესვლიდან 8%-ზე შორსაა:"
+        f"<div style='color:{AMBER};font-size:0.85rem;'>⚠️ SL შესვლიდან 8%-ზე სახიფათოდ შორსაა:"
         " Net P/L ძველი %-ის ფორმულით დაითვლება</div>"
     )
   return box("".join(parts))
