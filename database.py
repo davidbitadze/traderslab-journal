@@ -212,7 +212,6 @@ def fetch_user_preferences(user_id):
     print(f"პარამეტრების წაკითხვის შეცდომა: {e}")
     return None
 
-
 def upsert_user_preferences(user_id, mobile_mode=None, desktop_mode=None):
   """ანახლებს ან ამატებს მომხმარებლის პარამეტრებს ბაზაში."""
   try:
@@ -230,5 +229,5 @@ def upsert_user_preferences(user_id, mobile_mode=None, desktop_mode=None):
     )
     return True
   except Exception as e:
-    print(f"პარამეტრების შენახვის შეცდომა: {e}")
+    st.error(f"ბაზის დეტალური შეცდომა: {e}")
     return False
