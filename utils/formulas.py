@@ -200,3 +200,59 @@ def calculate_stats(pnls):
       "pf": (gross_win / gross_loss) if gross_loss > 0 else None,
       "expectancy": sum(values) / n,
   }
+
+
+def calculate_rr(side, entry, sl, tp):
+  """დაგეგმილი R/R კოეფიციენტი შესვლის, SL-ისა და TP-ის ფასებიდან.
+
+  Long:  რისკი = შესვლა - SL,  მოგება = TP - შესვლა
+  Short: რისკი = SL - შესვლა,  მოგება = შესვლა - TP
+  rr = მოგება / რისკი (1$ რისკზე რამდენი დოლარი მოგება).
+
+  status: ok | no_entry | no_sl | no_tp | no_sl_tp | bad_sl | bad_tp | bad_side
+  risk_dist / reward_dist ივსება მაშინ, როცა შესაბამისი ფასი სწორ მხარესაა.
+  sl_too_far: SL შესვლიდან MAX_STOP_PCT-ზე შორსაა, ამ შემთხვევაში Net P/L-ში
+  R-მეთოდი არ გამოიყენება (pnl_breakdown გადადის ძველ %-ზე).
+  """
+  direction = normalize_side(side)
+  e, s, t = to_float(entry), to_float(sl), to_float(tp)
+  out = {
+      "status": "ok",
+      "rr": None,
+      "risk_dist": None,
+      "reward_dist": None,
+      "sl_too_far": False,
+  }
+  if direction is None:
+    out["status"] = "bad_side"
+    return out
+  if e <= 0:
+    out["status"] = "no_entry"
+    return out
+
+  sl_set, tp_set = s > 0, t > 0
+  if sl_set:
+    risk = (e - s) if direction == "long" else (s - e)
+    if risk > 0:
+      out["risk_dist"] = risk
+      out["sl_too_far"] = risk > MAX_STOP_PCT * e
+    else:
+      out["status"] = "bad_sl"
+  if tp_set:
+    reward = (t - e) if direction == "long" else (e - t)
+    if reward > 0:
+      out["reward_dist"] = reward
+    elif out["status"] == "ok":
+      out["status"] = "bad_tp"
+
+  if out["status"] != "ok":
+    return out
+  if not sl_set and not tp_set:
+    out["status"] = "no_sl_tp"
+  elif not sl_set:
+    out["status"] = "no_sl"
+  elif not tp_set:
+    out["status"] = "no_tp"
+  else:
+    out["rr"] = out["reward_dist"] / out["risk_dist"]
+  return out
