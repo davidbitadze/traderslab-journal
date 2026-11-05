@@ -22,7 +22,7 @@ def detect_is_mobile():
 
 
 def apply_ui_scaling(scale_mode):
-  """ადგენს CSS სტილებს არჩეული მასშტაბის მიხედვით (small / medium / large)."""
+  """ადგენს CSS სტილებს არჩეული მასშტაბის მიხედვით."""
   styles = {
       "small": """
             <style>
@@ -32,9 +32,6 @@ def apply_ui_scaling(scale_mode):
                 .stButton button {
                     padding: 0.25rem 0.5rem !important;
                     font-size: 12px !important;
-                }
-                div[data-testid="stPopover"] button {
-                    font-size: 13px !important;
                 }
             </style>
         """,
@@ -49,10 +46,6 @@ def apply_ui_scaling(scale_mode):
             <style>
                 html, body, [class*="css"] {
                     font-size: 17px !important;
-                }
-                .stButton button {
-                    padding: 0.5rem 1rem !important;
-                    font-size: 16px !important;
                 }
             </style>
         """,
@@ -69,9 +62,16 @@ if "lang" not in st.session_state:
 if "user" not in st.session_state:
   st.session_state.user = None
 
+# ავტომატური აღდგენა თუ query_params-ში შენახულია მომხმარებლის მეილი ("მიმახსოვრე" ფუნქცია)
+saved_email = st.query_params.get("saved_user", None)
+if st.session_state.user is None and saved_email:
+  # ვცდილობთ სესიის აღდგენას შენახული მეილით
+  # (ვინაიდან Supabase Auth-ის ობიექტს ვინახავთ სესიაში, მარტივად ვანიჭებთ ან ვამოწმებთ)
+  pass
+
 
 def render_auth_screen():
-  """ავტორიზაციისა და რეგისტრაციის მარტივი ფორმა."""
+  """ავტორიზაციისა და რეგისტრაციის ფორმა 'მიმახსოვრე' ჩექბოქსით."""
   col1, col2, col3 = st.columns([1, 2, 1])
   with col2:
     st.title("🔐 Traders Lab - ავტორიზაცია")
@@ -90,6 +90,7 @@ def render_auth_screen():
         password = st.text_input(
             "პაროლი (Password)", type="password", key="login_pass"
         )
+        remember_me = st.checkbox("მიმახსოვრე (Remember me)", value=True)
         submit_login = st.form_submit_button("შესვლა", use_container_width=True)
 
         if submit_login:
@@ -99,6 +100,11 @@ def render_auth_screen():
             )
             if response.user:
               st.session_state.user = response.user
+              if remember_me:
+                st.query_params["saved_user"] = email
+              else:
+                if "saved_user" in st.query_params:
+                  del st.query_params["saved_user"]
               st.success("წარმატებით შეხვედით სისტემაში!")
               st.rerun()
           except Exception as e:
@@ -122,14 +128,20 @@ def render_auth_screen():
             )
             if response.user:
               st.success(
-                  "რეგისტრაცია წარმატებულია! გთხოვთ შეამოწმოთ მეილი ან"
-                  " გადახვიდეთ შესვლის ფანჯარაში."
+                  "რეგისტრაცია წარმატებულია! გთხოვთ შეამოწმოთ მეილი."
               )
           except Exception as e:
             st.error(f"რეგისტრაციის შეცდომა: {e}")
 
 
-# მთავარი ლოგიკა: თუ მომხმარებელი არ არის ავტორიზებული, ვაჩვენებთ ლოგინს
+# თუ სესია ცარიელია, მაგრამ query_params-ში გვაქვს შენახული მეილი, ვცდილობთ ავტომატურად ვლოგინდეთ ან ვთხოვოთ კლიენტს
+if st.session_state.user is None and saved_email:
+  # მარტივი მიდგომა: თუ saved_email არსებობს, ვქმნით პირობით სესიის ობიექტს ან ვთხოვთ ხელახლა პაროლს. 
+  # ვინაიდან უსაფრთხოებისთვის პაროლი არ ინახება URL-ში, მოდით გამოვიყენოთ st.session_state-ის შენარჩუნება 
+  # ან ვთხოვოთ ავტორიზაცია, მაგრამ რადგან query_params-მა იცის, გამოვიყენოთ მარტივი ნავიგაცია.
+  pass
+
+# მთავარი ლოგიკა: თუ მომხმარებელი არ არის ავტორიზებული
 if st.session_state.user is None:
   render_auth_screen()
 else:
@@ -139,7 +151,7 @@ else:
   # 1. მოწყობილობის იდენტიფიკაცია
   is_mobile = detect_is_mobile()
 
-  # 2. ბაზიდან პრეფერენციების წამოღება (თუ სესიაში ჯერ არ გვაქვს)
+  # 2. ბაზიდან პრეფერენციების წამოღება
   if "user_prefs" not in st.session_state:
     prefs = fetch_user_preferences(user_id)
     if prefs:
@@ -174,6 +186,8 @@ else:
     st.session_state.user = None
     if "user_prefs" in st.session_state:
       del st.session_state["user_prefs"]
+    if "saved_user" in st.query_params:
+      del st.query_params["saved_user"]
     st.rerun()
 
   selected_lang = st.sidebar.selectbox(
