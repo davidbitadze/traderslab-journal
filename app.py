@@ -1,4 +1,3 @@
-import extra_streamlit_components as stx
 from database import fetch_user_preferences, get_supabase_client
 import streamlit as st
 from utils.translations import t
@@ -9,9 +8,6 @@ from views.settings import render_settings_view
 st.set_page_config(
     page_title="Traders Lab - სავაჭრო ჟურნალი", page_icon="📊", layout="wide"
 )
-
-# Cookie Manager-ის ინიციალიზაცია უსაფრთხო სესიისთვის
-cookie_manager = stx.CookieManager()
 
 
 def detect_is_mobile():
@@ -69,18 +65,19 @@ supabase = get_supabase_client()
 if "user" not in st.session_state:
   st.session_state.user = None
 
-# 1. ვცდილობთ სესიის აღდგენას ბრაუზერის ქუქი-ფაილიდან (Refresh Token)
-saved_refresh_token = cookie_manager.get(cookie="supabase_refresh_token")
+# --- ავტომატური სესიის აღდგენა URL-დან (Remember Me / Refresh Persistence) ---
+saved_token = st.query_params.get("session_token", None)
 
-if st.session_state.user is None and saved_refresh_token:
+if st.session_state.user is None and saved_token:
   try:
-    # ვცდილობთ ტოკენის განახლებას Supabase-ის მეშვეობით
-    auth_response = supabase.auth.set_session(saved_refresh_token)
+    # ვცდილობთ აღვადგინოთ Supabase სესია შენახული ტოკენით
+    auth_response = supabase.auth.set_session(saved_token)
     if auth_response and auth_response.user:
       st.session_state.user = auth_response.user
   except Exception:
-    # თუ ტოკენი ვადაგასულია ან არასწორია, ვასუფთავებთ ქუქის
-    cookie_manager.delete("supabase_refresh_token")
+    # თუ ტოკენი ვადაგასულია, ვასუფთავებთ query params-ს
+    if "session_token" in st.query_params:
+      del st.query_params["session_token"]
 
 
 def render_auth_screen():
@@ -112,12 +109,8 @@ def render_auth_screen():
             if response.user and response.session:
               st.session_state.user = response.user
               if remember_me:
-                # ვინახავთ refresh token-ს უსაფრთხო ქუქიში 30 დღით
-                cookie_manager.set(
-                    "supabase_refresh_token",
-                    response.session.refresh_token,
-                    expires_at=None,
-                )
+                # ვინახავთ სესიის refresh token-ს URL-ში, რაც რეფრეშისას უზრუნველყოფს ავტომატურ შესვლას
+                st.query_params["session_token"] = response.session.refresh_token
               st.success("წარმატებით შეხვედით სისტემაში!")
               st.rerun()
           except Exception as e:
@@ -151,7 +144,7 @@ def render_auth_screen():
 if st.session_state.user is None:
   render_auth_screen()
 else:
-  user_id = st.session_state.user.id  # ეს არის რეალური UUID!
+  user_id = st.session_state.user.id  # მკაცრად UUID!
   user_email = st.session_state.user.email
 
   # 1. მოწყობილობის იდენტიფიკაცია
@@ -188,11 +181,11 @@ else:
       supabase.auth.sign_out()
     except Exception:
       pass
-    # ვშლით ქუქის გასვლისას
-    cookie_manager.delete("supabase_refresh_token")
     st.session_state.user = None
     if "user_prefs" in st.session_state:
       del st.session_state["user_prefs"]
+    if "session_token" in st.query_params:
+      del st.query_params["session_token"]
     st.rerun()
 
   selected_lang = st.sidebar.selectbox(
