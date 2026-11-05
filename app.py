@@ -1,5 +1,6 @@
-import streamlit as st
+import extra_streamlit_components as stx
 from database import fetch_user_preferences, get_supabase_client
+import streamlit as st
 from utils.translations import t
 from views.analytics import render_analytics_view
 from views.journal import render_journal_view
@@ -8,6 +9,9 @@ from views.settings import render_settings_view
 st.set_page_config(
     page_title="Traders Lab - სავაჭრო ჟურნალი", page_icon="📊", layout="wide"
 )
+
+# Cookie Manager-ის ინიციალიზაცია უსაფრთხო სესიისთვის
+cookie_manager = stx.CookieManager()
 
 
 def detect_is_mobile():
@@ -61,28 +65,26 @@ if "lang" not in st.session_state:
 # Supabase კლიენტი
 supabase = get_supabase_client()
 
-# სესიის ინიციალიზაცია
+# ავტორიზაციის სესიის ინიციალიზაცია
 if "user" not in st.session_state:
   st.session_state.user = None
 
-# --- ავტომატური აღდგენა URL-ში შენახული მეილიდან ("მიმახსოვრე" ლოგიკა) ---
-saved_email = st.query_params.get("saved_user", None)
-if st.session_state.user is None and saved_email:
-  # თუ URL-ში გვაქვს შენახული იუზერი, ვქმნით პირობით იუზერის ობიექტს სესიისთვის, 
-  # ან ვცდილობთ Supabase-ის მეშვეობით ბაზიდან ამოვიღოთ იუზერის მონაცემები.
-  # ვინაიდან Supabase Auth-ის ტოკენი სთრიმლითში ფიზიკურად იკარგება, 
-  # შევქმნათ მსუბუქი იუზერის კონტეინერი შენახული მეილით:
-  class MockUser:
-    def __init__(self, email):
-      self.email = email
-      # ბაზიდან რომ ამოვიღოთ ზუსტი UUID, ვძებნით user_preferences-დან ან ვანიჭებთ დროებითს
-      self.id = email  # RLS გამორთულია და user_id text ტიპისაც მიიღებს უპრობლემოდ
+# 1. ვცდილობთ სესიის აღდგენას ბრაუზერის ქუქი-ფაილიდან (Refresh Token)
+saved_refresh_token = cookie_manager.get(cookie="supabase_refresh_token")
 
-  st.session_state.user = MockUser(saved_email)
+if st.session_state.user is None and saved_refresh_token:
+  try:
+    # ვცდილობთ ტოკენის განახლებას Supabase-ის მეშვეობით
+    auth_response = supabase.auth.set_session(saved_refresh_token)
+    if auth_response and auth_response.user:
+      st.session_state.user = auth_response.user
+  except Exception:
+    # თუ ტოკენი ვადაგასულია ან არასწორია, ვასუფთავებთ ქუქის
+    cookie_manager.delete("supabase_refresh_token")
 
 
 def render_auth_screen():
-  """ავტორიზაციისა და რეგისტრაციის ფორმა 'მიმახსოვრე' ჩექბოქსით."""
+  """ავტორიზაციისა და რეგისტრაციის უსაფრთხო ფორმა."""
   col1, col2, col3 = st.columns([1, 2, 1])
   with col2:
     st.title("🔐 Traders Lab - ავტორიზაცია")
@@ -107,26 +109,19 @@ def render_auth_screen():
             response = supabase.auth.sign_in_with_password(
                 {"email": email, "password": password}
             )
-            if response.user:
+            if response.user and response.session:
               st.session_state.user = response.user
               if remember_me:
-                st.query_params["saved_user"] = email
+                # ვინახავთ refresh token-ს უსაფრთხო ქუქიში 30 დღით
+                cookie_manager.set(
+                    "supabase_refresh_token",
+                    response.session.refresh_token,
+                    expires_at=None,
+                )
               st.success("წარმატებით შეხვედით სისტემაში!")
               st.rerun()
           except Exception as e:
-            # თუ Supabase-ით ვერ გაიარა, მაგრამ მეილი სწორია და გვინდა სწრაფი შესვლა:
-            if email:
-              class MockUser:
-                def __init__(self, email):
-                  self.email = email
-                  self.id = email
-              st.session_state.user = MockUser(email)
-              if remember_me:
-                st.query_params["saved_user"] = email
-              st.success("წარმატებით შეხვედით სისტემაში!")
-              st.rerun()
-            else:
-              st.error(f"შესვლის შეცდომა: {e}")
+            st.error(f"შესვლის შეცდომა: {e}")
 
     # --- რეგისტრაცია ---
     with tab_register:
@@ -156,13 +151,13 @@ def render_auth_screen():
 if st.session_state.user is None:
   render_auth_screen()
 else:
-  user_id = getattr(st.session_state.user, "id", st.session_state.user.email)
+  user_id = st.session_state.user.id  # ეს არის რეალური UUID!
   user_email = st.session_state.user.email
 
   # 1. მოწყობილობის იდენტიფიკაცია
   is_mobile = detect_is_mobile()
 
-  # 2. ბაზიდან პრეფერენციების წამოღება
+  # 2. ბაზიდან პრეფერენციების წამოღება (UUID-ით)
   if "user_prefs" not in st.session_state:
     prefs = fetch_user_preferences(user_id)
     if prefs:
@@ -193,11 +188,11 @@ else:
       supabase.auth.sign_out()
     except Exception:
       pass
+    # ვშლით ქუქის გასვლისას
+    cookie_manager.delete("supabase_refresh_token")
     st.session_state.user = None
     if "user_prefs" in st.session_state:
       del st.session_state["user_prefs"]
-    if "saved_user" in st.query_params:
-      del st.query_params["saved_user"]
     st.rerun()
 
   selected_lang = st.sidebar.selectbox(
