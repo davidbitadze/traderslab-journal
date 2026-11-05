@@ -58,20 +58,25 @@ def apply_ui_scaling(scale_mode):
 if "lang" not in st.session_state:
   st.session_state.lang = "ka"
 
-# სესიის ინიციალიზაცია ავტორიზაციისთვის
+# Supabase კლიენტის ინიციალიზაცია
+supabase = get_supabase_client()
+
+# ავტორიზაციის სესიის შემოწმება
 if "user" not in st.session_state:
   st.session_state.user = None
 
-# ავტომატური აღდგენა თუ query_params-ში შენახულია მომხმარებლის მეილი ("მიმახსოვრე" ფუნქცია)
-saved_email = st.query_params.get("saved_user", None)
-if st.session_state.user is None and saved_email:
-  # ვცდილობთ სესიის აღდგენას შენახული მეილით
-  # (ვინაიდან Supabase Auth-ის ობიექტს ვინახავთ სესიაში, მარტივად ვანიჭებთ ან ვამოწმებთ)
-  pass
+# ვცდილობთ აღვადგინოთ სესია Supabase-ის ავტომატური ტოკენიდან ან სესიიდან
+if st.session_state.user is None:
+  try:
+    session_response = supabase.auth.get_session()
+    if session_response and session_response.session:
+      st.session_state.user = session_response.session.user
+  except Exception:
+    pass
 
 
 def render_auth_screen():
-  """ავტორიზაციისა და რეგისტრაციის ფორმა 'მიმახსოვრე' ჩექბოქსით."""
+  """ავტორიზაციისა და რეგისტრაციის ფორმა."""
   col1, col2, col3 = st.columns([1, 2, 1])
   with col2:
     st.title("🔐 Traders Lab - ავტორიზაცია")
@@ -81,8 +86,6 @@ def render_auth_screen():
         ["შესვლა (Login)", "რეგისტრაცია (Register)"]
     )
 
-    supabase = get_supabase_client()
-
     # --- შესვლა ---
     with tab_login:
       with st.form("login_form"):
@@ -90,7 +93,6 @@ def render_auth_screen():
         password = st.text_input(
             "პაროლი (Password)", type="password", key="login_pass"
         )
-        remember_me = st.checkbox("მიმახსოვრე (Remember me)", value=True)
         submit_login = st.form_submit_button("შესვლა", use_container_width=True)
 
         if submit_login:
@@ -100,11 +102,6 @@ def render_auth_screen():
             )
             if response.user:
               st.session_state.user = response.user
-              if remember_me:
-                st.query_params["saved_user"] = email
-              else:
-                if "saved_user" in st.query_params:
-                  del st.query_params["saved_user"]
               st.success("წარმატებით შეხვედით სისტემაში!")
               st.rerun()
           except Exception as e:
@@ -133,13 +130,6 @@ def render_auth_screen():
           except Exception as e:
             st.error(f"რეგისტრაციის შეცდომა: {e}")
 
-
-# თუ სესია ცარიელია, მაგრამ query_params-ში გვაქვს შენახული მეილი, ვცდილობთ ავტომატურად ვლოგინდეთ ან ვთხოვოთ კლიენტს
-if st.session_state.user is None and saved_email:
-  # მარტივი მიდგომა: თუ saved_email არსებობს, ვქმნით პირობით სესიის ობიექტს ან ვთხოვთ ხელახლა პაროლს. 
-  # ვინაიდან უსაფრთხოებისთვის პაროლი არ ინახება URL-ში, მოდით გამოვიყენოთ st.session_state-ის შენარჩუნება 
-  # ან ვთხოვოთ ავტორიზაცია, მაგრამ რადგან query_params-მა იცის, გამოვიყენოთ მარტივი ნავიგაცია.
-  pass
 
 # მთავარი ლოგიკა: თუ მომხმარებელი არ არის ავტორიზებული
 if st.session_state.user is None:
@@ -179,7 +169,6 @@ else:
 
   if st.sidebar.button("🚪 გასვლა (Logout)", use_container_width=True):
     try:
-      supabase = get_supabase_client()
       supabase.auth.sign_out()
     except Exception:
       pass
