@@ -289,10 +289,7 @@ def show_trade_details_dialog(trade, df=None):
   st.markdown("### 📊 გარიგების მართვა / დამატებითი ქმედებები")
   
   if not sub_actions.empty:
-    # ვქმნით ვიზუალურ ბარათებს თითოეული სუბ-მოქმედებისთვის
-    cols = st.cycle_columns(2) if len(sub_actions) > 1 else [st.container()]
     for idx, row in sub_actions.iterrows():
-      sub_id = row.get("Trade ID") or row.get("id") or idx
       sub_type = row.get("Action Type", row.get("action_type", "Action"))
       sub_price = row.get("Price", row.get("price", 0.0))
       sub_qty = row.get("Quantity", row.get("quantity", 0.0))
