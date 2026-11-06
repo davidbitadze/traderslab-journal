@@ -262,20 +262,46 @@ def show_trade_details_dialog(trade, df=None):
 
   st.divider()
 
-  # --- სუბ-მოქმედებების ბარათები (Streamlit სვეტებით და 3-სვეტიანი ბადით) ---
+  # --- სუბ-მოქმედებების ბარათები (ქრონოლოგიური სწორი თანმიმდევრობა და CSS Grid) ---
   st.markdown("### 📊 გარიგების მართვა / დამატებითი ქმედებები")
   
   if not sub_actions.empty:
+    # ვალაგებთ თარიღის მიხედვით ზრდადობით (რომ მთავარი შესვლა იყოს პირველი)
+    if "Date" in sub_actions.columns:
+      sub_actions = sub_actions.sort_values(by="Date", ascending=True)
+    elif "date" in sub_actions.columns:
+      sub_actions = sub_actions.sort_values(by="date", ascending=True)
+
     sub_items = list(sub_actions.iterrows())
     
-    # ვანაწილებთ 3-ელემენტიან ნაკრებებად (Chunks)
+    # CSS Grid კონტეინერი მკაცრი 3-სვეტიანი განლაგებისთვის
+    st.markdown(
+        """
+        <style>
+        .sub-grid-container {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            width: 100%;
+            margin-bottom: 12px;
+        }
+        @media (max-width: 900px) {
+            .sub-grid-container {
+                grid-template-columns: 1fr;
+            }
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # რენდერი 3-სვეტიან ბადეში
     for i in range(0, len(sub_items), 3):
       chunk = sub_items[i:i+3]
       cols = st.columns(3)
       for j, (row_idx, row) in enumerate(chunk):
         sub_id = row.get("Trade ID") or row.get("id") or row_idx
         
-        # ზუსტი სვეტი ბაზიდან: ActionType
         sub_type = None
         for k in ["ActionType", "Action Type", "action_type", "Action"]:
           val = row.get(k)
