@@ -117,7 +117,6 @@ div[data-testid="stPopoverBody"] {{
 
 
 def inject_card_css():
-  """ბარათების CSS გვერდზე ერთხელ ემატება (აღარ მეორდება ყოველ ბარათზე)."""
   st.markdown(
       get_card_css(st.session_state.get("ui_scale", "medium")),
       unsafe_allow_html=True,
@@ -282,6 +281,36 @@ def show_trade_details_dialog(trade, df=None):
     if uploaded_url:
       update_trade(trade_id, {"Screenshot": uploaded_url})
       st.toast("სკრინშოტი განახლდა!", icon="🖼️")
+      st.rerun(scope="fragment")
+
+  st.divider()
+
+  # --- ქვე-მოქმედებების (Sub-actions / მართვის) სექცია ---
+  st.markdown("### 📊 გარიგების მართვა / დამატებითი ქმედებები")
+  
+  # არსებული ქვე-მოქმედებების (სუბ-ორდერების) ცხრილი ან სია
+  if not sub_actions.empty:
+    st.dataframe(sub_actions[["Action Type", "Price", "Quantity", "Date"]], use_container_width=True)
+  else:
+    st.info("ამ გარიგებაზე დამატებითი ქმედებები (ნაწილობრივი გასვლა/შესვლა) ჯერ არ ფიქსირდება.")
+
+  # ღილაკი ახალი სუბ-მოქმედების (ქმაედების) დასამატებლად
+  with st.expander("➕ ახალი ქმედების დამატება (ნაწილობრივი/სრული გასვლა, დამატება)"):
+    sub_type = st.selectbox("მოქმედების ტიპი", ["Partial Exit", "Full Exit", "Add Position"], key=f"sub_type_{trade_id}")
+    sub_price = st.number_input("ფასი", value=0.0, format="%.5f", key=f"sub_price_{trade_id}")
+    sub_qty = st.number_input("მოცულობა (Qty)", value=1.0, format="%.2f", key=f"sub_qty_{trade_id}")
+    
+    if st.button("მონაცემის დამატება", key=f"add_sub_btn_{trade_id}", use_container_width=True):
+      sub_payload = {
+          "Parent Trade ID": trade_id,
+          "Action Type": sub_type,
+          "Price": sub_price,
+          "Quantity": sub_qty,
+          "Date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+      }
+      insert_trade(sub_payload)
+      recalc_net_pnl(trade_id, clear_if_none=False)
+      st.success("მონაცემი დაემატა!")
       st.rerun(scope="fragment")
 
   st.divider()
