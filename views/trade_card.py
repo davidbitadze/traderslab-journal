@@ -92,30 +92,6 @@ div[data-testid="element-container"]:has(> [data-testid="stHorizontalBlock"]) {{
     justify-content: center;
     font-size: 0.95rem;
 }}
-.sub-action-img {{
-    width: 65px !important;
-    height: 65px !important;
-    min-width: 65px !important;
-    min-height: 65px !important;
-    border-radius: 6px !important;
-    object-fit: cover !important;
-    object-position: center center !important;
-    border: 1px solid rgba(255,255,255,0.1) !important;
-    display: block !important;
-}}
-.sub-action-placeholder {{
-    width: 65px !important;
-    height: 65px !important;
-    min-width: 65px !important;
-    min-height: 65px !important;
-    border-radius: 6px !important;
-    background: rgba(255,255,255,0.05);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1rem;
-    border: 1px solid rgba(255,255,255,0.1) !important;
-}}
 .trade-main-text {{
     font-size: {font_main};
     font-weight: 600;
@@ -260,7 +236,7 @@ def show_trade_details_dialog(trade, df=None):
 
   st.divider()
 
-  # --- სუბ-მოქმედებების ბარათები (სუფთა CSS Grid და უსაფრთხო HTML რენდერი) ---
+  # --- სუბ-მოქმედებების ბარათები (Streamlit-ის მშობლიური სვეტები და ბადე HTML-ის გარეშე) ---
   st.markdown("### 📊 გარიგების მართვა / დამატებითი ქმედებები")
   
   if not sub_actions.empty:
@@ -275,78 +251,58 @@ def show_trade_details_dialog(trade, df=None):
 
     sub_items = list(sub_actions.iterrows())
 
-    st.markdown(
-        """
-        <style>
-        .fixed-grid-container {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 10px;
-            width: 100%;
-            margin-bottom: 8px;
-        }
-        @media (max-width: 900px) {
-            .fixed-grid-container {
-                grid-template-columns: 1fr;
-            }
-        }
-        </style>
-        """,
-        unsafe_allow_html=True,
-    )
+    # ვანაწილებთ სუფთა Streamlit სვეტებად (3 სვეტი)
+    for i in range(0, len(sub_items), 3):
+      chunk = sub_items[i:i+3]
+      cols = st.columns(3)
+      for j, (row_idx, row) in enumerate(chunk):
+        sub_id = row.get("Trade ID") or row.get("id") or row_idx
+        
+        sub_type = "Action"
+        for k in ["ActionType", "Action Type", "action_type", "Action"]:
+          val = row.get(k)
+          if _has_value(val):
+            sub_type = val
+            break
 
-    grid_html = ["<div class='fixed-grid-container'>"]
-    for row_idx, row in sub_items:
-      sub_id = row.get("Trade ID") or row.get("id") or row_idx
-      
-      sub_type = "Action"
-      for k in ["ActionType", "Action Type", "action_type", "Action"]:
-        val = row.get(k)
-        if _has_value(val):
-          sub_type = val
-          break
+        sub_price = 0.0
+        for k in ["Price", "price", "Entry Price", "entry_price"]:
+          val = row.get(k)
+          if _has_value(val):
+            sub_price = val
+            break
 
-      sub_price = 0.0
-      for k in ["Price", "price", "Entry Price", "entry_price"]:
-        val = row.get(k)
-        if _has_value(val):
-          sub_price = val
-          break
+        sub_qty = 0.0
+        for k in ["Quantity", "quantity", "Qty", "qty"]:
+          val = row.get(k)
+          if _has_value(val):
+            sub_qty = val
+            break
 
-      sub_qty = 0.0
-      for k in ["Quantity", "quantity", "Qty", "qty"]:
-        val = row.get(k)
-        if _has_value(val):
-          sub_qty = val
-          break
+        sub_date = ""
+        if date_col:
+          sub_date = row.get(date_col, "")
 
-      sub_date = ""
-      if date_col:
-        sub_date = row.get(date_col, "")
+        sub_img = None
+        for k in ["Screenshot", "screenshot"]:
+          val = row.get(k)
+          if _has_value(val):
+            sub_img = _get_image_url(val)
+            break
 
-      sub_img = None
-      for k in ["Screenshot", "screenshot"]:
-        val = row.get(k)
-        if _has_value(val):
-          sub_img = _get_image_url(val)
-          break
-
-      img_html = f"<img src='{sub_img}' class='sub-action-img'>" if sub_img else "<div class='sub-action-placeholder'>📁</div>"
-      formatted_date = _pretty_date(sub_date) if sub_date else ""
-
-      grid_html.append(f"""
-        <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; padding: 10px; display: flex; gap: 10px; align-items: center; box-sizing: border-box; min-width: 0;">
-            <div>{img_html}</div>
-            <div style="min-width: 0; overflow: hidden;">
-                <div style="font-weight: 600; font-size: 0.82rem; color: #ffffff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{sub_type}</div>
-                <div style="font-size: 0.75rem; color: #94a3b8;">ფასი: <b>{sub_price}</b></div>
-                <div style="font-size: 0.75rem; color: #94a3b8;">მოცულობა: <b>{sub_qty}</b></div>
-                <div style="font-size: 0.68rem; color: #64748b; margin-top: 2px;">📅 {formatted_date}</div>
-            </div>
-        </div>
-      """)
-    grid_html.append("</div>")
-    st.markdown("".join(grid_html), unsafe_allow_html=True)
+        with cols[j]:
+          with st.container(border=True):
+            c_img, c_desc = st.columns([1, 2], vertical_alignment="center")
+            with c_img:
+              if sub_img:
+                st.image(sub_img, width=65)
+              else:
+                st.markdown("📁")
+            with c_desc:
+              st.markdown(f"**{sub_type}**")
+              st.text(f"ფასი: {sub_price}")
+              st.text(f"მოცულობა: {sub_qty}")
+              st.caption(f"📅 {_pretty_date(sub_date) if sub_date else ''}")
 
     # რედაქტირების ღილაკები ბარათების ქვემოთ
     edit_cols = st.columns(min(len(sub_items), 3))
@@ -360,7 +316,7 @@ def show_trade_details_dialog(trade, df=None):
           st.session_state[edit_sub_key] = not st.session_state.get(edit_sub_key, False)
           st.rerun(scope="fragment")
 
-    # რედაქტირების ფორმა (იხსნება ცალკე ქვემოთ, არ არღვევს ბადეს)
+    # რედაქტირების ფორმა (იხსნება ცალკე ქვემოთ)
     for idx, (row_idx, row) in enumerate(sub_items):
       sub_id = row.get("Trade ID") or row.get("id") or row_idx
       edit_sub_key = f"edit_sub_mode_{sub_id}"
