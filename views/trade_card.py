@@ -254,7 +254,6 @@ def show_trade_details_dialog(trade, df=None):
 
   st.divider()
 
-  # მთავარი სკრინშოტის ვიზუალი (ატვირთვის ღილაკის გარეშე, რადგან ინდივიდუალურ ბარათებში ხდება)
   img_url = _get_image_url(main_screenshot)
   if img_url:
     st.image(img_url, use_container_width=True)
@@ -263,16 +262,19 @@ def show_trade_details_dialog(trade, df=None):
 
   st.divider()
 
-  # --- 3-სვეტიანი ბარათების განლაგება მკაცრი მარცხენა ალაინით ---
+  # --- 3-სვეტიანი ბარათების მკაცრი ჰორიზონტალური ჩლაგება HTML/CSS Flexbox-ით ---
   st.markdown("### 📊 გარიგების მართვა / დამატებითი ქმედებები")
   
   if not sub_actions.empty:
-    sub_list = list(sub_actions.iterrows())
-    for i in range(0, len(sub_list), 3):
+    cards_html = "<div style='display: flex; flex-wrap: wrap; gap: 10px; width: 100%;'>"
+    sub_items = list(sub_actions.iterrows())
+    
+    # ვხატავთ Streamlit-ის კონტეინერებით თანაბარ სვეტებში
+    for i in range(0, len(sub_items), 3):
       cols = st.columns(3)
       for j in range(3):
-        if i + j < len(sub_list):
-          idx, row = sub_list[i + j]
+        if i + j < len(sub_items):
+          idx, row = sub_items[i + j]
           sub_id = row.get("Trade ID") or row.get("id") or idx
           sub_type = row.get("Action Type", row.get("action_type", "Action"))
           sub_price = row.get("Price", row.get("price", 0.0))
