@@ -254,35 +254,20 @@ def show_trade_details_dialog(trade, df=None):
 
   st.divider()
 
+  # მთავარი სკრინშოტის ვიზუალი (ატვირთვის ღილაკის გარეშე, რადგან ინდივიდუალურ ბარათებში ხდება)
   img_url = _get_image_url(main_screenshot)
   if img_url:
     st.image(img_url, use_container_width=True)
   else:
     st.warning("⚠️ აკლია სკრინშოტი")
 
-  new_img = st.file_uploader(
-      "🖼️ სკრინშოტის შეცვლა / ატვირთვა",
-      type=["png", "jpg", "jpeg"],
-      key=f"up_img_{trade_id}",
-  )
-  if new_img is not None:
-    ext = os.path.splitext(new_img.name)[1].lower() or ".png"
-    stamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    file_safe_name = f"{pair}_{stamp}_{uuid.uuid4().hex[:6]}{ext}"
-    uploaded_url = upload_screenshot(new_img, file_name=file_safe_name)
-    if uploaded_url:
-      update_trade(trade_id, {"Screenshot": uploaded_url})
-      st.toast("სკრინშოტი განახლდა!", icon="🖼️")
-      st.rerun(scope="fragment")
-
   st.divider()
 
-  # --- 3-სვეტიანი ბარათების განლაგება სუბ-მოქმედებებისთვის ---
+  # --- 3-სვეტიანი ბარათების განლაგება მკაცრი მარცხენა ალაინით ---
   st.markdown("### 📊 გარიგების მართვა / დამატებითი ქმედებები")
   
   if not sub_actions.empty:
     sub_list = list(sub_actions.iterrows())
-    # ვიყენებთ 3 სვეტს, რომ ბარათები ერთ ზოლში ჩალაგდეს
     for i in range(0, len(sub_list), 3):
       cols = st.columns(3)
       for j in range(3):
