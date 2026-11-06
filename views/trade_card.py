@@ -253,6 +253,8 @@ def show_trade_details_dialog(trade, df):
       + (2.0 if opt_advice else 0.0)
   )
 
+
+    
   if st.button(
       f"🚀 გაგზავნა: {total_cost:g} ქულა",
       key=f"ai_send_{trade_id}",
@@ -275,9 +277,16 @@ def show_trade_details_dialog(trade, df):
               trade_id,
               {"ai_analysis": analysis_text, "ai_scores": scores_text},
           )
-        st.success("✅ AI ანალიზი წარმატებით დასრულდა!")
-        st.rerun(scope="fragment")
+          # მყისიერად ვანახლებთ მიმდინარე ლექსიკონსაც, რომ დიალოგმა ეგრევე აჩვენოს
+          trade["ai_analysis"] = analysis_text
+          trade["ai_scores"] = scores_text
 
+        st.success("✅ AI ანალიზი წარმატებით დასრულდა!")
+        st.rerun()  # სრული რეფრეში უზრუნველყოფს ფანჯრის განახლებას
+
+
+
+    
   # აკეცვადი Expander AI შეფასებისთვის
   stored_analysis = trade.get("ai_analysis")
   if _has_value(stored_analysis):
