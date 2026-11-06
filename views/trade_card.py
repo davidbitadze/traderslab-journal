@@ -31,7 +31,7 @@ def get_card_css(scale):
     font_main = "1.05rem"
     font_sub = "0.85rem"
     padding = "8px 12px"
-  else:  # medium (default)
+  else:
     size = "36px"
     font_main = "0.86rem"
     font_sub = "0.7rem"
@@ -178,6 +178,30 @@ def recalc_net_pnl(parent_id, clear_if_none=True):
   update_trade(parent_id, {"Net P/L": None if net is None else str(net)})
 
 
+def recalc_all_net_pnl(df=None):
+  """ყველა გარიგების Net P/L-ს ხელახლა ითვლის და ბაზაში წერს."""
+  if df is None:
+    df = fetch_trades()
+  if df.empty:
+    return 0
+  mains = df[
+      df["ActionType"].astype(str).str.contains("Start Row", case=False, na=False)
+  ]
+  changed = 0
+  for _, trade in mains.iterrows():
+    trade_id = trade.get("Trade ID")
+    subs = df[df["Parent Trade ID"] == trade_id]
+    net = calculate_net_pnl(trade, subs)
+    if net is None:
+      continue
+    old = trade.get("Net P/L")
+    if _has_value(old) and abs(to_float(old) - net) < 0.005:
+      continue
+    if update_trade(trade_id, {"Net P/L": str(net)}):
+      changed += 1
+  return changed
+
+
 @st.dialog("🔍 გარიგების დეტალები და მართვა", width="large")
 def show_trade_details_dialog(trade, df):
   df = fetch_trades()
@@ -253,7 +277,7 @@ def show_trade_details_dialog(trade, df):
 
   st.divider()
 
-  # --- AI ასისტენტი და ანალიზის გამოჩენა/გენერაცია ---
+  # --- AI ასისტენტი ---
   st.markdown("### 🤖 AI ასისტენტი")
   user_id = st.session_state.user.id if st.session_state.user else None
   current_credits = get_user_credits(user_id) if user_id else 0.0
@@ -295,14 +319,12 @@ def show_trade_details_dialog(trade, df):
         st.success("✅ AI ანალიზი წარმატებით დასრულდა!")
         st.rerun(scope="fragment")
 
-  # თუ ბაზაში უკვე შენახულია AI პასუხი, გამოვსახოთ ის
   stored_analysis = trade.get("ai_analysis")
   if _has_value(stored_analysis):
     st.info(stored_analysis)
 
   st.divider()
 
-  # --- დანარჩენი დეტალები (თარიღი, PnL, ეტაპები) შენარჩუნებულია ---
   td_current = trade.get("Entry Date")
   td_text = st.text_input(
       "🗓️ გარიგების თარიღი და დრო",
