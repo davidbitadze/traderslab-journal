@@ -179,12 +179,36 @@ def recalc_net_pnl(parent_id, clear_if_none=True):
   update_trade(parent_id, {"Net P/L": None if net is None else str(net)})
 
 
+@st.dialog("✏️ გარიგების რედაქტირება", width="small")
+def show_edit_trade_dialog(trade, trade_id):
+  st.write(f"**სიმბოლო:** {trade.get('Pair')} | **მხარე:** {trade.get('Side')}")
+  
+  new_pair = st.text_input("სიმბოლო / წყვილი", value=str(trade.get("Pair", "")))
+  new_side = st.selectbox("მიმართულება", ["Long", "Short"], index=0 if str(trade.get("Side", "")).lower() == "long" else 1)
+  
+  raw_entry = trade.get("Entry Price")
+  new_entry = st.number_input("შესვლის ფასი (Entry)", value=float(raw_entry) if to_float(raw_entry) is not None else 0.0, format="%.5f")
+  
+  col_s1, col_s2 = st.columns(2)
+  with col_s1:
+    if st.button("💾 შენახვა", use_container_width=True):
+      payload = {
+          "Pair": new_pair,
+          "Side": new_side,
+          "Entry Price": new_entry
+      }
+      if update_trade(trade_id, payload):
+        st.success("ცვლილებები შენახულია!")
+        st.rerun()
+  with col_s2:
+    if st.button("გაუქმება", use_container_width=True):
+      st.rerun()
+
+
 @st.dialog("🔍 გარიგების დეტალები და მართვა", width="large")
 def show_trade_details_dialog(trade, df=None):
   trade_id = trade.get("Trade ID") or trade.get("Parent Trade ID")
 
-  # დიალოგის ყოველი განახლებისას ახალი მონაცემი (ქეშიდან: ბაზას არ ეკითხება, სანამ რამე არ შეიცვალა).
-  # წინააღმდეგ შემთხვევაში "დასრულებული" ტოგლი ძველ მნიშვნელობას ადარებოდა.
   df = fetch_trades()
   fresh = df[df["Trade ID"] == trade_id]
   if not fresh.empty:
@@ -200,8 +224,8 @@ def show_trade_details_dialog(trade, df=None):
 
   st.markdown(f"### {pair} — **{side}**")
 
-  col_st1, col_st2, col_st3 = st.columns(
-      [2.5, 2.5, 2], vertical_alignment="center"
+  col_st1, col_st2, col_st3, col_st4 = st.columns(
+      [2.2, 2.2, 1.8, 1.8], vertical_alignment="center"
   )
   with col_st1:
     new_status = st.toggle(
@@ -224,6 +248,12 @@ def show_trade_details_dialog(trade, df=None):
     )
 
   with col_st3:
+    if st.button(
+        "✏️ რედაქტირება", key=f"dlg_edit_{trade_id}", use_container_width=True
+    ):
+      show_edit_trade_dialog(trade, trade_id)
+
+  with col_st4:
     if st.button(
         "🗑️ გარიგების წაშლა", key=f"dlg_del_{trade_id}", use_container_width=True
     ):
@@ -273,8 +303,6 @@ def show_trade_details_dialog(trade, df=None):
       + (2.0 if opt_advice else 0.0)
   )
 
-
-    
   if st.button(
       f"🚀 გაგზავნა: {total_cost:g} ქულა",
       key=f"ai_send_{trade_id}",
@@ -297,17 +325,12 @@ def show_trade_details_dialog(trade, df=None):
               trade_id,
               {"ai_analysis": analysis_text, "ai_scores": scores_text},
           )
-          # ლექსიკონში ვანახლებთ მნიშვნელობას ადგილზევე
           trade["ai_analysis"] = analysis_text
           trade["ai_scores"] = scores_text
 
         st.success("✅ AI ანალიზი წარმატებით დასრულდა!")
-        # ვუძახებთ fragment-ის რეფრეშს, რომელიც დიალოგს ადგილზე ანახლებს და არ ხურავს!
         st.rerun(scope="fragment")
 
-
-    
-  # აკეცვადი Expander AI შეფასებისთვის
   stored_analysis = trade.get("ai_analysis")
   if _has_value(stored_analysis):
     with st.expander("🤖 AI შეფასების შედეგი", expanded=True):
@@ -382,7 +405,6 @@ def show_trade_details_dialog(trade, df=None):
 
 
 def render_trade_card(trade, df, subs=None, pnl=None):
-  """subs და pnl გადმოცემის შემთხვევაში თავიდან აღარ ითვლება (journal.py ერთხელ ითვლის ყველასთვის)."""
   trade_id = trade.get("Trade ID") or trade.get("Parent Trade ID")
   pair = trade.get("Pair", "N/A")
   side = trade.get("Side", "N/A")
@@ -417,7 +439,6 @@ def render_trade_card(trade, df, subs=None, pnl=None):
 
   img_url = _get_image_url(screenshot)
   if img_url:
-    # lazy: ეკრანს გარეთ მყოფი სურათები არ იტვირთება, სანამ არ ჩამოსქროლავ
     thumb_html = (
         f"<img src='{img_url}' class='trade-thumb-img' loading='lazy'"
         " decoding='async'>"
