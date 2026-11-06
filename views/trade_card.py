@@ -285,16 +285,19 @@ def show_trade_details_dialog(trade, df=None):
 
   st.divider()
 
-  # --- ქვე-მოქმედებების (Sub-actions / მართვის) სექცია ---
+  # --- ქვე-მოქმედებების (Sub-actions / მართვის) უსაფრთხო სექცია ---
   st.markdown("### 📊 გარიგების მართვა / დამატებითი ქმედებები")
   
-  # არსებული ქვე-მოქმედებების (სუბ-ორდერების) ცხრილი ან სია
   if not sub_actions.empty:
-    st.dataframe(sub_actions[["Action Type", "Price", "Quantity", "Date"]], use_container_width=True)
+    # უსაფრთხოების ფილტრი: ვამოწმებთ რომელი სვეტები რეალურად არსებობს DataFrame-ში
+    available_cols = [col for col in ["Action Type", "Price", "Quantity", "Date"] if col in sub_actions.columns]
+    if available_cols:
+      st.dataframe(sub_actions[available_cols], use_container_width=True)
+    else:
+      st.dataframe(sub_actions, use_container_width=True)
   else:
     st.info("ამ გარიგებაზე დამატებითი ქმედებები (ნაწილობრივი გასვლა/შესვლა) ჯერ არ ფიქსირდება.")
 
-  # ღილაკი ახალი სუბ-მოქმედების (ქმაედების) დასამატებლად
   with st.expander("➕ ახალი ქმედების დამატება (ნაწილობრივი/სრული გასვლა, დამატება)"):
     sub_type = st.selectbox("მოქმედების ტიპი", ["Partial Exit", "Full Exit", "Add Position"], key=f"sub_type_{trade_id}")
     sub_price = st.number_input("ფასი", value=0.0, format="%.5f", key=f"sub_price_{trade_id}")
