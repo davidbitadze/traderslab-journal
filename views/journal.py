@@ -8,17 +8,15 @@ from views.trade_card import recalc_all_net_pnl, render_trade_card
 
 
 def render_journal_view(lang="ka"):
-  # 1. ვიღებთ დეპოზიტების/ტრანზაქციების ჯამს
+  # 1. დეპოზიტების/ტრანზაქციების ბალანსი
   df_txn = fetch_balance_transactions()
-  total_deposits = 500.0  # ნაგულისხმევად თუ ტრანზაქცია არ არის
+  total_deposits = 500.0
   if not df_txn.empty and "Amount" in df_txn.columns:
     total_deposits = pd.to_numeric(df_txn["Amount"], errors="coerce").sum()
 
-  # 2. მონაცემების წამოღება გარიგებებიდან
+  # 2. მონაცემების წამოღება და ერთჯერადი სორტირება თარიღით (ახლიდან ძველისკენ)
   df = fetch_trades()
-
   if not df.empty and "Entry Date" in df.columns:
-    # mixed ფორმატი უზრუნველყოფს, რომ როგორც 'YYYY-MM-DD', ისე 'MM/DD/YYYY' სწორად დაკონვერტირდეს
     df["parsed_date"] = pd.to_datetime(
         df["Entry Date"], errors="coerce", format="mixed"
     )
@@ -26,15 +24,15 @@ def render_journal_view(lang="ka"):
         columns=["parsed_date"]
     )
 
-  # 2.1 Net P/L-ის სინქრონიზაცია ბაზასთან: ერთხელ სესიაზე (გვერდის ჩატვირთვა/რეფრეში)
+  # 3. Net P/L-ის სინქრონიზაცია ბაზასთან (მხოლოდ ერთხელ სესიაზე)
   if not df.empty and not st.session_state.get("net_pnl_synced"):
     st.session_state["net_pnl_synced"] = True
     try:
       recalc_all_net_pnl(df)
     except Exception:
-      pass  # სინქრონიზაციის შეცდომამ გვერდი არ უნდა გააჩეროს
+      pass
 
-  # 3. ჯამური PnL: იგივე ფორმულა, რაც ბარათებზეა (utils/formulas.py)
+  # 4. ჯამური PnL-ის კალკულაცია
   total_pnl = 0.0
   if not df.empty:
     main_trades = df[
@@ -51,14 +49,13 @@ def render_journal_view(lang="ka"):
         pnl = to_float(trade.get("Net P/L"))
       total_pnl += pnl
 
-  # 4. საბოლოო ბალანსი = დეპოზიტების ჯამი + ჯამური PnL
   final_balance = total_deposits + total_pnl
 
   # 5. AI ქულების ბალანსის წამოღება
   user_id = st.session_state.user.id if st.session_state.user else None
   ai_credits = get_user_credits(user_id) if user_id else 0.0
 
-  # 6. კომპაქტური, მობილურზე მორგებული სათაური (Glide-ის სტილში)
+  # 6. სათაური ფინანსური და AI ბალანსით (Glide-ის სტილში)
   st.markdown(
       f"""
       <div style='display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;'>
@@ -75,9 +72,9 @@ def render_journal_view(lang="ka"):
 
   # 7. ახალი გარიგების დამატების მოდალი
   render_add_trade_modal()
-
   st.divider()
 
+  # 8. მთავარი გარიგებების გამოტანა
   if not df.empty:
     main_trades = df[
         df["ActionType"].str.contains("Start Row", case=False, na=False)
@@ -85,19 +82,7 @@ def render_journal_view(lang="ka"):
     if main_trades.empty:
       main_trades = df.drop_duplicates(subset=["Parent Trade ID"])
 
-    # 🔄 სორტირება: თარიღის მიხედვით ახლიდან ძველისკენ (Descending)
-    if "Entry Date" in main_trades.columns:
-      main_trades = main_trades.copy()
-      main_trades["parsed_date"] = pd.to_datetime(
-          main_trades["Entry Date"], errors="coerce", format="mixed"
-      )
-      main_trades = main_trades.sort_values(
-          by="parsed_date", ascending=False
-      ).drop(columns=["parsed_date"])
-
-    # თითოეული გარიგებისთვის გამოვიძახებთ ცალკეულ კომპონენტს
-    for index, trade in main_trades.iterrows():
+    for _, trade in main_trades.iterrows():
       render_trade_card(trade, df)
-
   else:
     st.info("ჟურნალში გარიგებები ჯერ არ არის. გამოიყენეთ ზედა ღილაკი.")
