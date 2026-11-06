@@ -277,13 +277,13 @@ def show_trade_details_dialog(trade, df):
               trade_id,
               {"ai_analysis": analysis_text, "ai_scores": scores_text},
           )
-          # მყისიერად ვანახლებთ მიმდინარე ლექსიკონსაც, რომ დიალოგმა ეგრევე აჩვენოს
+          # ლექსიკონში ვანახლებთ მნიშვნელობას ადგილზევე
           trade["ai_analysis"] = analysis_text
           trade["ai_scores"] = scores_text
 
         st.success("✅ AI ანალიზი წარმატებით დასრულდა!")
-        st.rerun()  # სრული რეფრეში უზრუნველყოფს ფანჯრის განახლებას
-
+        # ვუძახებთ fragment-ის რეფრეშს, რომელიც დიალოგს ადგილზე ანახლებს და არ ხურავს!
+        st.rerun(scope="fragment")
 
 
     
