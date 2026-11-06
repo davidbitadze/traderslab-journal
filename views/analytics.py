@@ -19,15 +19,6 @@ DAYS_KA = [
 
 
 # ---------------------------------------------------------------- helpers
-def _num(value, default=0.0):
-  try:
-    if value is None or pd.isna(value) or str(value).strip() in ("", "None"):
-      return default
-    return float(value)
-  except (ValueError, TypeError):
-    return default
-
-
 def _is_true(value):
   if isinstance(value, str):
     return value.strip().lower() == "true"
@@ -41,12 +32,24 @@ def _clean_label(value):
 
 
 def _collect_trades(df):
-  """ამზადებს დასრულებული გარიგებების ცხრილს (თითო რიგი = ერთი გარიგება)."""
+  """ამზადებს დასრულებული გარიგებების ცხრილს (თითო რიგი = ერთი გარიგება).
+  P&L-ის ჯამები ერთი groupby-თი ითვლება (ნაცვლად ყოველი გარიგებისთვის მთელი ცხრილის გაფილტვრისა)."""
   main_trades = df[
       df["ActionType"].astype(str).str.contains("Start Row", case=False, na=False)
   ]
   if main_trades.empty:
     main_trades = df.drop_duplicates(subset=["Parent Trade ID"])
+
+  if "Net P/L" in df.columns:
+    pnl_values = pd.to_numeric(df["Net P/L"], errors="coerce").fillna(0.0)
+  else:
+    pnl_values = pd.Series(0.0, index=df.index)
+
+  # გარიგების ჯამი = ყველა რიგი, სადაც Parent Trade ID == id, პლუს რიგი, სადაც Trade ID == id
+  # (თუ ის Parent-ით სხვაა; ორმაგად არ ითვლება)
+  by_parent = pnl_values.groupby(df["Parent Trade ID"]).sum()
+  own_only = pnl_values.where(df["Parent Trade ID"] != df["Trade ID"], 0.0)
+  by_own = own_only.groupby(df["Trade ID"]).sum()
 
   rows = []
   for _, trade in main_trades.iterrows():
@@ -55,10 +58,7 @@ def _collect_trades(df):
     if not _is_true(trade.get("Finalized", False)):
       continue
 
-    related = df[
-        (df["Parent Trade ID"] == trade_id) | (df["Trade ID"] == trade_id)
-    ]
-    total_pnl = sum(_num(v) for v in related["Net P/L"]) if "Net P/L" in related else 0.0
+    total_pnl = float(by_parent.get(trade_id, 0.0)) + float(by_own.get(trade_id, 0.0))
 
     pattern = trade.get("Pattern")
     if pattern is None or pd.isna(pattern) or not str(pattern).strip():
@@ -121,8 +121,8 @@ def _group(d, key):
   return g.sort_values("Total", ascending=False).reset_index(drop=True)
 
 
-def _group_table(d, key, label):
-  g = _group(d, key)
+def _group_table(g, key, label):
+  """იღებს უკვე გამოთვლილ _group შედეგს (ორჯერ აღარ ითვლება)."""
   table = g.rename(
       columns={
           key: label,
@@ -134,7 +134,6 @@ def _group_table(d, key, label):
   )[[label, "გარიგება", "Win Rate %", "ჯამური P&L", "საშუალო P&L"]]
   table["Win Rate %"] = table["Win Rate %"].round(0)
   _show_table(table, ["ჯამური P&L", "საშუალო P&L"])
-  return g
 
 
 def _bar(g, key, value_col="Total", height=320):
@@ -154,8 +153,8 @@ def render_analytics_view(lang="ka"):
     st.info("ანალიტიკისთვის მონაცემები ჯერ არ არის ჟურნალში.")
     return
 
-  trades = _collect_trades(df)
-  if trades.empty:
+  all_trades = _collect_trades(df)  # ერთხელ ითვლება და პერიოდების შედარებაშიც გამოიყენება
+  if all_trades.empty:
     st.info(
         "დასრულებული (Finalized) გარიგებები ანალიტიკისთვის ჯერ არ მოიძებნა."
     )
@@ -169,7 +168,9 @@ def render_analytics_view(lang="ka"):
       label_visibility="collapsed",
   )
   if period != "ყველა":
-    trades = trades.tail(int(period.split()[1])).reset_index(drop=True)
+    trades = all_trades.tail(int(period.split()[1])).reset_index(drop=True)
+  else:
+    trades = all_trades
 
   s = _stats(trades)
 
@@ -215,10 +216,9 @@ def render_analytics_view(lang="ka"):
 
   # ---- პერიოდების შედარება
   st.subheader("🔄 პერიოდების შედარება")
-  full = _collect_trades(df)
   comp = []
   for label, count in [("ბოლო 100", 100), ("ბოლო 50", 50), ("ბოლო 20", 20), ("ბოლო 10", 10)]:
-    ps = _stats(full.tail(count))
+    ps = _stats(all_trades.tail(count))
     if ps:
       comp.append({
           "პერიოდი": label,
@@ -248,22 +248,22 @@ def render_analytics_view(lang="ka"):
       g["order"] = g["Day"].map({d: i for i, d in enumerate(DAYS_KA)})
       g = g.sort_values("order")
       _bar(g, "Day")
-      _group_table(dated, "Day", "დღე")
+      _group_table(g, "Day", "დღე")
 
   with tab_pair:
     g = _group(trades, "Pair")
     _bar(g, "Pair")
-    _group_table(trades, "Pair", "წყვილი")
+    _group_table(g, "Pair", "წყვილი")
 
   with tab_pattern:
     g = _group(trades, "Pattern")
     _bar(g, "Pattern")
-    _group_table(trades, "Pattern", "პატერნი")
+    _group_table(g, "Pattern", "პატერნი")
 
   with tab_trigger:
     g = _group(trades, "Trigger")
     _bar(g, "Trigger")
-    _group_table(trades, "Trigger", "ტრიგერი")
+    _group_table(g, "Trigger", "ტრიგერი")
 
   with tab_side:
     g = _group(trades, "Side")
@@ -278,4 +278,4 @@ def render_analytics_view(lang="ka"):
               f"Win Rate {row['WinRate']:.0f}%",
               delta_color="off",
           )
-    _group_table(trades, "Side", "მიმართულება")
+    _group_table(g, "Side", "მიმართულება")
