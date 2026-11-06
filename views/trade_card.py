@@ -285,28 +285,36 @@ def show_trade_details_dialog(trade, df=None):
 
   st.divider()
 
-  # --- ვიზუალური სუბ-მოქმედებების (ქმედებების ბარათები) სექცია ---
+  # --- სვეტებად დალაგებული სუბ-მოქმედებების (ქმედებების ბარათები) სექცია ---
   st.markdown("### 📊 გარიგების მართვა / დამატებითი ქმედებები")
   
   if not sub_actions.empty:
-    for idx, row in sub_actions.iterrows():
-      sub_type = row.get("Action Type", row.get("action_type", "Action"))
-      sub_price = row.get("Price", row.get("price", 0.0))
-      sub_qty = row.get("Quantity", row.get("quantity", 0.0))
-      sub_date = row.get("Date", row.get("date", ""))
-      sub_img = _get_image_url(row.get("Screenshot", row.get("screenshot")))
-      
-      with st.container(border=True):
-        col_img, col_desc = st.columns([1, 2], vertical_alignment="center")
-        with col_img:
-          if sub_img:
-            st.image(sub_img, use_container_width=True)
-          else:
-            st.markdown("<div style='background:rgba(255,255,255,0.05); padding:20px; text-align:center; border-radius:6px;'>📁</div>", unsafe_allow_html=True)
-        with col_desc:
-          st.markdown(f"**მოქმედება:** `{sub_type}`")
-          st.markdown(f"ფასი: `{sub_price}` | მოცულობა: `{sub_qty}`")
-          st.caption(f"📅 {_pretty_date(sub_date)}")
+    # ვანაწილებთ ბარათებს 2 სვეტად გვერდი-გვერდ
+    sub_list = list(sub_actions.iterrows())
+    for i in range(0, len(sub_list), 2):
+      cols = st.columns(2)
+      for j in range(2):
+        if i + j < len(sub_list):
+          idx, row = sub_list[i + j]
+          sub_type = row.get("Action Type", row.get("action_type", "Action"))
+          sub_price = row.get("Price", row.get("price", 0.0))
+          sub_qty = row.get("Quantity", row.get("quantity", 0.0))
+          sub_date = row.get("Date", row.get("date", ""))
+          sub_img = _get_image_url(row.get("Screenshot", row.get("screenshot")))
+          
+          with cols[j]:
+            with st.container(border=True):
+              col_img, col_desc = st.columns([1, 2], vertical_alignment="center")
+              with col_img:
+                if sub_img:
+                  st.image(sub_img, use_container_width=True)
+                else:
+                  st.markdown("<div style='background:rgba(255,255,255,0.05); padding:15px; text-align:center; border-radius:6px;'>📁</div>", unsafe_allow_html=True)
+              with col_desc:
+                st.markdown(f"**{sub_type}**")
+                st.markdown(f"ფასი: `{sub_price}`")
+                st.markdown(f"მოცულობა: `{sub_qty}`")
+                st.caption(f"📅 {_pretty_date(sub_date)}")
   else:
     st.info("ამ გარიგებაზე დამატებითი ქმედებები (ნაწილობრივი გასვლა/შესვლა) ჯერ არ ფიქსირდება.")
 
