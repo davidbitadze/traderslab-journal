@@ -93,10 +93,27 @@ div[data-testid="element-container"]:has(> [data-testid="stHorizontalBlock"]) {{
     font-size: 0.95rem;
 }}
 .sub-action-img {{
-    width: 100% !important;
+    width: 90px !important;
     height: 90px !important;
+    min-width: 90px !important;
+    min-height: 90px !important;
     border-radius: 6px !important;
     object-fit: cover !important;
+    object-position: center center !important;
+    border: 1px solid rgba(255,255,255,0.1) !important;
+    display: block !important;
+}}
+.sub-action-placeholder {{
+    width: 90px !important;
+    height: 90px !important;
+    min-width: 90px !important;
+    min-height: 90px !important;
+    border-radius: 6px !important;
+    background: rgba(255,255,255,0.05);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
     border: 1px solid rgba(255,255,255,0.1) !important;
 }}
 .trade-main-text {{
@@ -204,8 +221,8 @@ def show_trade_details_dialog(trade, df=None):
 
   st.markdown(f"### {pair} — **{side}**")
 
-  col_st1, col_st2, col_st3, col_st4 = st.columns(
-      [2.2, 2.2, 1.8, 1.8], vertical_alignment="center"
+  col_st1, col_st2, col_st3 = st.columns(
+      [3, 3, 2], vertical_alignment="center"
   )
   with col_st1:
     new_status = st.toggle(
@@ -228,43 +245,12 @@ def show_trade_details_dialog(trade, df=None):
     )
 
   with col_st3:
-    editing_key = f"is_editing_{trade_id}"
-    is_editing = st.session_state.get(editing_key, False)
-    if st.button(
-        "💾 შენახვა" if is_editing else "✏️ რედაქტირება",
-        key=f"dlg_edit_toggle_{trade_id}",
-        use_container_width=True,
-    ):
-      st.session_state[editing_key] = not is_editing
-      st.rerun(scope="fragment")
-
-  with col_st4:
     if st.button(
         "🗑️ გარიგების წაშლა", key=f"dlg_del_{trade_id}", use_container_width=True
     ):
       if delete_trade(trade_id):
         st.success("გარიგება წაიშალა!")
         st.rerun()
-
-  # --- ინლაინ რედაქტირების პანელი (ერორის გარეშე) ---
-  if st.session_state.get(f"is_editing_{trade_id}", False):
-    with st.container(border=True):
-      st.markdown("#### ✏️ ძირითადი პარამეტრების რედაქტირება")
-      edit_pair = st.text_input("სიმბოლო / წყვილი", value=str(trade.get("Pair", "")), key=f"edit_p_{trade_id}")
-      edit_side = st.selectbox("მიმართულება", ["Long", "Short"], index=0 if str(trade.get("Side", "")).lower() == "long" else 1, key=f"edit_s_{trade_id}")
-      edit_entry = st.number_input("შესვლის ფასი (Entry)", value=float(trade.get("Entry Price", 0.0) or 0.0), format="%.5f", key=f"edit_e_{trade_id}")
-      
-      col_ed1, col_ed2 = st.columns(2)
-      with col_ed1:
-        if st.button("ცვლილებების შენახვა", key=f"save_edit_{trade_id}", use_container_width=True):
-          update_trade(trade_id, {"Pair": edit_pair, "Side": edit_side, "Entry Price": edit_entry})
-          st.session_state[f"is_editing_{trade_id}"] = False
-          st.success("მონაცემები განახლდა!")
-          st.rerun()
-      with col_ed2:
-        if st.button("გაუქმება", key=f"cancel_edit_{trade_id}", use_container_width=True):
-          st.session_state[f"is_editing_{trade_id}"] = False
-          st.rerun()
 
   st.divider()
 
@@ -291,7 +277,7 @@ def show_trade_details_dialog(trade, df=None):
 
   st.divider()
 
-  # --- სვეტებად დალაგებული სუბ-მოქმედებების (ქმედებების ბარათები) სექცია (სტანდარტული სურათის ჩარჩოთი) ---
+  # --- სვეტებად დალაგებული სუბ-მოქმედებების (ქმედებების ბარათები) ინდივიდუალური რედაქტირებით ---
   st.markdown("### 📊 გარიგების მართვა / დამატებითი ქმედებები")
   
   if not sub_actions.empty:
@@ -301,6 +287,7 @@ def show_trade_details_dialog(trade, df=None):
       for j in range(2):
         if i + j < len(sub_list):
           idx, row = sub_list[i + j]
+          sub_id = row.get("Trade ID") or row.get("id") or idx
           sub_type = row.get("Action Type", row.get("action_type", "Action"))
           sub_price = row.get("Price", row.get("price", 0.0))
           sub_qty = row.get("Quantity", row.get("quantity", 0.0))
@@ -314,14 +301,53 @@ def show_trade_details_dialog(trade, df=None):
                 if sub_img:
                   st.markdown(f"<img src='{sub_img}' class='sub-action-img'>", unsafe_allow_html=True)
                 else:
-                  st.markdown("<div style='background:rgba(255,255,255,0.05); height:90px; display:flex; align-items:center; justify-content:center; border-radius:6px;'>📁</div>", unsafe_allow_html=True)
+                  st.markdown("<div class='sub-action-placeholder'>📁</div>", unsafe_allow_html=True)
               with col_desc:
                 st.markdown(f"**{sub_type}**")
                 st.markdown(f"ფასი: `{sub_price}`")
                 st.markdown(f"მოცულობა: `{sub_qty}`")
                 st.caption(f"📅 {_pretty_date(sub_date)}")
+
+              # ინდივიდუალური რედაქტირების ფანჯარა (ფანქრის ღილაკი)
+              edit_sub_key = f"edit_sub_mode_{sub_id}"
+              if st.button("✏️ რედაქტირება", key=f"btn_edit_sub_{sub_id}", use_container_width=True):
+                st.session_state[edit_sub_key] = not st.session_state.get(edit_sub_key, False)
+                st.rerun(scope="fragment")
+
+              if st.session_state.get(edit_sub_key, False):
+                with st.container(border=True):
+                  new_sub_type = st.selectbox("მოქმედება", ["Partial Exit", "Full Exit", "Add Position"], index=["Partial Exit", "Full Exit", "Add Position"].index(sub_type) if sub_type in ["Partial Exit", "Full Exit", "Add Position"] else 0, key=f"stype_{sub_id}")
+                  new_sub_price = st.number_input("ფასი", value=float(sub_price or 0.0), format="%.5f", key=f"sprice_{sub_id}")
+                  new_sub_qty = st.number_input("მოცულობა", value=float(sub_qty or 0.0), format="%.2f", key=f"sqty_{sub_id}")
+                  
+                  new_sub_file = st.file_uploader("სკრინშოტის შეცვლა", type=["png", "jpg", "jpeg"], key=f"supimg_{sub_id}")
+                  
+                  col_sb1, col_sb2 = st.columns(2)
+                  with col_sb1:
+                    if st.button("შენახვა", key=f"ssave_{sub_id}", use_container_width=True):
+                      payload = {
+                          "Action Type": new_sub_type,
+                          "Price": new_sub_price,
+                          "Quantity": new_sub_qty
+                      }
+                      if new_sub_file is not None:
+                        ext = os.path.splitext(new_sub_file.name)[1].lower() or ".png"
+                        stamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+                        file_safe_name = f"sub_{stamp}_{uuid.uuid4().hex[:6]}{ext}"
+                        up_url = upload_screenshot(new_sub_file, file_name=file_safe_name)
+                        if up_url:
+                          payload["Screenshot"] = up_url
+                      
+                      update_trade(sub_id, payload)
+                      st.session_state[edit_sub_key] = False
+                      st.success("განახლდა!")
+                      st.rerun()
+                  with col_sb2:
+                    if st.button("გაუქმება", key=f"scanc_{sub_id}", use_container_width=True):
+                      st.session_state[edit_sub_key] = False
+                      st.rerun()
   else:
-    st.info("ამ გარიგებაზე დამატებითი ქმედებები (ნაწილობრივი გასვლა/შესვლა) ჯერ არ ფიქსირდება.")
+    st.info("ამ გარიგებაზე დამატებითი ქმედებები ჯერ არ ფიქსირდება.")
 
   with st.expander("➕ ახალი ქმედების დამატება (ნაწილობრივი/სრული გასვლა, დამატება)"):
     sub_type = st.selectbox("მოქმედების ტიპი", ["Partial Exit", "Full Exit", "Add Position"], key=f"sub_type_{trade_id}")
