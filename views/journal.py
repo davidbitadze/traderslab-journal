@@ -4,18 +4,19 @@ from database import fetch_balance_transactions, fetch_trades
 from utils.credits import get_user_credits
 from utils.formulas import calculate_net_pnl, to_float
 from views.add_trade_modal import render_add_trade_modal
-from views.trade_card import recalc_all_net_pnl, render_trade_card
+from views.trade_card import render_trade_card
 
 
 def render_journal_view(lang="ka"):
-  # 1. დეპოზიტების/ტრანზაქციების ბალანსი
+  # 1. ვიღებთ დეპოზიტების/ტრანზაქციების ჯამს
   df_txn = fetch_balance_transactions()
   total_deposits = 500.0
   if not df_txn.empty and "Amount" in df_txn.columns:
     total_deposits = pd.to_numeric(df_txn["Amount"], errors="coerce").sum()
 
-  # 2. მონაცემების წამოღება და ერთჯერადი სორტირება თარიღით (ახლიდან ძველისკენ)
+  # 2. მონაცემების წამოღება გარიგებებიდან
   df = fetch_trades()
+
   if not df.empty and "Entry Date" in df.columns:
     df["parsed_date"] = pd.to_datetime(
         df["Entry Date"], errors="coerce", format="mixed"
@@ -24,15 +25,7 @@ def render_journal_view(lang="ka"):
         columns=["parsed_date"]
     )
 
-  # 3. Net P/L-ის სინქრონიზაცია ბაზასთან (მხოლოდ ერთხელ სესიაზე)
-  if not df.empty and not st.session_state.get("net_pnl_synced"):
-    st.session_state["net_pnl_synced"] = True
-    try:
-      recalc_all_net_pnl(df)
-    except Exception:
-      pass
-
-  # 4. ჯამური PnL-ის კალკულაცია
+  # 3. ჯამური PnL-ის კალკულაცია
   total_pnl = 0.0
   if not df.empty:
     main_trades = df[
@@ -49,13 +42,14 @@ def render_journal_view(lang="ka"):
         pnl = to_float(trade.get("Net P/L"))
       total_pnl += pnl
 
+  # 4. საბოლოო ბალანსი = დეპოზიტების ჯამი + ჯამური PnL
   final_balance = total_deposits + total_pnl
 
   # 5. AI ქულების ბალანსის წამოღება
   user_id = st.session_state.user.id if st.session_state.user else None
   ai_credits = get_user_credits(user_id) if user_id else 0.0
 
-  # 6. სათაური ფინანსური და AI ბალანსით (Glide-ის სტილში)
+  # 6. სათაური ფინანსური და AI ბალანსით
   st.markdown(
       f"""
       <div style='display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;'>
@@ -72,9 +66,9 @@ def render_journal_view(lang="ka"):
 
   # 7. ახალი გარიგების დამატების მოდალი
   render_add_trade_modal()
+
   st.divider()
 
-  # 8. მთავარი გარიგებების გამოტანა
   if not df.empty:
     main_trades = df[
         df["ActionType"].str.contains("Start Row", case=False, na=False)
@@ -84,5 +78,6 @@ def render_journal_view(lang="ka"):
 
     for _, trade in main_trades.iterrows():
       render_trade_card(trade, df)
+
   else:
     st.info("ჟურნალში გარიგებები ჯერ არ არის. გამოიყენეთ ზედა ღილაკი.")
