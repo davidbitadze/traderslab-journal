@@ -378,7 +378,7 @@ def render_trade_card(trade, df):
   st.markdown(get_card_css(current_scale), unsafe_allow_html=True)
 
   if is_finalized:
-    pnl_color = GREEN if pln > 0 else (RED if pln < 0 else GRAY)
+    pnl_color = GREEN if pnl > 0 else (RED if pnl < 0 else GRAY)
     status_indicator = (
         f"<span style='color:{pnl_color}; font-weight:600;'>{pnl:+.2f}$</span>"
     )
