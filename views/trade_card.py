@@ -378,7 +378,7 @@ def show_trade_details_dialog(trade, df):
       lines.append(f"- კოეფიციენტი (R): `{breakdown['r_multiple']:.4f}`")
     lines.append(
         f"- რისკი: `{breakdown['risk']:g}$` → **Net P/L ="
-        f" {breakdown['pnl']:+.2f}\$**"
+        f" {breakdown['pnl']:+.2f}$**"
     )
     st.markdown("\n".join(lines))
     if breakdown["method"] == "legacy":
@@ -424,7 +424,7 @@ def show_trade_details_dialog(trade, df):
                 "სტოპ ლოსი (SL ფასი)", value=_txt(sub.get("SL_Price"))
             )
             new_risk = st.text_input(
-                "რისკი დოლარში (Risk \$)", value=_txt(sub.get("Risk (\$)"))
+                "რისკი დოლარში (Risk $)", value=_txt(sub.get("Risk ($)"))
             )
           if st.form_submit_button("💾 ცვლილების შენახვა"):
             fields = {"ფასი": new_price, "მოცულობა": new_qty}
@@ -441,7 +441,7 @@ def show_trade_details_dialog(trade, df):
               }
               if is_start_row:
                 data["SL_Price"] = str(parsed["SL"])
-                data["Risk (\$)"] = str(parsed["რისკი"])
+                data["Risk ($)"] = str(parsed["რისკი"])
               update_trade(sub_id, data)
               st.session_state["active_edit_sub"] = None
               recalc_net_pnl(trade_id)
@@ -459,4 +459,159 @@ def show_trade_details_dialog(trade, df):
             "ნაწილობრივი დახურვა",
             "სრული დახურვა",
             "ცვლილება",
-            "დამატ
+            "დამატებითი შესვლა",
+        ],
+        key=f"add_act_type_{trade_id}",
+    )
+
+    sub_date = st.text_input(
+        "ეტაპის თარიღი და დრო",
+        value=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        key=f"add_sub_date_{trade_id}",
+    )
+
+    col_sub1, col_sub2 = st.columns(2)
+    with col_sub1:
+      sub_price = st.number_input(
+          "ფასი (Price)", value=0.0, step=0.0001, format="%.4f"
+      )
+    with col_sub2:
+      sub_qty = st.number_input(
+          "მოცულობა / ოდენობა (Qty)", value=1.0, step=0.1
+      )
+
+    sub_desc = st.text_input("შენიშვნა / აღწერა", key=f"add_sub_desc_{trade_id}")
+    sub_img = st.file_uploader(
+        "🖼️ ეტაპის სკრინშოტი (არასავალდებულო)",
+        type=["png", "jpg", "jpeg"],
+        key=f"add_sub_img_{trade_id}",
+    )
+
+    if st.form_submit_button("➕ ეტაპის დამატება გარიგებაში", use_container_width=True):
+      sub_screenshot_url = ""
+      if sub_img is not None:
+        ext = os.path.splitext(sub_img.name)[1].lower() or ".png"
+        stamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        sub_file_name = f"{pair}_sub_{stamp}_{uuid.uuid4().hex[:6]}{ext}"
+        sub_screenshot_url = (
+            upload_screenshot(sub_img, file_name=sub_file_name) or ""
+        )
+
+      new_sub_trade = {
+          "Trade ID": str(uuid.uuid4()),
+          "Parent Trade ID": trade_id,
+          "Pair": pair,
+          "Side": side,
+          "ActionType": act_type,
+          "Entry Price": str(sub_price),
+          "Qty": str(sub_qty),
+          "Description": sub_desc,
+          "Screenshot": sub_screenshot_url,
+          "Entry Date": sub_date,
+          "Finalized": "false",
+      }
+      if insert_trade(new_sub_trade):
+        recalc_net_pnl(trade_id)
+        st.success("ეტაპი წარმატებით დაემატა!")
+        st.rerun(scope="fragment")
+
+  st.divider()
+  if st.button("✅ დახურვა", key=f"close_dlg_{trade_id}", use_container_width=True):
+    st.rerun()
+
+
+def render_trade_card(trade, df):
+  trade_id = trade.get("Trade ID") or trade.get("Parent Trade ID")
+  pair = trade.get("Pair", "N/A")
+  side = trade.get("Side", "N/A")
+  entry_date = trade.get("Entry Date", "N/A")
+  screenshot = trade.get("Screenshot")
+
+  raw_fin = trade.get("Finalized")
+  is_finalized = str(raw_fin).strip().lower() in ("true", "1", "yes")
+
+  sub_actions = df[df["Parent Trade ID"] == trade_id]
+
+  # დინამიური კალკულაცია ქვედა ეტაპებიდან
+  calculated_pnl = calculate_net_pnl(trade, sub_actions)
+  if calculated_pnl is not None:
+    pnl = calculated_pnl
+  else:
+    raw_net = trade.get("Net P/L")
+    pnl = to_float(raw_net) if _has_value(raw_net) else 0.0
+
+  state_key = f"mode_{trade_id}"
+  current_mode = st.session_state.get(state_key, None)
+
+  current_scale = st.session_state.get("ui_scale", "medium")
+  st.markdown(get_card_css(current_scale), unsafe_allow_html=True)
+
+  if is_finalized:
+    pnl_color = GREEN if pnl > 0 else (RED if pnl < 0 else GRAY)
+    status_indicator = (
+        f"<span style='color:{pnl_color}; font-weight:600;'>{pnl:+.2f}$</span>"
+    )
+  else:
+    status_indicator = (
+        f"<span style='background-color: {ORANGE}; color: white; font-size:"
+        " 0.6rem; padding: 1px 4px; border-radius: 3px; font-weight:"
+        " 500;'>მიმდინარე</span>"
+    )
+
+  img_url = _get_image_url(screenshot)
+  if img_url:
+    thumb_html = f"<img src='{img_url}' class='trade-thumb-img'>"
+  else:
+    thumb_html = "<div class='trade-thumb-placeholder'>📁</div>"
+
+  col_thumb, col_info, col_menu = st.columns(
+      [0.7, 8.8, 0.5], vertical_alignment="center"
+  )
+
+  with col_thumb:
+    st.markdown(thumb_html, unsafe_allow_html=True)
+
+  with col_info:
+    st.markdown(
+        f"""
+        <div style='display: flex; flex-direction: column; justify-content: center; min-width: 0;'>
+            <div class='trade-main-text'>
+                <span>{pair}</span>
+                {status_indicator}
+            </div>
+            <div class='trade-sub-text'>
+                <span>{_side_label(side)}</span>
+                <span>•</span>
+                <span>{_pretty_date(entry_date)}</span>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+  with col_menu:
+    with st.popover("⋯"):
+      if st.button("დეტალები", key=f"det_menu_{trade_id}", use_container_width=True):
+        show_trade_details_dialog(trade, df)
+
+      if st.button("წაშლა", key=f"del_menu_{trade_id}", use_container_width=True):
+        st.session_state[state_key] = "delete"
+        st.rerun()
+
+  if current_mode == "delete":
+    st.error("⚠️ ნამდვილად გსურთ გარიგების წაშლა?")
+    col_d1, col_d2 = st.columns(2)
+    with col_d1:
+      if st.button(
+          "დიახ", key=f"conf_del_{trade_id}", use_container_width=True
+      ):
+        if delete_trade(trade_id):
+          st.success("წაიშალა!")
+          del st.session_state[state_key]
+          st.rerun()
+    with col_d2:
+      if st.button(
+          "გაუქმება", key=f"canc_del_{trade_id}", use_container_width=True
+      ):
+        del st.session_state[state_key]
+        st.rerun()
