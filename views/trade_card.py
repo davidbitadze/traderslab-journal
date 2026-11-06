@@ -285,16 +285,31 @@ def show_trade_details_dialog(trade, df=None):
 
   st.divider()
 
-  # --- ქვე-მოქმედებების (Sub-actions / მართვის) უსაფრთხო სექცია ---
+  # --- ვიზუალური სუბ-მოქმედებების (ქმედებების ბარათები) სექცია ---
   st.markdown("### 📊 გარიგების მართვა / დამატებითი ქმედებები")
   
   if not sub_actions.empty:
-    # უსაფრთხოების ფილტრი: ვამოწმებთ რომელი სვეტები რეალურად არსებობს DataFrame-ში
-    available_cols = [col for col in ["Action Type", "Price", "Quantity", "Date"] if col in sub_actions.columns]
-    if available_cols:
-      st.dataframe(sub_actions[available_cols], use_container_width=True)
-    else:
-      st.dataframe(sub_actions, use_container_width=True)
+    # ვქმნით ვიზუალურ ბარათებს თითოეული სუბ-მოქმედებისთვის
+    cols = st.cycle_columns(2) if len(sub_actions) > 1 else [st.container()]
+    for idx, row in sub_actions.iterrows():
+      sub_id = row.get("Trade ID") or row.get("id") or idx
+      sub_type = row.get("Action Type", row.get("action_type", "Action"))
+      sub_price = row.get("Price", row.get("price", 0.0))
+      sub_qty = row.get("Quantity", row.get("quantity", 0.0))
+      sub_date = row.get("Date", row.get("date", ""))
+      sub_img = _get_image_url(row.get("Screenshot", row.get("screenshot")))
+      
+      with st.container(border=True):
+        col_img, col_desc = st.columns([1, 2], vertical_alignment="center")
+        with col_img:
+          if sub_img:
+            st.image(sub_img, use_container_width=True)
+          else:
+            st.markdown("<div style='background:rgba(255,255,255,0.05); padding:20px; text-align:center; border-radius:6px;'>📁</div>", unsafe_allow_html=True)
+        with col_desc:
+          st.markdown(f"**მოქმედება:** `{sub_type}`")
+          st.markdown(f"ფასი: `{sub_price}` | მოცულობა: `{sub_qty}`")
+          st.caption(f"📅 {_pretty_date(sub_date)}")
   else:
     st.info("ამ გარიგებაზე დამატებითი ქმედებები (ნაწილობრივი გასვლა/შესვლა) ჯერ არ ფიქსირდება.")
 
@@ -303,13 +318,23 @@ def show_trade_details_dialog(trade, df=None):
     sub_price = st.number_input("ფასი", value=0.0, format="%.5f", key=f"sub_price_{trade_id}")
     sub_qty = st.number_input("მოცულობა (Qty)", value=1.0, format="%.2f", key=f"sub_qty_{trade_id}")
     
+    sub_img_file = st.file_uploader("შუალედური სკრინშოტი (არასავალდებულო)", type=["png", "jpg", "jpeg"], key=f"sub_img_up_{trade_id}")
+    
     if st.button("მონაცემის დამატება", key=f"add_sub_btn_{trade_id}", use_container_width=True):
+      sub_screenshot_url = None
+      if sub_img_file is not None:
+        ext = os.path.splitext(sub_img_file.name)[1].lower() or ".png"
+        stamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        file_safe_name = f"sub_{pair}_{stamp}_{uuid.uuid4().hex[:6]}{ext}"
+        sub_screenshot_url = upload_screenshot(sub_img_file, file_name=file_safe_name)
+
       sub_payload = {
           "Parent Trade ID": trade_id,
           "Action Type": sub_type,
           "Price": sub_price,
           "Quantity": sub_qty,
           "Date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+          "Screenshot": sub_screenshot_url if sub_screenshot_url else None
       }
       insert_trade(sub_payload)
       recalc_net_pnl(trade_id, clear_if_none=False)
