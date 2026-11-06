@@ -11,7 +11,11 @@ from database import (
     upload_screenshot,
 )
 from utils.ai_mentor import generate_trade_analysis
-from utils.credits import check_has_enough_credits, deduct_credits, get_user_credits
+from utils.credits import (
+    check_has_enough_credits,
+    deduct_credits,
+    get_user_credits_cached,
+)
 from utils.formulas import calculate_net_pnl, pnl_breakdown, to_float
 
 GREEN = "#22c55e"
@@ -112,6 +116,14 @@ div[data-testid="stPopoverBody"] {{
 """
 
 
+def inject_card_css():
+  """ბარათების CSS გვერდზე ერთხელ ემატება (აღარ მეორდება ყოველ ბარათზე)."""
+  st.markdown(
+      get_card_css(st.session_state.get("ui_scale", "medium")),
+      unsafe_allow_html=True,
+  )
+
+
 def _has_value(value):
   return value is not None and str(value).strip() not in (
       "",
@@ -168,8 +180,16 @@ def recalc_net_pnl(parent_id, clear_if_none=True):
 
 
 @st.dialog("🔍 გარიგების დეტალები და მართვა", width="large")
-def show_trade_details_dialog(trade, df):
+def show_trade_details_dialog(trade, df=None):
   trade_id = trade.get("Trade ID") or trade.get("Parent Trade ID")
+
+  # დიალოგის ყოველი განახლებისას ახალი მონაცემი (ქეშიდან: ბაზას არ ეკითხება, სანამ რამე არ შეიცვალა).
+  # წინააღმდეგ შემთხვევაში "დასრულებული" ტოგლი ძველ მნიშვნელობას ადარებოდა.
+  df = fetch_trades()
+  fresh = df[df["Trade ID"] == trade_id]
+  if not fresh.empty:
+    trade = fresh.iloc[0].to_dict()
+
   pair = trade.get("Pair", "N/A")
   side = trade.get("Side", "N/A")
   main_screenshot = trade.get("Screenshot")
@@ -239,7 +259,7 @@ def show_trade_details_dialog(trade, df):
   # --- AI ასისტენტი ---
   st.markdown("### 🤖 AI ასისტენტი")
   user_id = st.session_state.user.id if st.session_state.user else None
-  current_credits = get_user_credits(user_id) if user_id else 0.0
+  current_credits = get_user_credits_cached(user_id) if user_id else 0.0
 
   st.caption(f"💳 ბალანსი: **{current_credits:g} ქულა**")
 
@@ -361,7 +381,8 @@ def show_trade_details_dialog(trade, df):
     st.rerun()
 
 
-def render_trade_card(trade, df):
+def render_trade_card(trade, df, subs=None, pnl=None):
+  """subs და pnl გადმოცემის შემთხვევაში თავიდან აღარ ითვლება (journal.py ერთხელ ითვლის ყველასთვის)."""
   trade_id = trade.get("Trade ID") or trade.get("Parent Trade ID")
   pair = trade.get("Pair", "N/A")
   side = trade.get("Side", "N/A")
@@ -371,20 +392,16 @@ def render_trade_card(trade, df):
   raw_fin = trade.get("Finalized")
   is_finalized = str(raw_fin).strip().lower() in ("true", "1", "yes")
 
-  sub_actions = df[df["Parent Trade ID"] == trade_id]
-
-  calculated_pnl = calculate_net_pnl(trade, sub_actions)
-  if calculated_pnl is not None:
-    pnl = calculated_pnl
-  else:
-    raw_net = trade.get("Net P/L")
-    pnl = to_float(raw_net) if _has_value(raw_net) else 0.0
+  if pnl is None:
+    if subs is None:
+      subs = df[df["Parent Trade ID"] == trade_id]
+    pnl = calculate_net_pnl(trade, subs)
+    if pnl is None:
+      raw_net = trade.get("Net P/L")
+      pnl = to_float(raw_net) if _has_value(raw_net) else 0.0
 
   state_key = f"mode_{trade_id}"
   current_mode = st.session_state.get(state_key, None)
-
-  current_scale = st.session_state.get("ui_scale", "medium")
-  st.markdown(get_card_css(current_scale), unsafe_allow_html=True)
 
   if is_finalized:
     pnl_color = GREEN if pnl > 0 else (RED if pnl < 0 else GRAY)
@@ -400,7 +417,11 @@ def render_trade_card(trade, df):
 
   img_url = _get_image_url(screenshot)
   if img_url:
-    thumb_html = f"<img src='{img_url}' class='trade-thumb-img'>"
+    # lazy: ეკრანს გარეთ მყოფი სურათები არ იტვირთება, სანამ არ ჩამოსქროლავ
+    thumb_html = (
+        f"<img src='{img_url}' class='trade-thumb-img' loading='lazy'"
+        " decoding='async'>"
+    )
   else:
     thumb_html = "<div class='trade-thumb-placeholder'>📁</div>"
 
@@ -432,7 +453,7 @@ def render_trade_card(trade, df):
   with col_menu:
     with st.popover("⋯"):
       if st.button("დეტალები", key=f"det_menu_{trade_id}", use_container_width=True):
-        show_trade_details_dialog(trade, df)
+        show_trade_details_dialog(trade)
 
       if st.button("წაშლა", key=f"del_menu_{trade_id}", use_container_width=True):
         st.session_state[state_key] = "delete"
