@@ -10,6 +10,7 @@ from database import (
     update_trade,
     upload_screenshot,
 )
+from utils.ai_mentor import generate_trade_analysis
 from utils.credits import check_has_enough_credits, deduct_credits, get_user_credits
 from utils.formulas import calculate_net_pnl, pnl_breakdown, to_float
 
@@ -153,7 +154,6 @@ def _side_label(side):
 
 
 def _parse_num(text):
-  """ტექსტი -> float. მძიმეც მიიღება (177,605). არასწორზე აბრუნებს None-ს."""
   try:
     return float(str(text).strip().replace(",", "."))
   except (ValueError, TypeError):
@@ -176,34 +176,6 @@ def recalc_net_pnl(parent_id, clear_if_none=True):
   if net is None and not clear_if_none:
     return
   update_trade(parent_id, {"Net P/L": None if net is None else str(net)})
-
-
-def recalc_all_net_pnl(df=None):
-  """ყველა გარიგების Net P/L-ს ხელახლა ითვლის და ბაზაში წერს მხოლოდ იქ, სადაც შეიცვალა.
-
-  იძახება ჟურნალის ჩატვირთვისას (ერთხელ სესიაზე), რომ ბაზაში ძველი რიცხვები არ
-  დარჩეს.
-  """
-  if df is None:
-    df = fetch_trades()
-  if df.empty:
-    return 0
-  mains = df[
-      df["ActionType"].astype(str).str.contains("Start Row", case=False, na=False)
-  ]
-  changed = 0
-  for _, trade in mains.iterrows():
-    trade_id = trade.get("Trade ID")
-    subs = df[df["Parent Trade ID"] == trade_id]
-    net = calculate_net_pnl(trade, subs)
-    if net is None:  # გასვლა არ არის: არსებულ მნიშვნელობას არ ვეხებით
-      continue
-    old = trade.get("Net P/L")
-    if _has_value(old) and abs(to_float(old) - net) < 0.005:
-      continue
-    if update_trade(trade_id, {"Net P/L": str(net)}):
-      changed += 1
-  return changed
 
 
 @st.dialog("🔍 გარიგების დეტალები და მართვა", width="large")
@@ -236,9 +208,7 @@ def show_trade_details_dialog(trade, df):
     )
     if new_status != is_finalized:
       update_trade(trade_id, {"Finalized": str(new_status)})
-      recalc_net_pnl(
-          trade_id, clear_if_none=False
-      )  # სტატუსის შეცვლისას Net P/L ახლდება
+      recalc_net_pnl(trade_id, clear_if_none=False)
       st.toast("სტატუსი განახლდა!", icon="🔄")
       st.rerun(scope="fragment")
 
@@ -263,6 +233,8 @@ def show_trade_details_dialog(trade, df):
   img_url = _get_image_url(main_screenshot)
   if img_url:
     st.image(img_url, use_container_width=True)
+  else:
+    st.warning("⚠️ აკლია სკრინშოტი")
 
   new_img = st.file_uploader(
       "🖼️ სკრინშოტის შეცვლა / ატვირთვა",
@@ -281,7 +253,7 @@ def show_trade_details_dialog(trade, df):
 
   st.divider()
 
-  # --- AI ასისტენტი (Glide-ის სტილში: ბალანსი, ტოგლები და დინამიური ღირებულება) ---
+  # --- AI ასისტენტი და ანალიზის გამოჩენა/გენერაცია ---
   st.markdown("### 🤖 AI ასისტენტი")
   user_id = st.session_state.user.id if st.session_state.user else None
   current_credits = get_user_credits(user_id) if user_id else 0.0
@@ -291,7 +263,7 @@ def show_trade_details_dialog(trade, df):
   opt_detailed = st.toggle("ვრცელი პასუხი (+2 ქულა)", key=f"ai_opt_det_{trade_id}")
   opt_advice = st.toggle("AI რჩევა (+2 ქულა)", key=f"ai_opt_adv_{trade_id}")
 
-  base_cost = 1.0  # საბაზისო ანალიზი
+  base_cost = 1.0
   total_cost = (
       base_cost
       + (2.0 if opt_detailed else 0.0)
@@ -312,14 +284,25 @@ def show_trade_details_dialog(trade, df):
       )
     else:
       if deduct_credits(user_id, total_cost):
-        st.success(
-            "✅ ქულები წარმატებით ჩამოიჭრა! მიმდინარეობს AI ანალიზი..."
-        )
-        # აქ დაემატება OpenAI / Claude API გამოძახება
+        with st.spinner("მიმდინარეობს AI ანალიზი..."):
+          analysis_text, scores_text = generate_trade_analysis(
+              trade, sub_actions, opt_detailed, opt_advice
+          )
+          update_trade(
+              trade_id,
+              {"ai_analysis": analysis_text, "ai_scores": scores_text},
+          )
+        st.success("✅ AI ანალიზი წარმატებით დასრულდა!")
         st.rerun(scope="fragment")
+
+  # თუ ბაზაში უკვე შენახულია AI პასუხი, გამოვსახოთ ის
+  stored_analysis = trade.get("ai_analysis")
+  if _has_value(stored_analysis):
+    st.info(stored_analysis)
 
   st.divider()
 
+  # --- დანარჩენი დეტალები (თარიღი, PnL, ეტაპები) შენარჩუნებულია ---
   td_current = trade.get("Entry Date")
   td_text = st.text_input(
       "🗓️ გარიგების თარიღი და დრო",
@@ -354,7 +337,6 @@ def show_trade_details_dialog(trade, df):
 
   st.divider()
 
-  # --- Net P/L-ის გაანგარიშება (ყველა ნაბიჯი თვალსაჩინოდ) ---
   breakdown = pnl_breakdown(trade, sub_actions)
   st.markdown("**🧮 Net P/L-ის გაანგარიშება**")
   if breakdown is None:
@@ -381,139 +363,6 @@ def show_trade_details_dialog(trade, df):
         f" {breakdown['pnl']:+.2f}$**"
     )
     st.markdown("\n".join(lines))
-    if breakdown["method"] == "legacy":
-      st.warning(
-          "⚠️ SL ფასი არ არის მითითებული ან არასწორია (არასწორ მხარესაა / ძალიან"
-          " შორსაა / ფორმის ნაგულისხმევია), ამიტომ გამოიყენება ძველი %-ზე დაფუძნებული"
-          " გამოთვლა. ჩაასწორე Start Row-ის SL ✏️-ით ქვემოთ."
-      )
-
-  st.divider()
-
-  # --- დამატებითი ეტაპების ისტორია და მართვა ---
-  st.markdown("**📋 ეტაპების ისტორია და მართვა:**")
-
-  if not sub_actions.empty:
-    active_edit_sub = st.session_state.get("active_edit_sub")
-    for _, sub in sub_actions.iterrows():
-      sub_id = sub.get("Trade ID")
-      col_h1, col_h2, col_h3 = st.columns([7, 1, 1])
-      with col_h1:
-        st.info(
-            f"• **{sub.get('ActionType')}** | ფასი: {sub.get('Entry Price')} |"
-            f" მოც.: {sub.get('Qty')} | დრო: {sub.get('Entry Date')}"
-        )
-      with col_h2:
-        if st.button("✏️", key=f"edit_sub_{sub_id}"):
-          st.session_state["active_edit_sub"] = sub_id
-          st.rerun(scope="fragment")
-      with col_h3:
-        if st.button("🗑️", key=f"del_sub_{sub_id}"):
-          if delete_trade(sub_id):
-            recalc_net_pnl(trade_id)
-            st.rerun(scope="fragment")
-
-      if active_edit_sub == sub_id:
-        with st.form(key=f"form_edit_sub_{sub_id}"):
-          st.markdown(f"**ეტაპის რედაქტირება: {sub.get('ActionType')}**")
-          is_start_row = "Start Row" in str(sub.get("ActionType", ""))
-          new_price = st.text_input("ფასი", value=_txt(sub.get("Entry Price")))
-          new_qty = st.text_input("მოცულობა", value=_txt(sub.get("Qty")))
-          if is_start_row:
-            new_sl = st.text_input(
-                "სტოპ ლოსი (SL ფასი)", value=_txt(sub.get("SL_Price"))
-            )
-            new_risk = st.text_input(
-                "რისკი დოლარში (Risk $)", value=_txt(sub.get("Risk ($)"))
-            )
-          if st.form_submit_button("💾 ცვლილების შენახვა"):
-            fields = {"ფასი": new_price, "მოცულობა": new_qty}
-            if is_start_row:
-              fields.update({"SL": new_sl, "რისკი": new_risk})
-            parsed = {name: _parse_num(text) for name, text in fields.items()}
-            bad = [name for name, val in parsed.items() if val is None]
-            if bad:
-              st.error(f"არასწორი რიცხვი: {', '.join(bad)}. არაფერი შეინახა.")
-            else:
-              data = {
-                  "Entry Price": str(parsed["ფასი"]),
-                  "Qty": str(parsed["მოცულობა"]),
-              }
-              if is_start_row:
-                data["SL_Price"] = str(parsed["SL"])
-                data["Risk ($)"] = str(parsed["რისკი"])
-              update_trade(sub_id, data)
-              st.session_state["active_edit_sub"] = None
-              recalc_net_pnl(trade_id)
-              st.success("განახლდა!")
-              st.rerun(scope="fragment")
-  else:
-    st.caption("დამატებითი ეტაპები არ არის.")
-
-  with st.form(key=f"form_add_sub_{trade_id}", clear_on_submit=True):
-    st.markdown("**➕ ახალი ეტაპის დამატება:**")
-
-    act_type = st.selectbox(
-        "მოქმედების ტიპი",
-        [
-            "ნაწილობრივი დახურვა",
-            "სრული დახურვა",
-            "ცვლილება",
-            "დამატებითი შესვლა",
-        ],
-        key=f"add_act_type_{trade_id}",
-    )
-
-    sub_date = st.text_input(
-        "ეტაპის თარიღი და დრო",
-        value=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        key=f"add_sub_date_{trade_id}",
-    )
-
-    col_sub1, col_sub2 = st.columns(2)
-    with col_sub1:
-      sub_price = st.number_input(
-          "ფასი (Price)", value=0.0, step=0.0001, format="%.4f"
-      )
-    with col_sub2:
-      sub_qty = st.number_input(
-          "მოცულობა / ოდენობა (Qty)", value=1.0, step=0.1
-      )
-
-    sub_desc = st.text_input("შენიშვნა / აღწერა", key=f"add_sub_desc_{trade_id}")
-    sub_img = st.file_uploader(
-        "🖼️ ეტაპის სკრინშოტი (არასავალდებულო)",
-        type=["png", "jpg", "jpeg"],
-        key=f"add_sub_img_{trade_id}",
-    )
-
-    if st.form_submit_button("➕ ეტაპის დამატება გარიგებაში", use_container_width=True):
-      sub_screenshot_url = ""
-      if sub_img is not None:
-        ext = os.path.splitext(sub_img.name)[1].lower() or ".png"
-        stamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-        sub_file_name = f"{pair}_sub_{stamp}_{uuid.uuid4().hex[:6]}{ext}"
-        sub_screenshot_url = (
-            upload_screenshot(sub_img, file_name=sub_file_name) or ""
-        )
-
-      new_sub_trade = {
-          "Trade ID": str(uuid.uuid4()),
-          "Parent Trade ID": trade_id,
-          "Pair": pair,
-          "Side": side,
-          "ActionType": act_type,
-          "Entry Price": str(sub_price),
-          "Qty": str(sub_qty),
-          "Description": sub_desc,
-          "Screenshot": sub_screenshot_url,
-          "Entry Date": sub_date,
-          "Finalized": "false",
-      }
-      if insert_trade(new_sub_trade):
-        recalc_net_pnl(trade_id)
-        st.success("ეტაპი წარმატებით დაემატა!")
-        st.rerun(scope="fragment")
 
   st.divider()
   if st.button("✅ დახურვა", key=f"close_dlg_{trade_id}", use_container_width=True):
@@ -532,7 +381,6 @@ def render_trade_card(trade, df):
 
   sub_actions = df[df["Parent Trade ID"] == trade_id]
 
-  # დინამიური კალკულაცია ქვედა ეტაპებიდან
   calculated_pnl = calculate_net_pnl(trade, sub_actions)
   if calculated_pnl is not None:
     pnl = calculated_pnl
