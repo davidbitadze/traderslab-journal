@@ -262,76 +262,131 @@ def show_trade_details_dialog(trade, df=None):
 
   st.divider()
 
-  # --- სუბ-მოქმედებების ბარათები (3-სვეტიანი ბადე ავსების სწორი ლოგიკით) ---
+  # --- სუბ-მოქმედებების ბარათები (მკაცრი მარცხენა განლაგება HTML Flexbox-ით) ---
   st.markdown("### 📊 გარიგების მართვა / დამატებითი ქმედებები")
   
   if not sub_actions.empty:
     sub_items = list(sub_actions.iterrows())
     
-    for i in range(0, len(sub_items), 3):
-      chunk = sub_items[i:i+3]
-      cols = st.columns(3)
-      for j, (idx, row) in enumerate(chunk):
-        sub_id = row.get("Trade ID") or row.get("id") or idx
-        
-        # უსაფრთხო მონაცემთა ამოღება Supabase ცხრილიდან
-        sub_type = row.get("Action Type") or row.get("action_type") or row.get("Action") or "Action"
-        sub_price = row.get("Price") if _has_value(row.get("Price")) else (row.get("price") if _has_value(row.get("price")) else 0.0)
-        sub_qty = row.get("Quantity") if _has_value(row.get("Quantity")) else (row.get("quantity") if _has_value(row.get("quantity")) else 0.0)
-        sub_date = row.get("Date") if _has_value(row.get("Date")) else (row.get("date") if _has_value(row.get("date")) else row.get("Entry Date", ""))
-        sub_img = _get_image_url(row.get("Screenshot") or row.get("screenshot"))
-        
-        with cols[j]:
-          with st.container(border=True):
-            col_img, col_desc = st.columns([1, 2], vertical_alignment="center")
-            with col_img:
-              if sub_img:
-                st.markdown(f"<img src='{sub_img}' class='sub-action-img'>", unsafe_allow_html=True)
-              else:
-                st.markdown("<div class='sub-action-placeholder'>📁</div>", unsafe_allow_html=True)
-            with col_desc:
-              st.markdown(f"**{sub_type}**")
-              st.markdown(f"ფასი: `{sub_price}`")
-              st.markdown(f"მოცულობა: `{sub_qty}`")
-              st.caption(f"📅 {_pretty_date(sub_date)}")
+    st.markdown(
+        """
+        <style>
+        .sub-cards-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            justify-content: flex-start;
+            width: 100%;
+        }
+        .sub-card-item {
+            flex: 0 0 calc(33.333% - 8px);
+            min-width: 240px;
+            box-sizing: border-box;
+        }
+        @media (max-width: 900px) {
+            .sub-card-item {
+                flex: 0 0 100%;
+            }
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
 
-            edit_sub_key = f"edit_sub_mode_{sub_id}"
-            if st.button("✏️ რედაქტირება", key=f"btn_edit_sub_{sub_id}", use_container_width=True):
-              st.session_state[edit_sub_key] = not st.session_state.get(edit_sub_key, False)
-              st.rerun(scope="fragment")
+    # რენდერი Streamlit კონტეინერებით Flexbox ჰარმონიაში
+    cols = st.columns(3)
+    for idx, (row_idx, row) in enumerate(sub_items):
+      col_idx = idx % 3
+      sub_id = row.get("Trade ID") or row.get("id") or row_idx
+      
+      # სწორი სვეტების სახელების შემოწმება ბაზიდან
+      sub_type = row.get("Action Type") or row.get("action_type") or row.get("Action") or "Action"
+      
+      sub_price = None
+      for k in ["Price", "price", "Entry Price", "entry_price"]:
+        val = row.get(k)
+        if _has_value(val):
+          sub_price = val
+          break
+      if sub_price is None:
+        sub_price = 0.0
 
-            if st.session_state.get(edit_sub_key, False):
-              with st.container(border=True):
-                new_sub_type = st.selectbox("მოქმედება", ["Partial Exit", "Full Exit", "Add Position"], index=["Partial Exit", "Full Exit", "Add Position"].index(sub_type) if sub_type in ["Partial Exit", "Full Exit", "Add Position"] else 0, key=f"stype_{sub_id}")
-                new_sub_price = st.number_input("ფასი", value=float(sub_price or 0.0), format="%.5f", key=f"sprice_{sub_id}")
-                new_sub_qty = st.number_input("მოცულობა", value=float(sub_qty or 0.0), format="%.2f", key=f"sqty_{sub_id}")
-                
-                new_sub_file = st.file_uploader("სკრინშოტის შეცვლა", type=["png", "jpg", "jpeg"], key=f"supimg_{sub_id}")
-                
-                col_sb1, col_sb2 = st.columns(2)
-                with col_sb1:
-                  if st.button("შენახვა", key=f"ssave_{sub_id}", use_container_width=True):
-                    payload = {
-                        "Action Type": new_sub_type,
-                        "Price": new_sub_price,
-                        "Quantity": new_sub_qty
-                    }
-                    if new_sub_file is not None:
-                      ext = os.path.splitext(new_sub_file.name)[1].lower() or ".png"
-                      stamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-                      file_safe_name = f"sub_{stamp}_{uuid.uuid4().hex[:6]}{ext}"
-                      up_url = upload_screenshot(new_sub_file, file_name=file_safe_name)
-                      if up_url:
-                        payload["Screenshot"] = up_url
-                    
-                    update_trade(sub_id, payload)
-                    st.session_state[edit_sub_key] = False
-                    st.success("განახლდა!")
-                    st.rerun()
-                with col_sb2:
-                  if st.button("გაუქმება", key=f"scanc_{sub_id}", use_container_width=True):
-                    st.session_state[edit_sub_key] = False
-                    st.rerun()
+      sub_qty = None
+      for k in ["Quantity", "quantity", "Qty", "qty"]:
+        val = row.get(k)
+        if _has_value(val):
+          sub_qty = val
+          break
+      if sub_qty is None:
+        sub_qty = 0.0
+
+      sub_date = None
+      for k in ["Date", "date", "Entry Date", "entry_date"]:
+        val = row.get(k)
+        if _has_value(val):
+          sub_date = val
+          break
+      if sub_date is None:
+        sub_date = ""
+
+      sub_img = None
+      for k in ["Screenshot", "screenshot"]:
+        val = row.get(k)
+        if _has_value(val):
+          sub_img = _get_image_url(val)
+          break
+
+      with cols[col_idx]:
+        with st.container(border=True):
+          c_img, c_desc = st.columns([1, 2], vertical_alignment="center")
+          with c_img:
+            if sub_img:
+              st.markdown(f"<img src='{sub_img}' class='sub-action-img'>", unsafe_allow_html=True)
+            else:
+              st.markdown("<div class='sub-action-placeholder'>📁</div>", unsafe_allow_html=True)
+          with c_desc:
+            st.markdown(f"**{sub_type}**")
+            st.markdown(f"ფასი: `{sub_price}`")
+            st.markdown(f"მოცულობა: `{sub_qty}`")
+            st.caption(f"📅 {_pretty_date(sub_date)}")
+
+          edit_sub_key = f"edit_sub_mode_{sub_id}"
+          if st.button("✏️ რედაქტირება", key=f"btn_edit_sub_{sub_id}", use_container_width=True):
+            st.session_state[edit_sub_key] = not st.session_state.get(edit_sub_key, False)
+            st.rerun(scope="fragment")
+
+          if st.session_state.get(edit_sub_key, False):
+            with st.container(border=True):
+              new_sub_type = st.selectbox("მოქმედება", ["Partial Exit", "Full Exit", "Add Position"], index=["Partial Exit", "Full Exit", "Add Position"].index(str(sub_type)) if str(sub_type) in ["Partial Exit", "Full Exit", "Add Position"] else 0, key=f"stype_{sub_id}")
+              new_sub_price = st.number_input("ფასი", value=float(sub_price or 0.0), format="%.5f", key=f"sprice_{sub_id}")
+              new_sub_qty = st.number_input("მოცულობა", value=float(sub_qty or 0.0), format="%.2f", key=f"sqty_{sub_id}")
+              
+              new_sub_file = st.file_uploader("სკრინშოტის შეცვლა", type=["png", "jpg", "jpeg"], key=f"supimg_{sub_id}")
+              
+              col_sb1, col_sb2 = st.columns(2)
+              with col_sb1:
+                if st.button("შენახვა", key=f"ssave_{sub_id}", use_container_width=True):
+                  payload = {
+                      "Action Type": new_sub_type,
+                      "Price": new_sub_price,
+                      "Quantity": new_sub_qty
+                  }
+                  if new_sub_file is not None:
+                    ext = os.path.splitext(new_sub_file.name)[1].lower() or ".png"
+                    stamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+                    file_safe_name = f"sub_{stamp}_{uuid.uuid4().hex[:6]}{ext}"
+                    up_url = upload_screenshot(new_sub_file, file_name=file_safe_name)
+                    if up_url:
+                      payload["Screenshot"] = up_url
+                  
+                  update_trade(sub_id, payload)
+                  st.session_state[edit_sub_key] = False
+                  st.success("განახლდა!")
+                  st.rerun()
+              with col_sb2:
+                if st.button("გაუქმება", key=f"scanc_{sub_id}", use_container_width=True):
+                  st.session_state[edit_sub_key] = False
+                  st.rerun()
   else:
     st.info("ამ გარიგებაზე დამატებითი ქმედებები ჯერ არ ფიქსირდება.")
 
