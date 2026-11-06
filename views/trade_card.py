@@ -141,10 +141,8 @@ div[data-testid="stPopoverBody"] {{
 
 
 def inject_card_css():
-  st.markdown(
-      get_card_css(st.session_state.get("ui_scale", "medium")),
-      unsafe_allow_html=True,
-  )
+  scale = st.session_state.get("ui_scale", "medium")
+  st.markdown(get_card_css(scale), unsafe_allow_html=True)
 
 
 def _has_value(value):
@@ -262,7 +260,7 @@ def show_trade_details_dialog(trade, df=None):
 
   st.divider()
 
-  # --- სუბ-მოქმედებების ბარათები (სუფთა CSS Grid: სამივე ბარათი მკაცრად ერთ ხაზზე, თანაბარი სვეტებით) ---
+  # --- სუბ-მოქმედებების ბარათები (სუფთა CSS Grid და უსაფრთხო HTML რენდერი) ---
   st.markdown("### 📊 გარიგების მართვა / დამატებითი ქმედებები")
   
   if not sub_actions.empty:
@@ -277,7 +275,6 @@ def show_trade_details_dialog(trade, df=None):
 
     sub_items = list(sub_actions.iterrows())
 
-    # CSS Grid სტილი სამი თანაბარი სვეტისთვის
     st.markdown(
         """
         <style>
@@ -298,7 +295,6 @@ def show_trade_details_dialog(trade, df=None):
         unsafe_allow_html=True,
     )
 
-    # 1. ვხატავთ სამივე ბარათს სუფთა HTML-ით ერთიან ბადეში (ყოველგვარი შიდა ფორმების გარეშე)
     grid_html = ["<div class='fixed-grid-container'>"]
     for row_idx, row in sub_items:
       sub_id = row.get("Trade ID") or row.get("id") or row_idx
@@ -352,7 +348,7 @@ def show_trade_details_dialog(trade, df=None):
     grid_html.append("</div>")
     st.markdown("".join(grid_html), unsafe_allow_html=True)
 
-    # 2. რედაქტირების ღილაკები მოთავსებულია ბარათების ქვემოთ, სტანდარტულ სვეტებში
+    # რედაქტირების ღილაკები ბარათების ქვემოთ
     edit_cols = st.columns(min(len(sub_items), 3))
     for idx, (row_idx, row) in enumerate(sub_items):
       sub_id = row.get("Trade ID") or row.get("id") or row_idx
@@ -364,7 +360,7 @@ def show_trade_details_dialog(trade, df=None):
           st.session_state[edit_sub_key] = not st.session_state.get(edit_sub_key, False)
           st.rerun(scope="fragment")
 
-    # 3. თუ რომელიმე რედაქტირებაა გააქტიურებული, ფორმა იხსნება ქვემოთ მთელ სიგანეზე (არ არღვევს ზედა ბადეს)
+    # რედაქტირების ფორმა (იხსნება ცალკე ქვემოთ, არ არღვევს ბადეს)
     for idx, (row_idx, row) in enumerate(sub_items):
       sub_id = row.get("Trade ID") or row.get("id") or row_idx
       edit_sub_key = f"edit_sub_mode_{sub_id}"
