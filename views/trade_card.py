@@ -277,14 +277,15 @@ def show_trade_details_dialog(trade, df=None):
 
   st.divider()
 
-  # --- სვეტებად დალაგებული სუბ-მოქმედებების (ქმედებების ბარათები) ინდივიდუალური რედაქტირებით ---
+  # --- 3-სვეტიანი ბარათების განლაგება სუბ-მოქმედებებისთვის ---
   st.markdown("### 📊 გარიგების მართვა / დამატებითი ქმედებები")
   
   if not sub_actions.empty:
     sub_list = list(sub_actions.iterrows())
-    for i in range(0, len(sub_list), 2):
-      cols = st.columns(2)
-      for j in range(2):
+    # ვიყენებთ 3 სვეტს, რომ ბარათები ერთ ზოლში ჩალაგდეს
+    for i in range(0, len(sub_list), 3):
+      cols = st.columns(3)
+      for j in range(3):
         if i + j < len(sub_list):
           idx, row = sub_list[i + j]
           sub_id = row.get("Trade ID") or row.get("id") or idx
@@ -308,7 +309,6 @@ def show_trade_details_dialog(trade, df=None):
                 st.markdown(f"მოცულობა: `{sub_qty}`")
                 st.caption(f"📅 {_pretty_date(sub_date)}")
 
-              # ინდივიდუალური რედაქტირების ფანჯარა (ფანქრის ღილაკი)
               edit_sub_key = f"edit_sub_mode_{sub_id}"
               if st.button("✏️ რედაქტირება", key=f"btn_edit_sub_{sub_id}", use_container_width=True):
                 st.session_state[edit_sub_key] = not st.session_state.get(edit_sub_key, False)
@@ -428,40 +428,6 @@ def show_trade_details_dialog(trade, df=None):
   if _has_value(stored_analysis):
     with st.expander("🤖 AI შეფასების შედეგი", expanded=True):
       st.markdown(stored_analysis)
-
-  st.divider()
-
-  td_current = trade.get("Entry Date")
-  td_text = st.text_input(
-      "🗓️ გარიგების თარიღი და დრო",
-      value=str(td_current) if _has_value(td_current) else "",
-      placeholder="YYYY-MM-DD HH:MM:SS",
-      key=f"td_text_{trade_id}",
-  )
-  td_parsed = (
-      pd.to_datetime(td_text, errors="coerce") if td_text.strip() else pd.NaT
-  )
-  td_invalid = bool(pd.isna(td_parsed))
-
-  col_td1, col_td2 = st.columns([4, 2], vertical_alignment="center")
-  with col_td1:
-    if td_invalid:
-      st.caption("⚠️ თარიღი ვერ იკითხება.")
-    else:
-      st.caption(
-          f"✅ წაიკითხება როგორც: {td_parsed.strftime('%d %b %Y, %H:%M:%S')}"
-      )
-  with col_td2:
-    if st.button(
-        "💾 შენახვა",
-        key=f"td_save_{trade_id}",
-        use_container_width=True,
-        disabled=td_invalid,
-    ):
-      stamp = td_parsed.strftime("%Y-%m-%d %H:%M:%S")
-      if update_trade(trade_id, {"Entry Date": stamp}):
-        st.toast("თარიღი შენახულია!", icon="🗓️")
-        st.rerun(scope="fragment")
 
   st.divider()
 
