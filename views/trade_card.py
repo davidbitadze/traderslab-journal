@@ -153,17 +153,6 @@ def _side_label(side):
   return str(side)
 
 
-def _parse_num(text):
-  try:
-    return float(str(text).strip().replace(",", "."))
-  except (ValueError, TypeError):
-    return None
-
-
-def _txt(value):
-  return str(value).strip() if _has_value(value) else ""
-
-
 def recalc_net_pnl(parent_id, clear_if_none=True):
   df = fetch_trades()
   if df.empty:
@@ -178,39 +167,9 @@ def recalc_net_pnl(parent_id, clear_if_none=True):
   update_trade(parent_id, {"Net P/L": None if net is None else str(net)})
 
 
-def recalc_all_net_pnl(df=None):
-  """ყველა გარიგების Net P/L-ს ხელახლა ითვლის და ბაზაში წერს."""
-  if df is None:
-    df = fetch_trades()
-  if df.empty:
-    return 0
-  mains = df[
-      df["ActionType"].astype(str).str.contains("Start Row", case=False, na=False)
-  ]
-  changed = 0
-  for _, trade in mains.iterrows():
-    trade_id = trade.get("Trade ID")
-    subs = df[df["Parent Trade ID"] == trade_id]
-    net = calculate_net_pnl(trade, subs)
-    if net is None:
-      continue
-    old = trade.get("Net P/L")
-    if _has_value(old) and abs(to_float(old) - net) < 0.005:
-      continue
-    if update_trade(trade_id, {"Net P/L": str(net)}):
-      changed += 1
-  return changed
-
-
 @st.dialog("🔍 გარიგების დეტალები და მართვა", width="large")
 def show_trade_details_dialog(trade, df):
-  df = fetch_trades()
   trade_id = trade.get("Trade ID") or trade.get("Parent Trade ID")
-
-  fresh = df[df["Trade ID"] == trade_id]
-  if not fresh.empty:
-    trade = fresh.iloc[0].to_dict()
-
   pair = trade.get("Pair", "N/A")
   side = trade.get("Side", "N/A")
   main_screenshot = trade.get("Screenshot")
@@ -319,9 +278,11 @@ def show_trade_details_dialog(trade, df):
         st.success("✅ AI ანალიზი წარმატებით დასრულდა!")
         st.rerun(scope="fragment")
 
+  # აკეცვადი Expander AI შეფასებისთვის
   stored_analysis = trade.get("ai_analysis")
   if _has_value(stored_analysis):
-    st.info(stored_analysis)
+    with st.expander("🤖 AI შეფასების შედეგი", expanded=True):
+      st.markdown(stored_analysis)
 
   st.divider()
 
@@ -417,7 +378,7 @@ def render_trade_card(trade, df):
   st.markdown(get_card_css(current_scale), unsafe_allow_html=True)
 
   if is_finalized:
-    pnl_color = GREEN if pnl > 0 else (RED if pnl < 0 else GRAY)
+    pnl_color = GREEN if pln > 0 else (RED if pln < 0 else GRAY)
     status_indicator = (
         f"<span style='color:{pnl_color}; font-weight:600;'>{pnl:+.2f}$</span>"
     )
