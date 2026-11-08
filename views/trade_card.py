@@ -23,76 +23,70 @@ RED = "#ef4444"
 GRAY = "#94a3b8"
 ORANGE = "#f97316"
 
+START_ROW_MARK = "Start Row"
+# ეს სახელები ემთხვევა ბაზაში არსებულ ჩანაწერებსა და utils/formulas.py-ს (ENTRY_TERMS / EXIT_TERMS)
+SUB_ACTION_TYPES = [
+    "ნაწილობრივი დახურვა",
+    "სრული დახურვა",
+    "დამატებითი შესვლა",
+    "ცვლილება",
+]
+EDIT_STATE_KEY = "edit_sub_id"
 
-def get_card_css(scale):
-  if scale == "small":
-    size = "28px"
-    font_main = "0.78rem"
-    font_sub = "0.62rem"
-    padding = "2px 8px"
-  elif scale == "large":
-    size = "46px"
-    font_main = "1.05rem"
-    font_sub = "0.85rem"
-    padding = "8px 12px"
-  else:
-    size = "36px"
-    font_main = "0.86rem"
-    font_sub = "0.7rem"
-    padding = "4px 10px"
-
-  return f"""
+_CARD_CSS = """
 <style>
-div[data-testid="element-container"]:has(> [data-testid="stHorizontalBlock"]) {{
+/* ქვემოთ ყველა წესი მხოლოდ ჟურნალის სიის რიგებზე მოქმედებს (.trade-row-marker-ის მქონე რიგებზე),
+   ამიტომ დეტალების დიალოგის სვეტები და დაშორებები აღარ ირღვევა */
+div[data-testid="element-container"]:has(> [data-testid="stHorizontalBlock"] .trade-row-marker) {
     margin-bottom: 2px !important;
     padding-bottom: 0px !important;
-}}
-[data-testid="stVerticalBlock"] {{
+}
+[data-testid="stVerticalBlock"]:has(.trade-row-marker) {
     gap: 2px !important;
-}}
-[data-testid="stHorizontalBlock"] {{
+}
+[data-testid="stHorizontalBlock"]:has(.trade-row-marker) {
     align-items: center !important;
     background-color: rgba(255, 255, 255, 0.025) !important;
     border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
     border-radius: 4px !important;
-    padding: {padding} !important;
+    padding: __PADDING__ !important;
     margin: 0px !important;
     width: 100% !important;
-}}
-[data-testid="stHorizontalBlock"] > div:last-child {{
+}
+[data-testid="stHorizontalBlock"]:has(.trade-row-marker) > div:last-child {
     display: flex !important;
     justify-content: flex-end !important;
     margin-left: auto !important;
-}}
-[data-testid="stColumn"] {{
+}
+[data-testid="stHorizontalBlock"]:has(.trade-row-marker) > [data-testid="stColumn"] {
     width: auto !important;
     flex: unset !important;
     min-width: 0 !important;
-}}
-.trade-thumb-img {{
-    width: {size} !important;
-    height: {size} !important;
-    min-width: {size} !important;
-    min-height: {size} !important;
+}
+.trade-thumb-img {
+    width: __SIZE__ !important;
+    height: __SIZE__ !important;
+    min-width: __SIZE__ !important;
+    min-height: __SIZE__ !important;
     border-radius: 6px !important;
     object-fit: cover !important;
     object-position: 15% center !important;
     display: block !important;
     border: 1px solid rgba(255,255,255,0.1) !important;
-}}
-.trade-thumb-placeholder {{
-    width: {size} !important;
-    height: {size} !important;
-    min-width: {size} !important;
-    min-height: {size} !important;
+}
+.trade-thumb-placeholder {
+    width: __SIZE__ !important;
+    height: __SIZE__ !important;
+    min-width: __SIZE__ !important;
+    min-height: __SIZE__ !important;
     border-radius: 6px !important;
     background: rgba(255,255,255,0.05);
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 0.95rem;
-}}
-.sub-action-img {{
+}
+.sub-action-img {
     width: 75px !important;
     height: 75px !important;
     min-width: 75px !important;
@@ -102,8 +96,8 @@ div[data-testid="element-container"]:has(> [data-testid="stHorizontalBlock"]) {{
     object-position: center center !important;
     border: 1px solid rgba(255,255,255,0.1) !important;
     display: block !important;
-}}
-.sub-action-placeholder {{
+}
+.sub-action-placeholder {
     width: 75px !important;
     height: 75px !important;
     min-width: 75px !important;
@@ -115,32 +109,49 @@ div[data-testid="element-container"]:has(> [data-testid="stHorizontalBlock"]) {{
     justify-content: center;
     font-size: 1.1rem;
     border: 1px solid rgba(255,255,255,0.1) !important;
-}}
-.trade-main-text {{
-    font-size: {font_main};
+}
+.trade-main-text {
+    font-size: __FONT_MAIN__;
     font-weight: 600;
     color: #ffffff;
     display: flex;
     align-items: center;
     gap: 6px;
     line-height: 1.1;
-}}
-.trade-sub-text {{
-    font-size: {font_sub};
+}
+.trade-sub-text {
+    font-size: __FONT_SUB__;
     color: #94a3b8;
     margin-top: 1px;
     display: flex;
     align-items: center;
     gap: 4px;
-}}
-div[data-testid="stPopoverBody"] {{
+}
+div[data-testid="stPopoverBody"] {
     z-index: 99999 !important;
-}}
+}
 </style>
 """
 
+_SCALES = {
+    "small": ("28px", "0.78rem", "0.62rem", "2px 8px"),
+    "medium": ("36px", "0.86rem", "0.7rem", "4px 10px"),
+    "large": ("46px", "1.05rem", "0.85rem", "8px 12px"),
+}
+
+
+def get_card_css(scale):
+  size, font_main, font_sub, padding = _SCALES.get(scale, _SCALES["medium"])
+  return (
+      _CARD_CSS.replace("__SIZE__", size)
+      .replace("__FONT_MAIN__", font_main)
+      .replace("__FONT_SUB__", font_sub)
+      .replace("__PADDING__", padding)
+  )
+
 
 def inject_card_css():
+  """ბარათების CSS გვერდზე ერთხელ ემატება (აღარ მეორდება ყოველ ბარათზე)."""
   st.markdown(
       get_card_css(st.session_state.get("ui_scale", "medium")),
       unsafe_allow_html=True,
@@ -156,6 +167,18 @@ def _has_value(value):
       "<NA>",
       "No Screenshot",
   )
+
+
+def _txt(value):
+  return str(value).strip() if _has_value(value) else ""
+
+
+def _parse_num(text):
+  """ტექსტი -> float. მძიმეც მიიღება (177,605). არასწორზე აბრუნებს None-ს."""
+  try:
+    return float(str(text).strip().replace(",", "."))
+  except (ValueError, TypeError):
+    return None
 
 
 def _get_image_url(val):
@@ -188,6 +211,20 @@ def _side_label(side):
   return str(side)
 
 
+def _sort_by_date(frame):
+  """ეტაპებს ალაგებს თარიღით (შერეული ფორმატებიც იკითხება) და აბრუნებს თარიღის სვეტის სახელს."""
+  date_col = None
+  for candidate in ["Date", "date", "Entry Date", "entry_date"]:
+    if candidate in frame.columns and frame[candidate].notna().any():
+      date_col = candidate
+      break
+  if date_col is None or frame.empty:
+    return frame, date_col
+  order = pd.to_datetime(frame[date_col], errors="coerce", format="mixed")
+  ordered = frame.assign(_order=order).sort_values("_order", kind="stable")
+  return ordered.drop(columns="_order"), date_col
+
+
 def recalc_net_pnl(parent_id, clear_if_none=True):
   df = fetch_trades()
   if df.empty:
@@ -202,6 +239,144 @@ def recalc_net_pnl(parent_id, clear_if_none=True):
   update_trade(parent_id, {"Net P/L": None if net is None else str(net)})
 
 
+def _close_edit_screen():
+  st.session_state.pop(EDIT_STATE_KEY, None)
+  st.rerun(scope="fragment")  # მხოლოდ დიალოგის შიგთავსი ახლდება, დიალოგი არ იხურება
+
+
+def _render_sub_edit(trade_id, sub, date_col):
+  """ეტაპის რედაქტირების ცალკე ეკრანი დეტალების დიალოგის შიგნით.
+  (Streamlit-ში ერთდროულად მხოლოდ ერთი dialog შეიძლება იყოს გახსნილი, ამიტომ
+  რედაქტირება იმავე ფანჯარაში ცალკე ეკრანად ჩანს და 'გაუქმება' უკან აბრუნებს.)"""
+  sub_id = sub.get("Trade ID")
+  sub_type = _txt(sub.get("ActionType"))
+  is_start = START_ROW_MARK in sub_type
+  date_col = date_col or "Entry Date"
+  orig_date = _txt(sub.get(date_col))
+  current_img = _get_image_url(sub.get("Screenshot"))
+
+  st.markdown("### ✏️ ეტაპის რედაქტირება")
+  st.caption(f"{sub.get('Pair', '')} · {sub_type}")
+
+  with st.form(key=f"form_edit_sub_{sub_id}"):
+    if is_start:
+      new_type = sub_type
+    else:
+      options = list(SUB_ACTION_TYPES)
+      if sub_type and sub_type not in options:
+        options.insert(0, sub_type)  # უცნობი ტიპი არ იკარგება და არ იცვლება
+      new_type = st.selectbox(
+          "მოქმედება",
+          options,
+          index=options.index(sub_type) if sub_type in options else 0,
+      )
+
+    c1, c2 = st.columns(2)
+    price_txt = c1.text_input("ფასი", value=_txt(sub.get("Entry Price")))
+    qty_txt = c2.text_input("მოცულობა", value=_txt(sub.get("Qty")))
+
+    if is_start:
+      c3, c4, c5 = st.columns(3)
+      sl_txt = c3.text_input("სტოპ ლოსი (SL ფასი)", value=_txt(sub.get("SL_Price")))
+      tp_txt = c4.text_input("თეიქ პროფიტი (TP ფასი)", value=_txt(sub.get("TP_Price")))
+      risk_txt = c5.text_input("რისკი დოლარში (Risk $)", value=_txt(sub.get("Risk ($)")))
+
+    date_txt = st.text_input(
+        "თარიღი და დრო",
+        value=orig_date,
+        placeholder="YYYY-MM-DD HH:MM:SS",
+    )
+
+    if current_img:
+      st.image(current_img, caption="მიმდინარე სკრინშოტი", width=280)
+    new_file = st.file_uploader(
+        "🖼️ სკრინშოტის შეცვლა",
+        type=["png", "jpg", "jpeg"],
+        key=f"edit_sub_img_{sub_id}",
+    )
+
+    b1, b2 = st.columns(2)
+    save = b1.form_submit_button(
+        "💾 შენახვა", type="primary", use_container_width=True
+    )
+    cancel = b2.form_submit_button("გაუქმება", use_container_width=True)
+
+  if cancel:
+    _close_edit_screen()
+
+  if save:
+    required = {"ფასი": price_txt, "მოცულობა": qty_txt}
+    if is_start:
+      required["რისკი"] = risk_txt
+    parsed = {name: _parse_num(text) for name, text in required.items()}
+    errors = [f"არასწორი რიცხვი: {n}" for n, v in parsed.items() if v is None]
+
+    optional = {}
+    if is_start:  # SL/TP-ის ცარიელი ველი = "არ არის მითითებული" (0.0), როგორც ახალი გარიგებისას
+      for name, text in (("SL", sl_txt), ("TP", tp_txt)):
+        if not text.strip():
+          optional[name] = 0.0
+        else:
+          value = _parse_num(text)
+          if value is None:
+            errors.append(f"არასწორი რიცხვი: {name}")
+          else:
+            optional[name] = value
+
+    new_date = None
+    if date_txt.strip() != orig_date:
+      parsed_date = pd.to_datetime(date_txt, errors="coerce")
+      if pd.isna(parsed_date):
+        errors.append("თარიღი ვერ იკითხება (გამოიყენე YYYY-MM-DD HH:MM:SS)")
+      else:
+        new_date = parsed_date.strftime("%Y-%m-%d %H:%M:%S")
+
+    if errors:
+      for message in errors:
+        st.error(message)
+    else:
+      payload = {
+          "Entry Price": str(parsed["ფასი"]),
+          "Qty": str(parsed["მოცულობა"]),
+      }
+      if not is_start:
+        payload["ActionType"] = new_type
+      else:
+        payload["Risk ($)"] = str(parsed["რისკი"])
+        payload["SL_Price"] = str(optional["SL"])
+        payload["TP_Price"] = str(optional["TP"])
+      if new_date is not None:
+        payload[date_col] = new_date
+      if new_file is not None:
+        ext = os.path.splitext(new_file.name)[1].lower() or ".png"
+        stamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        safe_name = f"sub_{stamp}_{uuid.uuid4().hex[:6]}{ext}"
+        uploaded_url = upload_screenshot(new_file, file_name=safe_name)
+        if uploaded_url:
+          payload["Screenshot"] = uploaded_url
+
+      if update_trade(sub_id, payload):
+        recalc_net_pnl(trade_id)
+        st.toast("ეტაპი განახლდა!", icon="✅")
+        _close_edit_screen()
+
+  if not is_start:
+    st.divider()
+    confirm = st.checkbox(
+        "ვადასტურებ ამ ეტაპის წაშლას", key=f"confirm_del_sub_{sub_id}"
+    )
+    if st.button(
+        "🗑️ ეტაპის წაშლა",
+        key=f"del_sub_{sub_id}",
+        disabled=not confirm,
+        use_container_width=True,
+    ):
+      if delete_trade(sub_id):
+        recalc_net_pnl(trade_id)
+        st.toast("ეტაპი წაიშალა!", icon="🗑️")
+        _close_edit_screen()
+
+
 @st.dialog("🔍 გარიგების დეტალები და მართვა", width="large")
 def show_trade_details_dialog(trade, df=None):
   trade_id = trade.get("Trade ID") or trade.get("Parent Trade ID")
@@ -214,7 +389,16 @@ def show_trade_details_dialog(trade, df=None):
   pair = trade.get("Pair", "N/A")
   side = trade.get("Side", "N/A")
   main_screenshot = trade.get("Screenshot")
-  sub_actions = df[df["Parent Trade ID"] == trade_id]
+  sub_actions, date_col = _sort_by_date(df[df["Parent Trade ID"] == trade_id])
+
+  # --- ეტაპის რედაქტირების ეკრანი (ცალკე "ფანჯარა" დიალოგის შიგნით) ---
+  edit_id = st.session_state.get(EDIT_STATE_KEY)
+  if edit_id:
+    match = sub_actions[sub_actions["Trade ID"] == edit_id]
+    if not match.empty:
+      _render_sub_edit(trade_id, match.iloc[0], date_col)
+      return
+    st.session_state.pop(EDIT_STATE_KEY, None)
 
   raw_fin = trade.get("Finalized")
   is_finalized = str(raw_fin).strip().lower() in ("true", "1", "yes")
@@ -262,28 +446,18 @@ def show_trade_details_dialog(trade, df=None):
 
   st.divider()
 
-  # --- სუბ-მოქმედებების ბარათები (ქრონოლოგიური სორტირება და st.columns) ---
+  # --- ეტაპების ბარათები: სამი გვერდიგვერდ, მარცხნიდან მარჯვნივ, ქრონოლოგიურად ---
   st.markdown("### 📊 გარიგების მართვა / დამატებითი ქმედებები")
-  
-  if not sub_actions.empty:
-    date_col = None
-    for col_candidate in ["Date", "date", "Entry Date", "entry_date"]:
-      if col_candidate in sub_actions.columns:
-        date_col = col_candidate
-        break
-    
-    if date_col:
-      sub_actions = sub_actions.sort_values(by=date_col, ascending=True)
 
+  if not sub_actions.empty:
     sub_items = list(sub_actions.iterrows())
 
-    # ვანაწილებთ 3-ელემენტიან სვეტებად
     for i in range(0, len(sub_items), 3):
-      chunk = sub_items[i:i+3]
-      cols = st.columns(3)
+      chunk = sub_items[i : i + 3]
+      cols = st.columns(3, vertical_alignment="top")
       for j, (row_idx, row) in enumerate(chunk):
         sub_id = row.get("Trade ID") or row.get("id") or row_idx
-        
+
         sub_type = "Action"
         for k in ["ActionType", "Action Type", "action_type", "Action"]:
           val = row.get(k)
@@ -305,9 +479,7 @@ def show_trade_details_dialog(trade, df=None):
             sub_qty = val
             break
 
-        sub_date = ""
-        if date_col:
-          sub_date = row.get(date_col, "")
+        sub_date = row.get(date_col, "") if date_col else ""
 
         sub_img = None
         for k in ["Screenshot", "screenshot"]:
@@ -321,82 +493,82 @@ def show_trade_details_dialog(trade, df=None):
             c_img, c_desc = st.columns([1, 2], vertical_alignment="center")
             with c_img:
               if sub_img:
-                st.markdown(f"<img src='{sub_img}' class='sub-action-img'>", unsafe_allow_html=True)
+                st.markdown(
+                    f"<img src='{sub_img}' class='sub-action-img'"
+                    " loading='lazy'>",
+                    unsafe_allow_html=True,
+                )
               else:
-                st.markdown("<div class='sub-action-placeholder'>📁</div>", unsafe_allow_html=True)
+                st.markdown(
+                    "<div class='sub-action-placeholder'>📁</div>",
+                    unsafe_allow_html=True,
+                )
             with c_desc:
               st.markdown(f"**{sub_type}**")
               st.markdown(f"ფასი: `{sub_price}`")
               st.markdown(f"მოცულობა: `{sub_qty}`")
-              st.caption(f"📅 {_pretty_date(sub_date) if sub_date else ''}")
+              st.caption(
+                  f"📅 {_pretty_date(sub_date) if _has_value(sub_date) else ''}"
+              )
 
-            edit_sub_key = f"edit_sub_mode_{sub_id}"
-            if st.button("✏️ რედაქტირება", key=f"btn_edit_sub_{sub_id}", use_container_width=True):
-              st.session_state[edit_sub_key] = not st.session_state.get(edit_sub_key, False)
+            if st.button(
+                "✏️ რედაქტირება",
+                key=f"btn_edit_sub_{sub_id}",
+                use_container_width=True,
+            ):
+              st.session_state[EDIT_STATE_KEY] = sub_id
               st.rerun(scope="fragment")
-
-            if st.session_state.get(edit_sub_key, False):
-              with st.container(border=True):
-                new_sub_type = st.selectbox("მოქმედება", ["Start Row in Journal (მთავარი შესვლა)", "Partial Exit", "Full Exit", "Add Position"], index=["Start Row in Journal (მთავარი შესვლა)", "Partial Exit", "Full Exit", "Add Position"].index(str(sub_type)) if str(sub_type) in ["Start Row in Journal (მთავარი შესვლა)", "Partial Exit", "Full Exit", "Add Position"] else 0, key=f"stype_{sub_id}")
-                new_sub_price = st.number_input("ფასი", value=float(sub_price or 0.0), format="%.5f", key=f"sprice_{sub_id}")
-                new_sub_qty = st.number_input("მოცულობა", value=float(sub_qty or 0.0), format="%.2f", key=f"sqty_{sub_id}")
-                
-                new_sub_file = st.file_uploader("სკრინშოტის შეცვლა", type=["png", "jpg", "jpeg"], key=f"supimg_{sub_id}")
-                
-                col_sb1, col_sb2 = st.columns(2)
-                with col_sb1:
-                  if st.button("შენახვა", key=f"ssave_{sub_id}", use_container_width=True):
-                    payload = {
-                        "ActionType": new_sub_type,
-                        "Price": new_sub_price,
-                        "Quantity": new_sub_qty
-                    }
-                    if new_sub_file is not None:
-                      ext = os.path.splitext(new_sub_file.name)[1].lower() or ".png"
-                      stamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-                      file_safe_name = f"sub_{stamp}_{uuid.uuid4().hex[:6]}{ext}"
-                      up_url = upload_screenshot(new_sub_file, file_name=file_safe_name)
-                      if up_url:
-                        payload["Screenshot"] = up_url
-                    
-                    update_trade(sub_id, payload)
-                    st.session_state[edit_sub_key] = False
-                    st.success("განახლდა!")
-                    st.rerun()
-                with col_sb2:
-                  if st.button("გაუქმება", key=f"scanc_{sub_id}", use_container_width=True):
-                    st.session_state[edit_sub_key] = False
-                    st.rerun()
   else:
     st.info("ამ გარიგებაზე დამატებითი ქმედებები ჯერ არ ფიქსირდება.")
 
   with st.expander("➕ ახალი ქმედების დამატება (ნაწილობრივი/სრული გასვლა, დამატება)"):
-    sub_type = st.selectbox("მოქმედების ტიპი", ["Partial Exit", "Full Exit", "Add Position"], key=f"sub_type_{trade_id}")
-    sub_price = st.number_input("ფასი", value=0.0, format="%.5f", key=f"sub_price_{trade_id}")
-    sub_qty = st.number_input("მოცულობა (Qty)", value=1.0, format="%.2f", key=f"sub_qty_{trade_id}")
-    
-    sub_img_file = st.file_uploader("შუალედური სკრინშოტი (არასავალდებულო)", type=["png", "jpg", "jpeg"], key=f"sub_img_up_{trade_id}")
-    
-    if st.button("მონაცემის დამატება", key=f"add_sub_btn_{trade_id}", use_container_width=True):
-      sub_screenshot_url = None
-      if sub_img_file is not None:
-        ext = os.path.splitext(sub_img_file.name)[1].lower() or ".png"
-        stamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-        file_safe_name = f"sub_{pair}_{stamp}_{uuid.uuid4().hex[:6]}{ext}"
-        sub_screenshot_url = upload_screenshot(sub_img_file, file_name=file_safe_name)
+    with st.form(key=f"form_add_sub_{trade_id}", clear_on_submit=True):
+      add_type = st.selectbox("მოქმედების ტიპი", SUB_ACTION_TYPES)
+      a1, a2 = st.columns(2)
+      add_price = a1.number_input("ფასი", value=0.0, format="%.5f")
+      add_qty = a2.number_input("მოცულობა (Qty)", value=1.0, format="%.2f")
+      add_date = st.text_input(
+          "თარიღი და დრო",
+          value=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+          key=f"add_sub_date_{trade_id}",
+      )
+      add_file = st.file_uploader(
+          "შუალედური სკრინშოტი (არასავალდებულო)",
+          type=["png", "jpg", "jpeg"],
+          key=f"sub_img_up_{trade_id}",
+      )
+      add_submit = st.form_submit_button(
+          "მონაცემის დამატება", use_container_width=True
+      )
 
-      sub_payload = {
-          "Parent Trade ID": trade_id,
-          "ActionType": sub_type,
-          "Price": sub_price,
-          "Quantity": sub_qty,
-          "Date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-          "Screenshot": sub_screenshot_url if sub_screenshot_url else None
-      }
-      insert_trade(sub_payload)
-      recalc_net_pnl(trade_id, clear_if_none=False)
-      st.success("მონაცემი დაემატა!")
-      st.rerun(scope="fragment")
+    if add_submit:
+      parsed_add_date = pd.to_datetime(add_date, errors="coerce")
+      if pd.isna(parsed_add_date):
+        st.error("თარიღი ვერ იკითხება (გამოიყენე YYYY-MM-DD HH:MM:SS)")
+      else:
+        sub_screenshot_url = ""
+        if add_file is not None:
+          ext = os.path.splitext(add_file.name)[1].lower() or ".png"
+          stamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+          safe_name = f"sub_{pair}_{stamp}_{uuid.uuid4().hex[:6]}{ext}"
+          sub_screenshot_url = upload_screenshot(add_file, file_name=safe_name) or ""
+
+        sub_payload = {
+            "Trade ID": str(uuid.uuid4()),
+            "Parent Trade ID": trade_id,
+            "Entry Date": parsed_add_date.strftime("%Y-%m-%d %H:%M:%S"),
+            "Pair": pair,
+            "Side": side,
+            "ActionType": add_type,
+            "Entry Price": str(add_price),
+            "Qty": str(add_qty),
+            "Screenshot": sub_screenshot_url,
+            "Finalized": "False",
+        }
+        if insert_trade(sub_payload):
+          recalc_net_pnl(trade_id, clear_if_none=False)
+          st.toast("მონაცემი დაემატა!", icon="✅")
+          st.rerun(scope="fragment")
 
   st.divider()
 
@@ -478,6 +650,12 @@ def show_trade_details_dialog(trade, df=None):
         f" {breakdown['pnl']:+.2f}$**"
     )
     st.markdown("\n".join(lines))
+    if breakdown["method"] == "legacy":
+      st.warning(
+          "⚠️ SL ფასი არ არის მითითებული ან არასწორია (არასწორ მხარესაა / ძალიან"
+          " შორსაა / ფორმის ნაგულისხმევია), ამიტომ გამოიყენება ძველი %-ზე"
+          " დაფუძნებული გამოთვლა. ჩაასწორე Start Row-ის SL ✏️-ით ზემოთ."
+      )
 
   st.divider()
   if st.button("✅ დახურვა", key=f"close_dlg_{trade_id}", use_container_width=True):
@@ -485,6 +663,7 @@ def show_trade_details_dialog(trade, df=None):
 
 
 def render_trade_card(trade, df, subs=None, pnl=None):
+  """subs და pnl გადმოცემის შემთხვევაში თავიდან აღარ ითვლება (journal.py ერთხელ ითვლის ყველასთვის)."""
   trade_id = trade.get("Trade ID") or trade.get("Parent Trade ID")
   pair = trade.get("Pair", "N/A")
   side = trade.get("Side", "N/A")
@@ -534,9 +713,11 @@ def render_trade_card(trade, df, subs=None, pnl=None):
     st.markdown(thumb_html, unsafe_allow_html=True)
 
   with col_info:
+    # trade-row-marker: მისით CSS ცნობს ჟურნალის სიის რიგს (დიალოგის სვეტებს არ ეხება)
     st.markdown(
         f"""
         <div style='display: flex; flex-direction: column; justify-content: center; min-width: 0;'>
+            <span class='trade-row-marker'></span>
             <div class='trade-main-text'>
                 <span>{pair}</span>
                 {status_indicator}
@@ -554,6 +735,7 @@ def render_trade_card(trade, df, subs=None, pnl=None):
   with col_menu:
     with st.popover("⋯"):
       if st.button("დეტალები", key=f"det_menu_{trade_id}", use_container_width=True):
+        st.session_state.pop(EDIT_STATE_KEY, None)  # დიალოგი ყოველთვის მთავარი ეკრანით იხსნება
         show_trade_details_dialog(trade)
 
       if st.button("წაშლა", key=f"del_menu_{trade_id}", use_container_width=True):
