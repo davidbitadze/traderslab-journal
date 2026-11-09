@@ -80,22 +80,64 @@ def login(email, password, remember):
     return False, str(e)
 
 
+_BRIDGE_JS = """
+export default function ({ setStateValue }) {
+  let token = "";
+  try {
+    const m = document.cookie.match(/(?:^|; )tl_rt=([^;]+)/);
+    token = m ? m[1] : "";
+  } catch (e) {}
+  setStateValue("rt", token);
+}
+"""
+
+
+@st.cache_resource
+def _bridge_component():
+  return st.components.v2.component(
+      "tl_cookie_bridge", html="<span></span>", js=_BRIDGE_JS
+  )
+
+
+def _read_cookie_via_browser():
+  """Streamlit Cloud-ზე st.context.cookies ცარიელია, ამიტომ cookie-ს ბრაუზერი კითხულობს
+  (Streamlit-ის ორმხრივი კომპონენტი v2). აბრუნებს None-ს სანამ ბრაუზერმა არ უპასუხა,
+  ცარიელ სტრიქონს თუ cookie არ არის, ან token-ს."""
+  try:
+    result = _bridge_component()(key="tl_cookie_bridge", default={"rt": None}, on_rt_change=lambda: None)
+    return getattr(result, "rt", None)
+  except Exception as e:
+    st.session_state.setdefault("_auth_dbg", {})["bridge_error"] = repr(e)
+    return ""  # კომპონენტი ვერ ჩაირთო: ვაგრძელებთ cookie-ს გარეშე
+
+
 def restore_session():
   """გვერდის რეფრეშისას cookie-დან სესიის აღდგენა. სესიაზე მაქსიმუმ ერთხელ ვცდილობთ."""
   if st.session_state.get("user") is not None:
     return
   if st.session_state.get("_logged_out") or st.session_state.get("_restore_tried"):
     return
-  st.session_state["_restore_tried"] = True
 
   dbg = st.session_state.setdefault("_auth_dbg", {})
-  try:
+  token = None
+  try:  # 1) სერვერის მხარეს cookie (სადაც Streamlit-ის გარემო აძლევს)
     cookies = st.context.cookies
     dbg["server_cookie_names"] = sorted(cookies.keys())
     token = cookies.get(COOKIE_NAME)
+    if token:
+      dbg["token_source"] = "server-cookie"
   except Exception as e:
-    token = None
     dbg["cookie_read_error"] = repr(e)
+
+  if not token:  # 2) ბრაუზერიდან კომპონენტით
+    token = _read_cookie_via_browser()
+    dbg["bridge_value"] = "pending" if token is None else ("empty" if token == "" else "token")
+    if token is None:
+      return  # ბრაუზერის პასუხს ველოდებით: კომპონენტი თვითონ გამოიწვევს ახალ გაშვებას
+    if token:
+      dbg["token_source"] = "browser-bridge"
+
+  st.session_state["_restore_tried"] = True
   dbg["token_found"] = bool(token)
   if not token or not _TOKEN_RE.match(token):
     return
