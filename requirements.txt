@@ -2,4 +2,3 @@ streamlit
 supabase
 pandas
 pillow
-extra-streamlit-components
