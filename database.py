@@ -19,25 +19,53 @@ PAGE_SIZE = 1000
 BALANCE_COLUMNS = ["Transaction ID", "Date", "Amount", "Description"]
 
 
-def get_supabase_client():
-  """ავტორიზაციისთვის (app.py): ყოველ გამოძახებაზე ახალი კლიენტი, როგორც აქამდე.
-  სესიის (login) მდგომარეობა სწორედ ამ კლიენტებზე ინახება, ამიტომ მათ არ ვინახავთ
-  საერთო ქეშში — წინააღმდეგ შემთხვევაში ერთი მომხმარებლის ავტორიზაცია სხვებსაც გადაეცემოდა."""
-  supabase_url = st.secrets["SUPABASE_URL"]
-  supabase_key = st.secrets["SUPABASE_KEY"]
-  return create_client(supabase_url, supabase_key)
+def _make_client(auth_safe=False):
+  url, key = st.secrets["SUPABASE_URL"], st.secrets["SUPABASE_KEY"]
+  if auth_safe:
+    # სესიას თავად ვმართავთ (app-ის cookie): ფონური ტაიმერი და ფაილზე შენახვა გვჭირდება გამორთული
+    try:
+      from supabase import ClientOptions
+
+      return create_client(
+          url,
+          key,
+          options=ClientOptions(auto_refresh_token=False, persist_session=False),
+      )
+    except Exception:
+      pass
+  return create_client(url, key)
+
+
+def new_auth_client():
+  """ერთი მომხმარებლის სესიისთვის ახალი კლიენტი. login-ის შემდეგ მასზე ინახება მისი JWT,
+  ამიტომ არასდროს უნდა გავუზიაროთ სხვა სესიას (იხ. utils/auth.py)."""
+  return _make_client(auth_safe=True)
+
+
+# ძველი სახელი, რომ სხვა ფაილებმა არ გატყდეს
+get_supabase_client = new_auth_client
 
 
 @st.cache_resource
+def _anon_client():
+  return _make_client()
+
+
 def get_data_client():
-  """მონაცემების წასაკითხად/ჩასაწერად: ერთხელ იქმნება და მეხსიერებაში რჩება.
-  აქ არასდროს ხდება sign_in, ამიტომ საერთო გამოყენება უსაფრთხოა."""
-  return create_client(st.secrets["SUPABASE_URL"], st.secrets["SUPABASE_KEY"])
+  """მონაცემებისთვის: ავტორიზებული მომხმარებლის საკუთარი კლიენტი (მისი JWT-ით, რომ
+  ბაზის RLS წესები მუშაობდეს). დალოგინებამდე — უფლებებმოკლებული anon კლიენტი."""
+  return st.session_state.get("sb") or _anon_client()
+
+
+def _uid():
+  """ქეშის გასაღებში ვრთავთ user_id-ს, რომ ერთი მომხმარებლის მონაცემი სხვას არ დაუბრუნდეს."""
+  user = st.session_state.get("user")
+  return getattr(user, "id", None)
 
 
 # ------------------------------------------------------------------ trades
 @st.cache_data(ttl=TRADES_TTL, show_spinner=False)
-def _load_trades():
+def _load_trades(uid):
   """ყველა რიგის წამოღება გვერდებად (1000-ზე მეტი რიგიც სწორად წამოვა).
   შეცდომა ქეშში არ ინახება: ის ზევით იჭერს fetch_trades()."""
   client = get_data_client()
@@ -65,7 +93,10 @@ def invalidate_trades():
 
 def fetch_trades():
   try:
-    return _load_trades()
+    uid = _uid()
+    if not uid:
+      return pd.DataFrame()
+    return _load_trades(uid)
   except Exception as e:
     st.error(f"ბაზიდან მონაცემის წამოღების შეცდომა: {e}")
     return pd.DataFrame()
@@ -115,7 +146,7 @@ def delete_trade(trade_id):
 
 # ---------------------------------------------------------------- settings
 @st.cache_data(ttl=SETTINGS_TTL, show_spinner=False)
-def _load_settings(category):
+def _load_settings(uid, category):
   response = (
       get_data_client()
       .table("user_settings")
@@ -129,7 +160,7 @@ def _load_settings(category):
 def fetch_settings(category):
   """კატეგორიის მიხედვით (მაგ: 'pattern' ან 'trigger') სიის წამოღება ბაზიდან."""
   try:
-    return _load_settings(category)
+    return _load_settings(_uid(), category)
   except Exception:
     if category == "pattern":
       return ["ვ-შემობრუნება", "ორმაგი წვერი", "თავი მხრები"]
@@ -171,7 +202,7 @@ def update_setting_item(category, old_name, new_name):
 
 # ------------------------------------------------------- balance transactions
 @st.cache_data(ttl=BALANCE_TTL, show_spinner=False)
-def _load_balance():
+def _load_balance(uid):
   response = get_data_client().table("balance_transactions").select("*").execute()
   return (
       pd.DataFrame(response.data)
@@ -183,7 +214,7 @@ def _load_balance():
 def fetch_balance_transactions():
   """ბრუნავს ტრანზაქციების DataFrame-ს."""
   try:
-    return _load_balance()
+    return _load_balance(_uid())
   except Exception:
     return pd.DataFrame(columns=BALANCE_COLUMNS)
 
