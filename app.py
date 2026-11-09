@@ -73,6 +73,8 @@ auth.restore_session()  # რეფრეშის შემდეგ: cookie-�
 auth.ensure_fresh_session()
 # cookie-ს ჩაწერა/წაშლა ბოლოს: restore-ის ახალი (rotated) token იმავე გაშვებაში უნდა ჩაიწეროს
 auth.flush_cookie_cmd()
+if st.query_params.get("debug") == "1":
+  auth.render_debug()
 
 
 def render_auth_screen():
