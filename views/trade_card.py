@@ -1,4 +1,5 @@
 from datetime import datetime
+import html
 import os
 import uuid
 import pandas as pd
@@ -665,7 +666,7 @@ def show_trade_details_dialog(trade, df=None):
 def render_trade_card(trade, df, subs=None, pnl=None):
   """subs და pnl გადმოცემის შემთხვევაში თავიდან აღარ ითვლება (journal.py ერთხელ ითვლის ყველასთვის)."""
   trade_id = trade.get("Trade ID") or trade.get("Parent Trade ID")
-  pair = trade.get("Pair", "N/A")
+  pair = html.escape(str(trade.get("Pair", "N/A")))  # HTML-ში ჩასმამდე
   side = trade.get("Side", "N/A")
   entry_date = trade.get("Entry Date", "N/A")
   screenshot = trade.get("Screenshot")
@@ -699,7 +700,7 @@ def render_trade_card(trade, df, subs=None, pnl=None):
   img_url = _get_image_url(screenshot)
   if img_url:
     thumb_html = (
-        f"<img src='{img_url}' class='trade-thumb-img' loading='lazy'"
+        f"<img src='{html.escape(str(img_url), quote=True)}' class='trade-thumb-img' loading='lazy'"
         " decoding='async'>"
     )
   else:
