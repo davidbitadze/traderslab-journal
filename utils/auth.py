@@ -88,10 +88,15 @@ def restore_session():
     return
   st.session_state["_restore_tried"] = True
 
+  dbg = st.session_state.setdefault("_auth_dbg", {})
   try:
-    token = st.context.cookies.get(COOKIE_NAME)
-  except Exception:
+    cookies = st.context.cookies
+    dbg["server_cookie_names"] = sorted(cookies.keys())
+    token = cookies.get(COOKIE_NAME)
+  except Exception as e:
     token = None
+    dbg["cookie_read_error"] = repr(e)
+  dbg["token_found"] = bool(token)
   if not token or not _TOKEN_RE.match(token):
     return
 
@@ -100,9 +105,11 @@ def restore_session():
     response = client.auth.refresh_session(token)
     if response and response.session and response.user:
       _adopt(client, response.session, remember=True)  # ახალი (rotated) token cookie-ში ჩაიწერება
+      dbg["restore"] = "ok"
       return
-  except Exception:
-    pass
+    dbg["restore"] = "no session returned"
+  except Exception as e:
+    dbg["restore"] = f"error: {e}"
   _queue_cookie("clear")  # ცუდი ან ვადაგასული token: ვასუფთავებთ
 
 
@@ -152,3 +159,24 @@ def register(email, password):
     return bool(response.user), None
   except Exception as e:
     return False, str(e)
+
+
+def render_debug():
+  """დიაგნოსტიკა (მხოლოდ ბმულზე ?debug=1): cookie-ს მხოლოდ სახელებს აჩვენებს, მნიშვნელობებს არა."""
+  with st.expander("🛠 auth debug", expanded=True):
+    st.write(
+        {
+            "streamlit": st.__version__,
+            "logged_in": st.session_state.get("user") is not None,
+            "logged_out_flag": bool(st.session_state.get("_logged_out")),
+            "pending_cookie_cmd": (st.session_state.get("_cookie_cmd") or [None])[0],
+            **st.session_state.get("_auth_dbg", {}),
+        }
+    )
+    components.html(
+        """<div id=o style="font:12px monospace;color:#888">...</div>
+        <script>try{const n=window.parent.document.cookie.split(';').map(c=>c.split('=')[0].trim()).filter(Boolean);
+        document.getElementById('o').textContent='browser cookie names: '+JSON.stringify(n);}
+        catch(e){document.getElementById('o').textContent='browser cookie read failed: '+e;}</script>""",
+        height=40,
+    )
