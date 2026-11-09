@@ -1,6 +1,7 @@
 from datetime import datetime
-from database import fetch_user_preferences, get_supabase_client
+from database import fetch_user_preferences
 import streamlit as st
+from utils import auth
 from utils.translations import t
 from views.analytics import render_analytics_view
 from views.journal import render_journal_view
@@ -59,26 +60,19 @@ def apply_ui_scaling(scale_mode):
 if "lang" not in st.session_state:
   st.session_state.lang = "ka"
 
-# Supabase კლიენტი
-supabase = get_supabase_client()
+# ძველი, დაუცველი URL-პარამეტრები (?saved_email=&saved_uid=) აღარ გამოიყენება: ვშლით
+for _old_key in ("saved_email", "saved_uid"):
+  if _old_key in st.query_params:
+    del st.query_params[_old_key]
 
 # ავტორიზაციის სესიის ინიციალიზაცია
 if "user" not in st.session_state:
   st.session_state.user = None
 
-# --- ავტომატური აღდგენა URL-ში შენახული მონაცემებიდან ---
-saved_email = st.query_params.get("saved_email", None)
-saved_uid = st.query_params.get("saved_uid", None)
-
-if st.session_state.user is None and saved_email and saved_uid:
-
-  class RestoredUser:
-
-    def __init__(self, uid, email):
-      self.id = uid
-      self.email = email
-
-  st.session_state.user = RestoredUser(saved_uid, saved_email)
+auth.restore_session()  # რეფრეშის შემდეგ: cookie-ს refresh token-ით სესიის აღდგენა
+auth.ensure_fresh_session()
+# cookie-ს ჩაწერა/წაშლა ბოლოს: restore-ის ახალი (rotated) token იმავე გაშვებაში უნდა ჩაიწეროს
+auth.flush_cookie_cmd()
 
 
 def render_auth_screen():
@@ -103,19 +97,11 @@ def render_auth_screen():
         submit_login = st.form_submit_button("შესვლა", use_container_width=True)
 
         if submit_login:
-          try:
-            response = supabase.auth.sign_in_with_password(
-                {"email": email, "password": password}
-            )
-            if response.user:
-              st.session_state.user = response.user
-              if remember_me:
-                st.query_params["saved_email"] = response.user.email
-                st.query_params["saved_uid"] = response.user.id
-              st.success("წარმატებით შეხვედით სისტემაში!")
-              st.rerun()
-          except Exception as e:
-            st.error(f"შესვლის შეცდომა: {e}")
+          ok, err = auth.login(email, password, remember_me)
+          if ok:
+            st.rerun()
+          else:
+            st.error(f"შესვლის შეცდომა: {err}")
 
     # --- რეგისტრაცია ---
     with tab_register:
@@ -129,16 +115,11 @@ def render_auth_screen():
         )
 
         if submit_reg:
-          try:
-            response = supabase.auth.sign_up(
-                {"email": reg_email, "password": reg_password}
-            )
-            if response.user:
-              st.success(
-                  "რეგისტრაცია წარმატებულია! გთხოვთ შეამოწმოთ მეილი."
-              )
-          except Exception as e:
-            st.error(f"რეგისტრაციის შეცდომა: {e}")
+          ok, err = auth.register(reg_email, reg_password)
+          if ok:
+            st.success("რეგისტრაცია წარმატებულია! გთხოვთ შეამოწმოთ მეილი.")
+          else:
+            st.error(f"რეგისტრაციის შეცდომა: {err}" if err else "რეგისტრაცია ვერ მოხერხდა")
 
 
 # მთავარი ლოგიკა: თუ მომხმარებელი არ არის ავტორიზებული
@@ -186,14 +167,7 @@ else:
     st.sidebar.title("⚙️ Settings / პარამეტრები")
     st.sidebar.write(f"👤 {user_email}")
     if st.sidebar.button("🚪 გასვლა (Logout)", use_container_width=True):
-      st.session_state.user = None
-      if "user_prefs" in st.session_state:
-        del st.session_state["user_prefs"]
-      if "saved_email" in st.query_params:
-        del st.query_params["saved_email"]
-      if "saved_uid" in st.query_params:
-        del st.query_params["saved_uid"]
-      st.rerun()
+      auth.logout()
 
     st.error(
         "⚠️ **თქვენი გამოწერის ვადა ამოწურულია ან აქტიური არ არის.**"
@@ -209,6 +183,7 @@ else:
       if is_mobile
       else current_prefs.get("desktop_view_mode", "medium")
   )
+  st.session_state["ui_scale"] = active_scale
   apply_ui_scaling(active_scale)
 
   # --- ავტორიზებული და აქტიურ-გამოწერიანი მომხმარებლის ინტერფეისი ---
@@ -218,18 +193,7 @@ else:
   st.sidebar.caption(f"მოწყობილობა: **{device_label}** | ზომა: **{active_scale}**")
 
   if st.sidebar.button("🚪 გასვლა (Logout)", use_container_width=True):
-    try:
-      supabase.auth.sign_out()
-    except Exception:
-      pass
-    st.session_state.user = None
-    if "user_prefs" in st.session_state:
-      del st.session_state["user_prefs"]
-    if "saved_email" in st.query_params:
-      del st.query_params["saved_email"]
-    if "saved_uid" in st.query_params:
-      del st.query_params["saved_uid"]
-    st.rerun()
+    auth.logout()
 
   selected_lang = st.sidebar.selectbox(
       "Language / ენა",
