@@ -103,7 +103,15 @@ def render_auth_screen():
           if ok:
             st.rerun()
           else:
-            st.error(f"შესვლის შეცდომა: {err}")
+            st.error(err)
+
+      pending_email = st.session_state.get("_unconfirmed_email")
+      if pending_email and st.button("📧 დადასტურების წერილის ხელახლა გაგზავნა"):
+        sent, resend_err = auth.resend_confirmation(pending_email)
+        if sent:
+          st.success(f"წერილი გაიგზავნა მისამართზე {pending_email}. შეამოწმე Spam საქაღალდეც.")
+        else:
+          st.error(resend_err)
 
     # --- რეგისტრაცია ---
     with tab_register:
@@ -119,9 +127,12 @@ def render_auth_screen():
         if submit_reg:
           ok, err = auth.register(reg_email, reg_password)
           if ok:
-            st.success("რეგისტრაცია წარმატებულია! გთხოვთ შეამოწმოთ მეილი.")
+            st.success(
+                "რეგისტრაცია წარმატებულია! გაგიგზავნეთ წერილი: დააჭირე მასში"
+                " დადასტურების ბმულს და შემდეგ შედი სისტემაში."
+            )
           else:
-            st.error(f"რეგისტრაციის შეცდომა: {err}" if err else "რეგისტრაცია ვერ მოხერხდა")
+            st.error(err or "რეგისტრაცია ვერ მოხერხდა.")
 
 
 # მთავარი ლოგიკა: თუ მომხმარებელი არ არის ავტორიზებული
