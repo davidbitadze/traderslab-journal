@@ -335,6 +335,7 @@ else:
   selected_menu = st.sidebar.selectbox("აირჩიეთ გვერდი", menu_options, key="main_navigation_select", label_visibility="collapsed")
 
   # გვერდების გამოძახება არჩეული ენის მიხედვით
+# გვერდების გამოძახება არჩეული ენის მიხედვით
   if selected_menu in ["📊 სავაჭრო ჟურნალი", "📊 Trade Journal"]:
     render_journal_view(lang)
   elif selected_menu in ["📈 ანალიტიკა", "📈 Analytics"]:
