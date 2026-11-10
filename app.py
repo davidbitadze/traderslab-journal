@@ -188,10 +188,15 @@ else:
     else:
       is_subscription_valid = False
 
-  # ენისა და თემის ლექსიკონის წვდომისთვის გვჭირდება lang
+    # --- ენისა და თემის მკაცრი ინიციალიზაცია ბაზიდან ---
   db_lang = current_prefs.get("language") or "ka"
-  if "lang" not in st.session_state:
+  if "lang" not in st.session_state or st.session_state.lang != db_lang:
     st.session_state.lang = db_lang
+
+  db_theme = current_prefs.get("theme") or "auto"
+  if "theme" not in st.session_state:
+    st.session_state.theme = db_theme
+
   lang = st.session_state.lang
 
   if not is_subscription_valid:
