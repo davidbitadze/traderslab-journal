@@ -132,12 +132,22 @@ def update_trade(trade_id, updated_data):
 
 
 def delete_trade(trade_id):
-  """გარიგების და მასთან დაკავშირებული ქვემოქმედებების წაშლა Trade ID-ის მიხედვით."""
+  """გარიგების და მასთან დაკავშირებული ქვემოქმედებების წაშლა Trade ID-ის მიხედვით.
+  წარმატებით წაშლის შემდეგ მათი სკრინშოტებიც იშლება Storage-იდან."""
   try:
     supabase = get_data_client()
+    urls = []
+    try:
+      for col in ("Trade ID", "Parent Trade ID"):
+        rows = supabase.table("trades").select("Screenshot").eq(col, trade_id).execute().data
+        urls += [r.get("Screenshot") for r in (rows or [])]
+    except Exception:
+      urls = []
     supabase.table("trades").delete().eq("Trade ID", trade_id).execute()
     supabase.table("trades").delete().eq("Parent Trade ID", trade_id).execute()
     invalidate_trades()
+    for url in set(u for u in urls if u):
+      delete_screenshot(url)
     return True
   except Exception as e:
     st.error(f"ბაზიდან წაშლის შეცდომა: {e}")
@@ -244,9 +254,17 @@ def delete_balance_transaction(txn_id):
 
 
 # ------------------------------------------------------------- screenshots
-def _optimize_image(raw, max_side=1920, quality=85):
-  """სურათს ამცირებს (მაქს. 1920px) და WebP-ში გადაჰყავს: ჩვეულებრივ 3-10-ჯერ მსუბუქია.
-  შეცდომის ან უკეთესი შედეგის არარსებობისას აბრუნებს ორიგინალს."""
+SCREENSHOT_BUCKET = "screenshots"
+FULL_MAX_SIDE = 1600  # სრული სურათის მაქს. გვერდი (px)
+FULL_QUALITY = 80
+THUMB_MAX_SIDE = 360  # სიის პატარა პრევიუ
+THUMB_QUALITY = 70
+_PUBLIC_MARKER = f"/object/public/{SCREENSHOT_BUCKET}/"
+
+
+def _prepare_images(raw):
+  """აბრუნებს (სრული WebP, პატარა პრევიუ WebP) ბაიტებს, ან None თუ სურათი ვერ დამუშავდა.
+  სრული სურათი მაქს. 1600px-ია, პრევიუ 360px (ჩვეულებრივ 10-30KB)."""
   try:
     from PIL import Image, ImageOps
 
@@ -258,47 +276,89 @@ def _optimize_image(raw, max_side=1920, quality=85):
       img = background
     elif img.mode != "RGB":
       img = img.convert("RGB")
-    img.thumbnail((max_side, max_side))
+
+    full = img.copy()
+    full.thumbnail((FULL_MAX_SIDE, FULL_MAX_SIDE))
     out = io.BytesIO()
-    img.save(out, format="WEBP", quality=quality, method=4)
-    data = out.getvalue()
-    if len(data) < len(raw):
-      return data, "image/webp", ".webp"
+    full.save(out, format="WEBP", quality=FULL_QUALITY, method=4)
+    full_bytes = out.getvalue()
+
+    thumb = img.copy()
+    thumb.thumbnail((THUMB_MAX_SIDE, THUMB_MAX_SIDE))
+    out = io.BytesIO()
+    thumb.save(out, format="WEBP", quality=THUMB_QUALITY, method=4)
+    return full_bytes, out.getvalue()
   except Exception:
-    pass
-  return raw, None, None
+    return None
+
+
+def _storage_path(url):
+  """საჯარო ბმულიდან ობიექტის გზა bucket-ში (ან None)."""
+  text = str(url or "")
+  idx = text.find(_PUBLIC_MARKER)
+  if idx < 0:
+    return None
+  return text[idx + len(_PUBLIC_MARKER):].split("?")[0] or None
+
+
+def _is_managed_path(path):
+  """ახალი ფორმატი: <user_id>/<სახელი>.webp: მას პატარა პრევიუც აქვს და აპს შეუძლია წაშლა.
+  ძველი ფაილები bucket-ის ძირშია და უცვლელი რჩება."""
+  return bool(path) and "/" in path and path.endswith(".webp")
+
+
+def thumb_url(url):
+  """სიისთვის პატარა პრევიუს ბმული; ძველი სურათებისთვის იგივე ბმული."""
+  path = _storage_path(url)
+  if _is_managed_path(path):
+    return str(url).split("?")[0][: -len(".webp")] + "_t.webp"
+  return url
+
+
+def delete_screenshot(url):
+  """სურათს (და მის პრევიუს) შლის Storage-იდან. ძველ (ძირში მყოფ) ფაილებს არ ეხება."""
+  path = _storage_path(url)
+  if not _is_managed_path(path):
+    return False
+  try:
+    get_data_client().storage.from_(SCREENSHOT_BUCKET).remove(
+        [path, path[: -len(".webp")] + "_t.webp"]
+    )
+    return True
+  except Exception:
+    return False
 
 
 def upload_screenshot(uploaded_file, file_name=None):
-  """სურათს ოპტიმიზაციის შემდეგ Supabase Storage-ში ტვირთავს და აბრუნებს საჯარო ბმულს."""
+  """სურათს ოპტიმიზაციის შემდეგ ტვირთავს <user_id>/ საქაღალდეში (+ პატარა პრევიუ)
+  და აბრუნებს საჯარო ბმულს. file_name უკვე აღარ გამოიყენება: სახელი შემთხვევითია."""
   try:
     supabase = get_data_client()
+    raw = uploaded_file.getvalue()
+    folder = _uid() or "anon"
+    token = uuid.uuid4().hex
+    bucket = supabase.storage.from_(SCREENSHOT_BUCKET)
+    options = {"upsert": "true", "cache-control": "31536000"}  # სახელი უნიკალურია: 1 წელი ქეში
 
-    # სახელის უსაფრთხო დამუშავება (სფეისების და კონფლიქტური სიმბოლოების მოცილება)
-    if file_name:
-      clean_name = re.sub(r"[^a-zA-Z0-9.\-_]", "_", file_name)
-    else:
-      clean_name = "trade_screenshot.png"
+    prepared = _prepare_images(raw)
+    if prepared:
+      full_bytes, thumb_bytes = prepared
+      path = f"{folder}/{token}.webp"
+      bucket.upload(path, full_bytes, {**options, "content-type": "image/webp"})
+      try:
+        bucket.upload(
+            f"{folder}/{token}_t.webp", thumb_bytes, {**options, "content-type": "image/webp"}
+        )
+      except Exception:
+        bucket.remove([path])  # ნახევრად ატვირთული ფაილი არ დავტოვოთ
+        raise
+      return bucket.get_public_url(path)
 
-    data, content_type, new_ext = _optimize_image(uploaded_file.getvalue())
-    if content_type:
-      clean_name = os.path.splitext(clean_name)[0] + new_ext
-    else:
-      content_type = uploaded_file.type or "image/png"
-
-    unique_file_name = f"{uuid.uuid4().hex[:6]}_{clean_name}"
-
-    supabase.storage.from_("screenshots").upload(
-        unique_file_name,
-        data,
-        {
-            "content-type": content_type,
-            "upsert": "true",
-            # სახელი უნიკალურია, ამიტომ ბრაუზერს შეუძლია სურათი 1 წელი შეინახოს
-            "cache-control": "31536000",
-        },
-    )
-    return supabase.storage.from_("screenshots").get_public_url(unique_file_name)
+    # სურათი ვერ დამუშავდა (უცნაური ფორმატი): ორიგინალს ვტვირთავთ უცვლელად
+    ext = os.path.splitext(file_name or "")[1].lower() or ".png"
+    path = f"{folder}/{token}{ext}"
+    bucket.upload(path, raw, {**options, "content-type": uploaded_file.type or "image/png"})
+    return bucket.get_public_url(path)
   except Exception as e:
     st.error(f"სურათის ატვირთვის შეცდომა: {e}")
     return None
