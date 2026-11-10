@@ -264,3 +264,59 @@ else:
     render_settings_view(lang)
   elif selected_menu == "🛡️ ადმინისტრაცია":
     render_admin_view()
+
+# თემის არჩევანი სავალდებულო სელექტორით
+theme_options = ["dark", "light"]
+theme_labels = {
+    "dark": t("theme_dark", lang),
+    "light": t("theme_light", lang)
+}
+
+selected_theme = st.sidebar.selectbox(
+    t("theme_label", lang),
+    options=theme_options,
+    format_func=lambda x: theme_labels[x],
+    index=0 if st.session_state.theme == "dark" else 1
+)
+
+if selected_theme != st.session_state.theme:
+  st.session_state.theme = selected_theme
+  st.rerun()
+
+# თემის სტილების გადატარება
+apply_theme_styles(st.session_state.theme)
+
+
+# თემის ინიციალიზაცია სესიაში
+if "theme" not in st.session_state:
+  st.session_state.theme = "dark" # ნაგულისხმევად ბნელი თემა
+
+def apply_theme_styles(theme_mode):
+  """არჩეული თემის მიხედვით აწესებს ფერებს და სტილებს."""
+  if theme_mode == "light":
+    # ღია თემის ფერები
+    css = """
+        <style>
+            [data-testid="stAppViewContainer"] {
+                background-color: #f8f9fa;
+                color: #212529;
+            }
+            [data-testid="stSidebar"] {
+                background-color: #e9ecef;
+            }
+        </style>
+    """
+  else:
+    # ბნელი თემის ფერები (შავი / მუქი ტონები)
+    css = """
+        <style>
+            [data-testid="stAppViewContainer"] {
+                background-color: #0e1117;
+                color: #fafafa;
+            }
+            [data-testid="stSidebar"] {
+                background-color: #1a1c23;
+            }
+        </style>
+    """
+  st.markdown(css, unsafe_allow_html=True)
