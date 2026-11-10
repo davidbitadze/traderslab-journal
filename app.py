@@ -178,7 +178,6 @@ else:
 
   is_subscription_valid = True
   if sub_status != "active":
-    # თუ ოდესმე მივანიჭებთ ვადიან გამოწერას, მაშინ ვამოწმებთ თარიღსაც
     if sub_expires:
       try:
         exp_date = datetime.fromisoformat(sub_expires.replace("Z", ""))
@@ -187,10 +186,7 @@ else:
       except Exception:
         pass
     else:
-      # თუ status არ არის active და არც ვადა აქვს, მხოლოდ მაშინ იბლოკება
       is_subscription_valid = False
-
-   
 
   if not is_subscription_valid:
     st.sidebar.title("⚙️ Settings / პარამეტრები")
@@ -237,56 +233,7 @@ else:
 
   lang = st.session_state.lang
 
-  # ერთიანი და გამართული ნავიგაციის მენიუ (ადმინ პანელის ჩათვლით)
-  st.sidebar.title(t("nav_header", lang) if "nav_header" in globals() else "ნავიგაცია")
-  
-  menu_options = [
-      "📊 სავაჭრო ჟურნალი",
-      "📈 ანალიტიკა",
-      "⚙️ პარამეტრები და ცნობარები",
-  ]
-  
-  # თუ ადმინია, ვუმატებთ ადმინისტრირებას
-  ADMIN_EMAILS = [
-      "eufrazio@yandex.ru"
-  ]
-  if user_email in ADMIN_EMAILS:
-    menu_options.append("🛡️ ადმინისტრაცია")
-
-  selected_menu = st.sidebar.radio("აირჩიეთ გვერდი", menu_options)
-
-  # გვერდების გამოძახება
-  if selected_menu == "📊 სავაჭრო ჟურნალი":
-    render_journal_view(lang)
-  elif selected_menu == "📈 ანალიტიკა":
-    render_analytics_view(lang)
-  elif selected_menu == "⚙️ პარამეტრები და ცნობარები":
-    render_settings_view(lang)
-  elif selected_menu == "🛡️ ადმინისტრაცია":
-    render_admin_view()
-
-# თემის არჩევანი სავალდებულო სელექტორით
-theme_options = ["dark", "light"]
-theme_labels = {
-    "dark": t("theme_dark", lang),
-    "light": t("theme_light", lang)
-}
-
-selected_theme = st.sidebar.selectbox(
-    t("theme_label", lang),
-    options=theme_options,
-    format_func=lambda x: theme_labels[x],
-    index=0 if st.session_state.theme == "dark" else 1
-)
-
-if selected_theme != st.session_state.theme:
-  st.session_state.theme = selected_theme
-  st.rerun()
-
-# თემის სტილების გადატარება
-apply_theme_styles(st.session_state.theme)
-
-# --- თემის არჩევანი და სტილები ---
+  # თემის ინიციალიზაცია და სტილები
   if "theme" not in st.session_state:
     st.session_state.theme = "dark"
 
@@ -335,3 +282,29 @@ apply_theme_styles(st.session_state.theme)
     st.rerun()
 
   apply_theme_styles(st.session_state.theme)
+
+  # ნავიგაციის მენიუ
+  st.sidebar.title(t("nav_header", lang) if "nav_header" in globals() else "ნავიგაცია")
+  
+  menu_options = [
+      "📊 სავაჭრო ჟურნალი",
+      "📈 ანალიტიკა",
+      "⚙️ პარამეტრები და ცნობარები",
+  ]
+  
+  ADMIN_EMAILS = [
+      "eufrazio@yandex.ru"
+  ]
+  if user_email in ADMIN_EMAILS:
+    menu_options.append("🛡️ ადმინისტრაცია")
+
+  selected_menu = st.sidebar.radio("აირჩიეთ გვერდი", menu_options)
+
+  if selected_menu == "📊 სავაჭრო ჟურნალი":
+    render_journal_view(lang)
+  elif selected_menu == "📈 ანალიტიკა":
+    render_analytics_view(lang)
+  elif selected_menu == "⚙️ პარამეტრები და ცნობარები":
+    render_settings_view(lang)
+  elif selected_menu == "🛡️ ადმინისტრაცია":
+    render_admin_view()
