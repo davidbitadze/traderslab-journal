@@ -227,7 +227,7 @@ else:
   
   # თუ ადმინია, ვუმატებთ ადმინისტრირებას
   ADMIN_EMAILS = [
-      "eufrazio@yandex.ru",
+      "eufrazio@yandex.ru"
   ]
   if user_email in ADMIN_EMAILS:
     menu_options.append("🛡️ ადმინისტრაცია")
