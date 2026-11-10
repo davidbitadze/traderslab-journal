@@ -82,8 +82,8 @@ def render_journal_view(lang="ka"):
       unsafe_allow_html=True,
   )
 
-  # 7. ახალი გარიგების დამატების მოდალი
-  render_add_trade_modal()
+  # 7. ახალი გარიგების დამატების მოდალი (გადაეცემა lang)
+  render_add_trade_modal(lang)
 
   st.divider()
 
