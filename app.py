@@ -216,7 +216,8 @@ else:
   if "lang" not in st.session_state:
     st.session_state.lang = db_lang
 
-  db_theme = current_prefs.get("theme") or "dark"
+  # დეფოლტად ვიყენებთ "auto" თემას, რომ არ აირიროს ვიზუალი
+  db_theme = current_prefs.get("theme") or "auto"
   if "theme" not in st.session_state:
     st.session_state.theme = db_theme
 
@@ -229,7 +230,7 @@ else:
   if st.sidebar.button("🚪 გასვლა (Logout)", use_container_width=True, key="logout_btn"):
     auth.logout()
 
-  # Sidebar: ენის არჩევანი (უნიკალური key-ით)
+  # Sidebar: ენის არჩევანი
   selected_lang = st.sidebar.selectbox(
       "Language / ენა",
       options=["ka", "en"],
@@ -249,16 +250,17 @@ else:
 
   lang = st.session_state.lang
 
-  # Sidebar: თემის არჩევანი (უნიკალური key-ით)
-  theme_options = ["dark", "light"]
+  # Sidebar: თემის არჩევანი (Auto, Dark, Light)
+  theme_options = ["auto", "dark", "light"]
   theme_labels = {
-      "dark": t("theme_dark", lang) if "theme_dark" in globals() or True else "🌙 Dark",
-      "light": t("theme_light", lang) if "theme_light" in globals() or True else "☀️ Light"
+      "auto": t("theme_auto", lang) if "theme_auto" in globals() or True else "🔄 სისტემური (Auto)",
+      "dark": t("theme_dark", lang) if "theme_dark" in globals() or True else "🌙 ბნელი (Dark)",
+      "light": t("theme_light", lang) if "theme_light" in globals() or True else "☀️ ღია (Light)"
   }
 
-  current_theme_index = 0 if st.session_state.theme == "dark" else 1
+  current_theme_index = theme_options.index(st.session_state.theme) if st.session_state.theme in theme_options else 0
   selected_theme = st.sidebar.selectbox(
-      t("theme_label", lang) if "theme_label" in globals() or True else "🎨 Theme / თემა",
+      t("theme_label", lang) if "theme_label" in globals() or True else "🎨 თემა (Theme)",
       options=theme_options,
       format_func=lambda x: theme_labels[x],
       index=current_theme_index,
@@ -274,25 +276,22 @@ else:
       pass
     st.rerun()
 
-  # სტილების ფუნქცია
+  # სტილების ფუნქცია: Auto რეჟიმში უშვებს ბრაუზერის/Streamlit-ის ნაგულისხმევ გარემოს
   def apply_theme_styles(theme_mode):
     if theme_mode == "light":
       css = """
           <style>
               [data-testid="stAppViewContainer"] {
-                  background-color: #ffffff;
-                  color: #111111;
+                  background-color: #f8f9fa;
+                  color: #212529;
               }
               [data-testid="stSidebar"] {
-                  background-color: #f0f2f6;
-                  color: #111111;
-              }
-              .stMarkdown, p, span, label {
-                  color: #111111 !important;
+                  background-color: #e9ecef;
               }
           </style>
       """
-    else:
+      st.markdown(css, unsafe_allow_html=True)
+    elif theme_mode == "dark":
       css = """
           <style>
               [data-testid="stAppViewContainer"] {
@@ -301,11 +300,13 @@ else:
               }
               [data-testid="stSidebar"] {
                   background-color: #1a1c23;
-                  color: #fafafa;
               }
           </style>
       """
-    st.markdown(css, unsafe_allow_html=True)
+      st.markdown(css, unsafe_allow_html=True)
+    else:
+      # Auto - არ ვწერთ ხელოვნურ CSS ფერებს, ყველაფერი ბუნებრივად მუშაობს
+      pass
 
   apply_theme_styles(st.session_state.theme)
 
