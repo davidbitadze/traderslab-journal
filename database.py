@@ -66,19 +66,22 @@ def _uid():
 # ------------------------------------------------------------------ trades
 @st.cache_data(ttl=TRADES_TTL, show_spinner=False)
 def _load_trades(uid):
-  """ყველა რიგის წამოღება გვერდებად (1000-ზე მეტი რიგიც სწორად წამოვა).
-  შეცდომა ქეშში არ ინახება: ის ზევით იჭერს fetch_trades()."""
+  """ყველა რიგის წამოღება მკაცრად მიმდინარე იუზერის (uid) მიხედვით."""
+  if not uid:
+    return pd.DataFrame()
+    
   client = get_data_client()
   rows, start = [], 0
   while True:
-    response = (
+    query = (
         client.table("trades")
         .select("*")
+        .eq("user_id", uid)  # <-- აი ეს ფილტრი უზრუნველყოფს, რომ სხვისი ვერაფერი გამოჩნდეს!
         .order("Entry Date", desc=True)
         .order("Trade ID")
         .range(start, start + PAGE_SIZE - 1)
-        .execute()
     )
+    response = query.execute()
     data = response.data or []
     rows.extend(data)
     if len(data) < PAGE_SIZE:
@@ -104,6 +107,10 @@ def fetch_trades():
 
 def insert_trade(trade_data):
   try:
+    uid = _uid()
+    if uid:
+      trade_data["user_id"] = uid
+      
     get_data_client().table("trades").insert(trade_data).execute()
     invalidate_trades()
     return True
