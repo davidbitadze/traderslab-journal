@@ -155,104 +155,8 @@ else:
           "subscription_status": None,
       }
 
-
-    
-    # --- ენისა და თემის ინიციალიზაცია ბაზიდან ---
   current_prefs = st.session_state.user_prefs
 
-  # ენა
-  db_lang = current_prefs.get("language") or "ka"
-  if "lang" not in st.session_state:
-    st.session_state.lang = db_lang
-
-  # თემა
-  db_theme = current_prefs.get("theme") or "dark"
-  if "theme" not in st.session_state:
-    st.session_state.theme = db_theme
-
-  # Sidebar: ენის არჩევანი
-  selected_lang = st.sidebar.selectbox(
-      "Language / ენა",
-      options=["ka", "en"],
-      format_func=lambda x: "🇬🇪 ქართული" if x == "ka" else "🇬🇧 English",
-      index=0 if st.session_state.lang == "ka" else 1,
-  )
-
-  if selected_lang != st.session_state.lang:
-    st.session_state.lang = selected_lang
-    # ვინახავთ ბაზაში
-    try:
-      from database import get_data_client
-      get_data_client().table("user_preferences").update({"language": selected_lang}).eq("user_id", user_id).execute()
-    except Exception:
-      pass
-    st.rerun()
-
-  lang = st.session_state.lang
-
-  # Sidebar: თემის არჩევანი
-  theme_options = ["dark", "light"]
-  theme_labels = {
-      "dark": t("theme_dark", lang) if "theme_dark" in globals() or True else "🌙 Dark",
-      "light": t("theme_light", lang) if "theme_light" in globals() or True else "☀️ Light"
-  }
-
-  current_theme_index = 0 if st.session_state.theme == "dark" else 1
-  selected_theme = st.sidebar.selectbox(
-      "🎨 Theme / თემა",
-      options=theme_options,
-      format_func=lambda x: theme_labels[x],
-      index=current_theme_index
-  )
-
-  if selected_theme != st.session_state.theme:
-    st.session_state.theme = selected_theme
-    # ვინახავთ ბაზაში
-    try:
-      from database import get_data_client
-      get_data_client().table("user_preferences").update({"theme": selected_theme}).eq("user_id", user_id).execute()
-    except Exception:
-      pass
-    st.rerun()
-
-  # გასწორებული სტილები (რომ ღია თემის დროსაც ყველაფერი სუფთად ჩანდეს)
-  def apply_theme_styles(theme_mode):
-    if theme_mode == "light":
-      css = """
-          <style>
-              [data-testid="stAppViewContainer"] {
-                  background-color: #ffffff;
-                  color: #111111;
-              }
-              [data-testid="stSidebar"] {
-                  background-color: #f0f2f6;
-                  color: #111111;
-              }
-              .stMarkdown, p, span, label {
-                  color: #111111 !important;
-              }
-          </style>
-      """
-    else:
-      css = """
-          <style>
-              [data-testid="stAppViewContainer"] {
-                  background-color: #0e1117;
-                  color: #fafafa;
-              }
-              [data-testid="stSidebar"] {
-                  background-color: #1a1c23;
-                  color: #fafafa;
-              }
-          </style>
-      """
-    st.markdown(css, unsafe_allow_html=True)
-
-  apply_theme_styles(st.session_state.theme)
-
-
-
-    
   # თუ ახალი იუზერია და სვეტები ცარიელია, ავტომატურად ვურეგისტრირებთ active სტატუსს
   if not current_prefs.get("subscription_status"):
     from database import get_data_client
@@ -307,42 +211,84 @@ else:
   st.session_state["ui_scale"] = active_scale
   apply_ui_scaling(active_scale)
 
+  # --- ენისა და თემის ინიციალიზაცია ბაზიდან ---
+  db_lang = current_prefs.get("language") or "ka"
+  if "lang" not in st.session_state:
+    st.session_state.lang = db_lang
+
+  db_theme = current_prefs.get("theme") or "dark"
+  if "theme" not in st.session_state:
+    st.session_state.theme = db_theme
+
   # Sidebar მართვა
   st.sidebar.title("⚙️ Settings / პარამეტრები")
   st.sidebar.write(f"👤 {user_email}")
   device_label = "📱 მობილური" if is_mobile else "💻 დესკტოპი"
   st.sidebar.caption(f"მოწყობილობა: **{device_label}** | ზომა: **{active_scale}**")
 
-  if st.sidebar.button("🚪 გასვლა (Logout)", use_container_width=True):
+  if st.sidebar.button("🚪 გასვლა (Logout)", use_container_width=True, key="logout_btn"):
     auth.logout()
 
+  # Sidebar: ენის არჩევანი (უნიკალური key-ით)
   selected_lang = st.sidebar.selectbox(
       "Language / ენა",
       options=["ka", "en"],
       format_func=lambda x: "🇬🇪 ქართული" if x == "ka" else "🇬🇧 English",
       index=0 if st.session_state.lang == "ka" else 1,
+      key="global_lang_select"
   )
 
   if selected_lang != st.session_state.lang:
     st.session_state.lang = selected_lang
+    try:
+      from database import get_data_client
+      get_data_client().table("user_preferences").update({"language": selected_lang}).eq("user_id", user_id).execute()
+    except Exception:
+      pass
     st.rerun()
 
   lang = st.session_state.lang
 
-  # თემის ინიციალიზაცია და სტილები
-  if "theme" not in st.session_state:
-    st.session_state.theme = "dark"
+  # Sidebar: თემის არჩევანი (უნიკალური key-ით)
+  theme_options = ["dark", "light"]
+  theme_labels = {
+      "dark": t("theme_dark", lang) if "theme_dark" in globals() or True else "🌙 Dark",
+      "light": t("theme_light", lang) if "theme_light" in globals() or True else "☀️ Light"
+  }
 
+  current_theme_index = 0 if st.session_state.theme == "dark" else 1
+  selected_theme = st.sidebar.selectbox(
+      t("theme_label", lang) if "theme_label" in globals() or True else "🎨 Theme / თემა",
+      options=theme_options,
+      format_func=lambda x: theme_labels[x],
+      index=current_theme_index,
+      key="global_theme_select"
+  )
+
+  if selected_theme != st.session_state.theme:
+    st.session_state.theme = selected_theme
+    try:
+      from database import get_data_client
+      get_data_client().table("user_preferences").update({"theme": selected_theme}).eq("user_id", user_id).execute()
+    except Exception:
+      pass
+    st.rerun()
+
+  # სტილების ფუნქცია
   def apply_theme_styles(theme_mode):
     if theme_mode == "light":
       css = """
           <style>
               [data-testid="stAppViewContainer"] {
-                  background-color: #f8f9fa;
-                  color: #212529;
+                  background-color: #ffffff;
+                  color: #111111;
               }
               [data-testid="stSidebar"] {
-                  background-color: #e9ecef;
+                  background-color: #f0f2f6;
+                  color: #111111;
+              }
+              .stMarkdown, p, span, label {
+                  color: #111111 !important;
               }
           </style>
       """
@@ -355,27 +301,11 @@ else:
               }
               [data-testid="stSidebar"] {
                   background-color: #1a1c23;
+                  color: #fafafa;
               }
           </style>
       """
     st.markdown(css, unsafe_allow_html=True)
-
-  theme_options = ["dark", "light"]
-  theme_labels = {
-      "dark": t("theme_dark", lang),
-      "light": t("theme_light", lang)
-  }
-
-  selected_theme = st.sidebar.selectbox(
-      t("theme_label", lang),
-      options=theme_options,
-      format_func=lambda x: theme_labels[x],
-      index=0 if st.session_state.theme == "dark" else 1
-  )
-
-  if selected_theme != st.session_state.theme:
-    st.session_state.theme = selected_theme
-    st.rerun()
 
   apply_theme_styles(st.session_state.theme)
 
@@ -394,7 +324,7 @@ else:
   if user_email in ADMIN_EMAILS:
     menu_options.append("🛡️ ადმინისტრაცია")
 
-  selected_menu = st.sidebar.radio("აირჩიეთ გვერდი", menu_options)
+  selected_menu = st.sidebar.radio("აირჩიეთ გვერდი", menu_options, key="main_navigation_radio")
 
   if selected_menu == "📊 სავაჭრო ჟურნალი":
     render_journal_view(lang)
