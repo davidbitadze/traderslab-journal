@@ -157,19 +157,40 @@ else:
 
   current_prefs = st.session_state.user_prefs
 
+  # თუ ახალი იუზერია და სვეტები ცარიელია, ავტომატურად ვურეგისტრირებთ active სტატუსს
+  if not current_prefs.get("subscription_status"):
+    from database import get_data_client
+    try:
+      default_update = {
+          "user_id": user_id,
+          "User_Mail": user_email,
+          "subscription_status": "active",
+          "credits_balance": float(current_prefs.get("credits_balance", 10.0) or 10.0)
+      }
+      get_data_client().table("user_preferences").upsert(default_update, on_conflict="user_id").execute()
+      current_prefs["subscription_status"] = "active"
+      current_prefs["User_Mail"] = user_email
+    except Exception:
+      pass
+
   sub_expires = current_prefs.get("subscription_expires_at")
   sub_status = current_prefs.get("subscription_status")
 
   is_subscription_valid = True
-  if not sub_expires or sub_status != "active":
-    is_subscription_valid = False
-  else:
-    try:
-      exp_date = datetime.fromisoformat(sub_expires.replace("Z", ""))
-      if datetime.now() > exp_date:
-        is_subscription_valid = False
-    except Exception:
-      pass
+  if sub_status != "active":
+    # თუ ოდესმე მივანიჭებთ ვადიან გამოწერას, მაშინ ვამოწმებთ თარიღსაც
+    if sub_expires:
+      try:
+        exp_date = datetime.fromisoformat(sub_expires.replace("Z", ""))
+        if datetime.now() > exp_date:
+          is_subscription_valid = False
+      except Exception:
+        pass
+    else:
+      # თუ status არ არის active და არც ვადა აქვს, მხოლოდ მაშინ იბლოკება
+      is_subscription_valid = False
+
+   
 
   if not is_subscription_valid:
     st.sidebar.title("⚙️ Settings / პარამეტრები")
