@@ -10,6 +10,8 @@ from database import (
     insert_trade,
     update_trade,
     upload_screenshot,
+    delete_screenshot,
+    thumb_url,
 )
 from utils.ai_mentor import generate_trade_analysis
 from utils.credits import (
@@ -357,6 +359,8 @@ def _render_sub_edit(trade_id, sub, date_col):
           payload["Screenshot"] = uploaded_url
 
       if update_trade(sub_id, payload):
+        if new_file is not None and uploaded_url and current_img:
+          delete_screenshot(current_img)  # ჩანაცვლებული ძველი სურათი Storage-ში აღარ რჩება
         recalc_net_pnl(trade_id)
         st.toast("ეტაპი განახლდა!", icon="✅")
         _close_edit_screen()
@@ -700,7 +704,7 @@ def render_trade_card(trade, df, subs=None, pnl=None):
   img_url = _get_image_url(screenshot)
   if img_url:
     thumb_html = (
-        f"<img src='{html.escape(str(img_url), quote=True)}' class='trade-thumb-img' loading='lazy'"
+        f"<img src='{html.escape(str(thumb_url(img_url)), quote=True)}' class='trade-thumb-img' loading='lazy'"
         " decoding='async'>"
     )
   else:
