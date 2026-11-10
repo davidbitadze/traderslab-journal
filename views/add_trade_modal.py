@@ -96,9 +96,10 @@ def render_add_trade_modal(lang="ka"):
 
 @st.fragment
 def _trade_form(patterns_options, triggers_options, lang="ka"):
+  # გამოყენებულია თავდაპირველი სტილი (use_container_width მოხსნილია, რომ არ გაწელოს)
   btn_label = "➕ Add New Trade" if lang == "en" else "➕ ახალი გარიგების დამატება"
   
-  with st.popover(btn_label, use_container_width=True):
+  with st.popover(btn_label):
     title_text = "Open Main Trade" if lang == "en" else "მთავარი გარიგების გახსნა"
     st.subheader(title_text)
 
