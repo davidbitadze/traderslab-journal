@@ -4,7 +4,7 @@ from database import admin_update_user_credits, fetch_all_user_preferences
 
 # ადმინების მეილების სია (მხოლოდ ამ მეილებს ექნებათ წვდომა)
 ADMIN_EMAILS = [
-    "eufrazio@yandex.ru",
+    "eufrazio@yandex.ru"
 ]
 
 
