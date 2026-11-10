@@ -312,7 +312,7 @@ else:
 
   apply_theme_styles(st.session_state.theme)
 
-  # ნავიგაციის მენიუ (დინამიური თარგმანით)
+# ნავიგაციის მენიუ
   st.sidebar.title(t("nav_header", lang))
   
   menu_options = [
@@ -329,7 +329,7 @@ else:
 
   selected_menu = st.sidebar.selectbox("აირჩიეთ გვერდი", menu_options, key="main_navigation_select", label_visibility="collapsed")
 
-  # გვერდების გამოძახება არჩეული მენიუს მიხედვით (განურჩევლად ენისა)
+  # გვერდების გამოძახება არჩეული ენის მიხედვით
   if selected_menu in ["📊 სავაჭრო ჟურნალი", "📊 Trade Journal"]:
     render_journal_view(lang)
   elif selected_menu in ["📈 ანალიტიკა", "📈 Analytics"]:
