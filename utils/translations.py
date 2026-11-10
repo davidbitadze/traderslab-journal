@@ -18,6 +18,11 @@ TRANSLATIONS = {
         "theme_dark": "🌙 ბნელი (Dark)",
         "theme_light": "☀️ ღია (Light)",
         "theme_auto": "🔄 სისტემური (Auto)",
+        "journal_title": "სავაჭრო ჟურნალი",
+        "balance_label": "ბალანსი",
+        "credits_label": "ქულა",
+        "add_trade_btn": "➕ ახალი გარიგების დამატება",
+        "no_trades_msg": "ჟურნალში გარიგებები ჯერ არ არის. გამოიყენეთ ზედა ღილაკი.",
         
         # ავტორიზაცია
         "auth_title": "🔐 Traders Lab - ავტორიზაცია",
@@ -69,6 +74,11 @@ TRANSLATIONS = {
         "theme_dark": "🌙 Dark",
         "theme_light": "☀️ Light",
         "theme_auto": "🔄 System Auto",
+        "journal_title": "Trade Journal",
+        "balance_label": "Balance",
+        "credits_label": "credits",
+        "add_trade_btn": "➕ Add New Trade",
+        "no_trades_msg": "No trades in the journal yet. Use the button above.",
         
         # Authorization
         "auth_title": "🔐 Traders Lab - Authorization",
