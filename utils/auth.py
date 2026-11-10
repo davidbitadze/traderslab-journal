@@ -65,6 +65,34 @@ def _adopt(client, session, remember):
     _queue_cookie("clear")
 
 
+def friendly_error(err):
+  """Supabase-ის ინგლისური შეცდომები -> ქართულად."""
+  text = str(err).lower()
+  if "email not confirmed" in text:
+    return "ელ-ფოსტა ჯერ არ არის დადასტურებული. გახსენი მეილში მიღებული წერილი და დააჭირე დადასტურების ბმულს."
+  if "invalid login credentials" in text or "invalid credentials" in text:
+    return "ელ-ფოსტა ან პაროლი არასწორია."
+  if "already registered" in text or "already been registered" in text:
+    return "ამ ელ-ფოსტით ანგარიში უკვე არსებობს. სცადე შესვლა."
+  if "at least" in text and "character" in text:
+    return "პაროლი მინიმუმ 6 სიმბოლოს უნდა შეიცავდეს."
+  if "rate limit" in text or "too many" in text or "security purposes" in text:
+    return "ძალიან ბევრი მცდელობაა. სცადე რამდენიმე წუთში."
+  if "valid email" in text or "invalid email" in text or "unable to validate email" in text:
+    return "ელ-ფოსტის ფორმატი არასწორია."
+  if "signup" in text and "disabled" in text:
+    return "რეგისტრაცია დროებით გამორთულია."
+  return f"მოულოდნელი შეცდომა: {err}"
+
+
+def _app_url():
+  """დადასტურების ბმული აქ დააბრუნებს მომხმარებელს (secrets-ში APP_URL; სხვა შემთხვევაში Supabase-ის Site URL)."""
+  try:
+    return st.secrets.get("APP_URL")
+  except Exception:
+    return None
+
+
 def login(email, password, remember):
   """აბრუნებს (True, None) ან (False, შეცდომის ტექსტი)."""
   try:
@@ -75,9 +103,12 @@ def login(email, password, remember):
     if response.user and response.session:
       _adopt(client, response.session, remember)
       return True, None
-    return False, "ელ-ფოსტა ან პაროლი არასწორია"
+    return False, "ელ-ფოსტა ან პაროლი არასწორია."
   except Exception as e:
-    return False, str(e)
+    message = friendly_error(e)
+    if "არ არის დადასტურებული" in message:
+      st.session_state["_unconfirmed_email"] = email.strip()
+    return False, message
 
 
 _BRIDGE_JS = """
@@ -195,12 +226,25 @@ def logout(rerun=True, revoke=True):
 def register(email, password):
   """აბრუნებს (True, None) ან (False, შეცდომა). სესიას არ ქმნის: ჯერ მეილი უნდა დადასტურდეს."""
   try:
-    response = new_auth_client().auth.sign_up(
-        {"email": email.strip(), "password": password}
-    )
+    payload = {"email": email.strip(), "password": password}
+    if _app_url():
+      payload["options"] = {"email_redirect_to": _app_url()}
+    response = new_auth_client().auth.sign_up(payload)
     return bool(response.user), None
   except Exception as e:
-    return False, str(e)
+    return False, friendly_error(e)
+
+
+def resend_confirmation(email):
+  """დადასტურების წერილის ხელახლა გაგზავნა. აბრუნებს (True, None) ან (False, შეცდომა)."""
+  try:
+    payload = {"type": "signup", "email": email.strip()}
+    if _app_url():
+      payload["options"] = {"email_redirect_to": _app_url()}
+    new_auth_client().auth.resend(payload)
+    return True, None
+  except Exception as e:
+    return False, friendly_error(e)
 
 
 def render_debug():
