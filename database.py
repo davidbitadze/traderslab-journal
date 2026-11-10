@@ -402,9 +402,7 @@ def upsert_user_preferences(user_id, mobile_mode=None, desktop_mode=None):
 
 def fetch_all_user_preferences():
   """ადმინისთვის: იღებს ყველა მომხმარებლის პარამეტრებსა და ბალანსს"""
-  supabase = get_supabase()
-  if not supabase:
-    return pd.DataFrame()
+  supabase = get_data_client()
   try:
     res = supabase.table("user_preferences").select("*").execute()
     return pd.DataFrame(res.data) if res.data else pd.DataFrame()
@@ -415,9 +413,7 @@ def fetch_all_user_preferences():
 
 def admin_update_user_credits(user_id: str, new_balance: float):
   """ადმინისთვის: პირდაპირ ცვლის მომხმარებლის კრედიტების ბალანსს"""
-  supabase = get_supabase()
-  if not supabase:
-    return False
+  supabase = get_data_client()
   try:
     supabase.table("user_preferences").update(
         {"credits_balance": float(new_balance)}
