@@ -286,9 +286,8 @@ if selected_theme != st.session_state.theme:
 # თემის სტილების გადატარება
 apply_theme_styles(st.session_state.theme)
 
-
-# თემის ინიციალიზაცია სესიაში
-if "theme" not in st.session_state:
+# --- თემის არჩევანი და სტილები ---
+  if "theme" not in st.session_state:
     st.session_state.theme = "dark"
 
   def apply_theme_styles(theme_mode):
