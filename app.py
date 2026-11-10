@@ -3,10 +3,10 @@ from database import fetch_user_preferences
 import streamlit as st
 from utils import auth
 from utils.translations import t
+from views.admin import render_admin_view
 from views.analytics import render_analytics_view
 from views.journal import render_journal_view
 from views.settings import render_settings_view
-from views.admin import render_admin_view
 
 st.set_page_config(
     page_title="Traders Lab - სავაჭრო ჟურნალი", page_icon="📊", layout="wide"
@@ -61,7 +61,7 @@ def apply_ui_scaling(scale_mode):
 if "lang" not in st.session_state:
   st.session_state.lang = "ka"
 
-# ძველი, დაუცველი URL-პარამეტრები (?saved_email=&saved_uid=) აღარ გამოიყენება: ვშლით
+# ძველი URL-პარამეტრების გასუფთავება
 for _old_key in ("saved_email", "saved_uid"):
   if _old_key in st.query_params:
     del st.query_params[_old_key]
@@ -70,9 +70,8 @@ for _old_key in ("saved_email", "saved_uid"):
 if "user" not in st.session_state:
   st.session_state.user = None
 
-auth.restore_session()  # რეფრეშის შემდეგ: cookie-ს refresh token-ით სესიის აღდგენა
+auth.restore_session()
 auth.ensure_fresh_session()
-# cookie-ს ჩაწერა/წაშლა ბოლოს: restore-ის ახალი (rotated) token იმავე გაშვებაში უნდა ჩაიწეროს
 auth.flush_cookie_cmd()
 if st.query_params.get("debug") == "1":
   auth.render_debug()
@@ -89,7 +88,6 @@ def render_auth_screen():
         ["შესვლა (Login)", "რეგისტრაცია (Register)"]
     )
 
-    # --- შესვლა ---
     with tab_login:
       with st.form("login_form"):
         email = st.text_input("ელ-ფოსტა (Email)", key="login_email")
@@ -110,11 +108,13 @@ def render_auth_screen():
       if pending_email and st.button("📧 დადასტურების წერილის ხელახლა გაგზავნა"):
         sent, resend_err = auth.resend_confirmation(pending_email)
         if sent:
-          st.success(f"წერილი გაიგზავნა მისამართზე {pending_email}. შეამოწმე Spam საქაღალდეც.")
+          st.success(
+              f"წერილი გაიგზავნა მისამართზე {pending_email}. შეამოწმე Spam"
+              " საქაღალდეც."
+          )
         else:
           st.error(resend_err)
 
-    # --- რეგისტრაცია ---
     with tab_register:
       with st.form("register_form"):
         reg_email = st.text_input("ელ-ფოსტა (Email)", key="reg_email")
@@ -136,14 +136,13 @@ def render_auth_screen():
             st.error(err or "რეგისტრაცია ვერ მოხერხდა.")
 
 
-# მთავარი ლოგიკა: თუ მომხმარებელი არ არის ავტორიზებული
+# მთავარი ლოგიკა: ავტორიზაციის შემოწმება
 if st.session_state.user is None:
   render_auth_screen()
 else:
   user_id = st.session_state.user.id
   user_email = st.session_state.user.email
 
-  # 1. ბაზიდან პრეფერენციებისა და გამოწერის მონაცემების წამოღება
   if "user_prefs" not in st.session_state:
     prefs = fetch_user_preferences(user_id)
     if prefs:
@@ -158,25 +157,20 @@ else:
 
   current_prefs = st.session_state.user_prefs
 
-  # --- გამოწერისა და წვდომის კონტროლი ---
-  # თუ ბაზაში სვეტი ცარიელია (NULL) ან ვადა გასულია, ვბლოკავთ წვდომას
   sub_expires = current_prefs.get("subscription_expires_at")
   sub_status = current_prefs.get("subscription_status")
 
-  is_subscription_valid = True  # საწყისი დაშვება
-
+  is_subscription_valid = True
   if not sub_expires or sub_status != "active":
     is_subscription_valid = False
   else:
     try:
-      # ვამოწმებთ მიმდინარე თარიღს გამოწერის ვადასთან
       exp_date = datetime.fromisoformat(sub_expires.replace("Z", ""))
       if datetime.now() > exp_date:
         is_subscription_valid = False
     except Exception:
       pass
 
-  # თუ გამოწერა არ არის აქტიური ან ვადა გავიდა
   if not is_subscription_valid:
     st.sidebar.title("⚙️ Settings / პარამეტრები")
     st.sidebar.write(f"👤 {user_email}")
@@ -188,9 +182,9 @@ else:
         " სავაჭრო ჟურნალსა და ანალიტიკაზე წვდომისთვის გთხოვთ განაახლოთ"
         " გამოწერა."
     )
-    st.stop()  # აჩერებს დანარჩენი გვერდის რენდერს სანამ გადახდა არ განახლდება
+    st.stop()
 
-  # 2. მოწყობილობის იდენტიფიკაცია და UI მასშტაბი
+  # UI მასშტაბი
   is_mobile = detect_is_mobile()
   active_scale = (
       current_prefs.get("mobile_view_mode", "small")
@@ -200,7 +194,7 @@ else:
   st.session_state["ui_scale"] = active_scale
   apply_ui_scaling(active_scale)
 
-  # --- ავტორიზებული და აქტიურ-გამოწერიანი მომხმარებლის ინტერფეისი ---
+  # Sidebar მართვა
   st.sidebar.title("⚙️ Settings / პარამეტრები")
   st.sidebar.write(f"👤 {user_email}")
   device_label = "📱 მობილური" if is_mobile else "💻 დესკტოპი"
@@ -222,44 +216,30 @@ else:
 
   lang = st.session_state.lang
 
-  # მთავარი მენიუ
-  st.sidebar.title(t("nav_header", lang))
-  menu = st.sidebar.selectbox(
-      "აირჩიეთ გვერდი",
-      ["📊 სავაჭრო ჟურნალი", "⚙️ სეტინგები და ცნობარები", "📈 ანალიტიკა"],
-  )
+  # ერთიანი და გამართული ნავიგაციის მენიუ (ადმინ პანელის ჩათვლით)
+  st.sidebar.title(t("nav_header", lang) if "nav_header" in globals() else "ნავიგაცია")
+  
+  menu_options = [
+      "📊 სავაჭრო ჟურნალი",
+      "📈 ანალიტიკა",
+      "⚙️ პარამეტრები და ცნობარები",
+  ]
+  
+  # თუ ადმინია, ვუმატებთ ადმინისტრირებას
+  ADMIN_EMAILS = [
+      "eufrazio@yandex.ru",
+  ]
+  if user_email in ADMIN_EMAILS:
+    menu_options.append("🛡️ ადმინისტრაცია")
 
-  if menu == "📊 სავაჭრო ჟურნალი":
+  selected_menu = st.sidebar.radio("აირჩიეთ გვერდი", menu_options)
+
+  # გვერდების გამოძახება
+  if selected_menu == "📊 სავაჭრო ჟურნალი":
     render_journal_view(lang)
-
-  elif menu == "⚙️ სეტინგები და ცნობარები":
-    render_settings_view(lang)
-
-  elif menu == "📈 ანალიტიკა":
+  elif selected_menu == "📈 ანალიტიკა":
     render_analytics_view(lang)
-
-# ნავიგაციის მენიუში (Sidebar):
-user_email = (
-    st.session_state.user.email
-    if hasattr(st.session_state, "user") and st.session_state.user
-    else ""
-)
-
-menu_options = ["📊 სავაჭრო ჟურნალი", "📈 ანალიტიკა", "⚙️ პარამეტრები"]
-if user_email in [
-    "davidbitadze@yandex.ru",
-    "eufrazio@yandex.ru",
-    "davidbitadze@gmail.com",
-]:
-  menu_options.append("🛡️ ადმინისტრაცია")
-
-selected_menu = st.sidebar.radio("ნავიგაცია", menu_options)
-
-if selected_menu == "📊 სავაჭრო ჟურნალი":
-  render_journal_view()
-elif selected_menu == "📈 ანალიტიკა":
-  render_analytics_view()
-elif selected_menu == "⚙️ პარამეტრები":
-  render_settings_view()
-elif selected_menu == "🛡️ ადმინისტრაცია":
-  render_admin_view()
+  elif selected_menu == "⚙️ პარამეტრები და ცნობარები":
+    render_settings_view(lang)
+  elif selected_menu == "🛡️ ადმინისტრაცია":
+    render_admin_view()
