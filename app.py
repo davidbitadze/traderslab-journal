@@ -6,6 +6,7 @@ from utils.translations import t
 from views.analytics import render_analytics_view
 from views.journal import render_journal_view
 from views.settings import render_settings_view
+from views.admin import render_admin_view
 
 st.set_page_config(
     page_title="Traders Lab - სავაჭრო ჟურნალი", page_icon="📊", layout="wide"
@@ -236,3 +237,29 @@ else:
 
   elif menu == "📈 ანალიტიკა":
     render_analytics_view(lang)
+
+# ნავიგაციის მენიუში (Sidebar):
+user_email = (
+    st.session_state.user.email
+    if hasattr(st.session_state, "user") and st.session_state.user
+    else ""
+)
+
+menu_options = ["📊 სავაჭრო ჟურნალი", "📈 ანალიტიკა", "⚙️ პარამეტრები"]
+if user_email in [
+    "davidbitadze@yandex.ru",
+    "eufrazio@yandex.ru",
+    "davidbitadze@gmail.com",
+]:
+  menu_options.append("🛡️ ადმინისტრაცია")
+
+selected_menu = st.sidebar.radio("ნავიგაცია", menu_options)
+
+if selected_menu == "📊 სავაჭრო ჟურნალი":
+  render_journal_view()
+elif selected_menu == "📈 ანალიტიკა":
+  render_analytics_view()
+elif selected_menu == "⚙️ პარამეტრები":
+  render_settings_view()
+elif selected_menu == "🛡️ ადმინისტრაცია":
+  render_admin_view()
