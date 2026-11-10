@@ -188,17 +188,19 @@ else:
     else:
       is_subscription_valid = False
 
+  # ენისა და თემის ლექსიკონის წვდომისთვის გვჭირდება lang
+  db_lang = current_prefs.get("language") or "ka"
+  if "lang" not in st.session_state:
+    st.session_state.lang = db_lang
+  lang = st.session_state.lang
+
   if not is_subscription_valid:
-    st.sidebar.title("⚙️ Settings / პარამეტრები")
+    st.sidebar.title(t("settings_title", lang) if "settings_title" in t(lang) else "⚙️ Settings / პარამეტრები")
     st.sidebar.write(f"👤 {user_email}")
-    if st.sidebar.button("🚪 გასვლა (Logout)", use_container_width=True):
+    if st.sidebar.button(t("logout", lang), use_container_width=True):
       auth.logout()
 
-    st.error(
-        "⚠️ **თქვენი გამოწერის ვადა ამოწურულია ან აქტიური არ არის.**"
-        " სავაჭრო ჟურნალსა და ანალიტიკაზე წვდომისთვის გთხოვთ განაახლოთ"
-        " გამოწერა."
-    )
+    st.error(t("sub_expired_error", lang))
     st.stop()
 
   # UI მასშტაბი
@@ -211,28 +213,23 @@ else:
   st.session_state["ui_scale"] = active_scale
   apply_ui_scaling(active_scale)
 
-  # --- ენისა და თემის ინიციალიზაცია ბაზიდან ---
-  db_lang = current_prefs.get("language") or "ka"
-  if "lang" not in st.session_state:
-    st.session_state.lang = db_lang
-
-  # დეფოლტად ვიყენებთ "auto" თემას, რომ არ აირიროს ვიზუალი
+  # თემის ინიციალიზაცია ბაზიდან
   db_theme = current_prefs.get("theme") or "auto"
   if "theme" not in st.session_state:
     st.session_state.theme = db_theme
 
   # Sidebar მართვა
-  st.sidebar.title("⚙️ Settings / პარამეტრები")
+  st.sidebar.title(t("settings_title", lang) if "settings_title" in t(lang) else "⚙️ Settings / პარამეტრები")
   st.sidebar.write(f"👤 {user_email}")
   device_label = "📱 მობილური" if is_mobile else "💻 დესკტოპი"
-  st.sidebar.caption(f"მოწყობილობა: **{device_label}** | ზომა: **{active_scale}**")
+  st.sidebar.caption(f"{t('device', lang)}: **{device_label}** | {t('scale', lang)}: **{active_scale}**")
 
-  if st.sidebar.button("🚪 გასვლა (Logout)", use_container_width=True, key="logout_btn"):
+  if st.sidebar.button(t("logout", lang), use_container_width=True, key="logout_btn"):
     auth.logout()
 
   # Sidebar: ენის არჩევანი
   selected_lang = st.sidebar.selectbox(
-      "Language / ენა",
+      t("language", lang),
       options=["ka", "en"],
       format_func=lambda x: "🇬🇪 ქართული" if x == "ka" else "🇬🇧 English",
       index=0 if st.session_state.lang == "ka" else 1,
@@ -250,17 +247,17 @@ else:
 
   lang = st.session_state.lang
 
-  # Sidebar: თემის არჩევანი (Auto, Dark, Light)
+  # Sidebar: თემის არჩევანი
   theme_options = ["auto", "dark", "light"]
   theme_labels = {
-      "auto": t("theme_auto", lang) if "theme_auto" in globals() or True else "🔄 სისტემური (Auto)",
-      "dark": t("theme_dark", lang) if "theme_dark" in globals() or True else "🌙 ბნელი (Dark)",
-      "light": t("theme_light", lang) if "theme_light" in globals() or True else "☀️ ღია (Light)"
+      "auto": t("theme_auto", lang),
+      "dark": t("theme_dark", lang),
+      "light": t("theme_light", lang)
   }
 
   current_theme_index = theme_options.index(st.session_state.theme) if st.session_state.theme in theme_options else 0
   selected_theme = st.sidebar.selectbox(
-      t("theme_label", lang) if "theme_label" in globals() or True else "🎨 თემა (Theme)",
+      t("theme_label", lang),
       options=theme_options,
       format_func=lambda x: theme_labels[x],
       index=current_theme_index,
@@ -276,7 +273,7 @@ else:
       pass
     st.rerun()
 
-  # სტილების ფუნქცია: Auto რეჟიმში უშვებს ბრაუზერის/Streamlit-ის ნაგულისხმევ გარემოს
+  # გასწორებული სტილები (ბნელი თემის დროს შიდა ბლოკების ფონებიც რომ გასწორდეს)
   def apply_theme_styles(theme_mode):
     if theme_mode == "light":
       css = """
@@ -300,38 +297,44 @@ else:
               }
               [data-testid="stSidebar"] {
                   background-color: #1a1c23;
+                  color: #fafafa;
+              }
+              div[data-baseweb="notification"], .stAlert, div.stInfo, div.stSuccess {
+                  background-color: #1a1c23 !important;
+                  color: #fafafa !important;
+                  border-color: #333333 !important;
               }
           </style>
       """
       st.markdown(css, unsafe_allow_html=True)
     else:
-      # Auto - არ ვწერთ ხელოვნურ CSS ფერებს, ყველაფერი ბუნებრივად მუშაობს
       pass
 
   apply_theme_styles(st.session_state.theme)
 
-  # ნავიგაციის მენიუ
-  st.sidebar.title(t("nav_header", lang) if "nav_header" in globals() else "ნავიგაცია")
+  # ნავიგაციის მენიუ (დინამიური თარგმანით)
+  st.sidebar.title(t("nav_header", lang))
   
   menu_options = [
-      "📊 სავაჭრო ჟურნალი",
-      "📈 ანალიტიკა",
-      "⚙️ პარამეტრები და ცნობარები",
+      t("journal", lang),
+      t("analytics", lang),
+      t("settings", lang),
   ]
   
   ADMIN_EMAILS = [
       "eufrazio@yandex.ru"
   ]
   if user_email in ADMIN_EMAILS:
-    menu_options.append("🛡️ ადმინისტრაცია")
+    menu_options.append(t("admin", lang))
 
-  selected_menu = st.sidebar.radio("აირჩიეთ გვერდი", menu_options, key="main_navigation_radio")
+  selected_menu = st.sidebar.selectbox("აირჩიეთ გვერდი", menu_options, key="main_navigation_select", label_visibility="collapsed")
 
-  if selected_menu == "📊 სავაჭრო ჟურნალი":
+  # გვერდების გამოძახება არჩეული მენიუს მიხედვით (განურჩევლად ენისა)
+  if selected_menu in ["📊 სავაჭრო ჟურნალი", "📊 Trade Journal"]:
     render_journal_view(lang)
-  elif selected_menu == "📈 ანალიტიკა":
+  elif selected_menu in ["📈 ანალიტიკა", "📈 Analytics"]:
     render_analytics_view(lang)
-  elif selected_menu == "⚙️ პარამეტრები და ცნობარები":
+  elif selected_menu in ["⚙️ პარამეტრები და ცნობარები", "⚙️ Settings & References"]:
     render_settings_view(lang)
-  elif selected_menu == "🛡️ ადმინისტრაცია":
+  elif selected_menu in ["🛡️ ადმინისტრაცია", "🛡️ Administration"]:
     render_admin_view()
