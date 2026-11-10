@@ -399,3 +399,30 @@ def upsert_user_preferences(user_id, mobile_mode=None, desktop_mode=None):
   except Exception as e:
     st.error(f"ბაზის დეტალური შეცდომა: {e}")
     return False
+
+def fetch_all_user_preferences():
+  """ადმინისთვის: იღებს ყველა მომხმარებლის პარამეტრებსა და ბალანსს"""
+  supabase = get_supabase()
+  if not supabase:
+    return pd.DataFrame()
+  try:
+    res = supabase.table("user_preferences").select("*").execute()
+    return pd.DataFrame(res.data) if res.data else pd.DataFrame()
+  except Exception as e:
+    st.error(f"მომხმარებლების წამოღების შეცდომა: {e}")
+    return pd.DataFrame()
+
+
+def admin_update_user_credits(user_id: str, new_balance: float):
+  """ადმინისთვის: პირდაპირ ცვლის მომხმარებლის კრედიტების ბალანსს"""
+  supabase = get_supabase()
+  if not supabase:
+    return False
+  try:
+    supabase.table("user_preferences").update(
+        {"credits_balance": float(new_balance)}
+    ).eq("user_id", user_id).execute()
+    return True
+  except Exception as e:
+    st.error(f"კრედიტების განახლების შეცდომა: {e}")
+    return False
