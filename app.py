@@ -155,8 +155,104 @@ else:
           "subscription_status": None,
       }
 
+
+    
+    # --- ენისა და თემის ინიციალიზაცია ბაზიდან ---
   current_prefs = st.session_state.user_prefs
 
+  # ენა
+  db_lang = current_prefs.get("language") or "ka"
+  if "lang" not in st.session_state:
+    st.session_state.lang = db_lang
+
+  # თემა
+  db_theme = current_prefs.get("theme") or "dark"
+  if "theme" not in st.session_state:
+    st.session_state.theme = db_theme
+
+  # Sidebar: ენის არჩევანი
+  selected_lang = st.sidebar.selectbox(
+      "Language / ენა",
+      options=["ka", "en"],
+      format_func=lambda x: "🇬🇪 ქართული" if x == "ka" else "🇬🇧 English",
+      index=0 if st.session_state.lang == "ka" else 1,
+  )
+
+  if selected_lang != st.session_state.lang:
+    st.session_state.lang = selected_lang
+    # ვინახავთ ბაზაში
+    try:
+      from database import get_data_client
+      get_data_client().table("user_preferences").update({"language": selected_lang}).eq("user_id", user_id).execute()
+    except Exception:
+      pass
+    st.rerun()
+
+  lang = st.session_state.lang
+
+  # Sidebar: თემის არჩევანი
+  theme_options = ["dark", "light"]
+  theme_labels = {
+      "dark": t("theme_dark", lang) if "theme_dark" in globals() or True else "🌙 Dark",
+      "light": t("theme_light", lang) if "theme_light" in globals() or True else "☀️ Light"
+  }
+
+  current_theme_index = 0 if st.session_state.theme == "dark" else 1
+  selected_theme = st.sidebar.selectbox(
+      "🎨 Theme / თემა",
+      options=theme_options,
+      format_func=lambda x: theme_labels[x],
+      index=current_theme_index
+  )
+
+  if selected_theme != st.session_state.theme:
+    st.session_state.theme = selected_theme
+    # ვინახავთ ბაზაში
+    try:
+      from database import get_data_client
+      get_data_client().table("user_preferences").update({"theme": selected_theme}).eq("user_id", user_id).execute()
+    except Exception:
+      pass
+    st.rerun()
+
+  # გასწორებული სტილები (რომ ღია თემის დროსაც ყველაფერი სუფთად ჩანდეს)
+  def apply_theme_styles(theme_mode):
+    if theme_mode == "light":
+      css = """
+          <style>
+              [data-testid="stAppViewContainer"] {
+                  background-color: #ffffff;
+                  color: #111111;
+              }
+              [data-testid="stSidebar"] {
+                  background-color: #f0f2f6;
+                  color: #111111;
+              }
+              .stMarkdown, p, span, label {
+                  color: #111111 !important;
+              }
+          </style>
+      """
+    else:
+      css = """
+          <style>
+              [data-testid="stAppViewContainer"] {
+                  background-color: #0e1117;
+                  color: #fafafa;
+              }
+              [data-testid="stSidebar"] {
+                  background-color: #1a1c23;
+                  color: #fafafa;
+              }
+          </style>
+      """
+    st.markdown(css, unsafe_allow_html=True)
+
+  apply_theme_styles(st.session_state.theme)
+
+
+
+    
   # თუ ახალი იუზერია და სვეტები ცარიელია, ავტომატურად ვურეგისტრირებთ active სტატუსს
   if not current_prefs.get("subscription_status"):
     from database import get_data_client
