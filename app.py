@@ -232,9 +232,9 @@ else:
   if st.sidebar.button(t("logout", lang), use_container_width=True, key="logout_btn"):
     auth.logout()
 
-  # Sidebar: ენის არჩევანი
+# Sidebar: ენის არჩევანი
   selected_lang = st.sidebar.selectbox(
-      t("language", lang),
+      "Language / ენა",
       options=["ka", "en"],
       format_func=lambda x: "🇬🇪 ქართული" if x == "ka" else "🇬🇧 English",
       index=0 if st.session_state.lang == "ka" else 1,
@@ -243,6 +243,7 @@ else:
 
   if selected_lang != st.session_state.lang:
     st.session_state.lang = selected_lang
+    # ვინახავთ ბაზაში და სესიაში ერთდროულად
     try:
       from database import get_data_client
       get_data_client().table("user_preferences").update({"language": selected_lang}).eq("user_id", user_id).execute()
@@ -261,8 +262,8 @@ else:
   }
 
   current_theme_index = theme_options.index(st.session_state.theme) if st.session_state.theme in theme_options else 0
-  selected_theme = st.sidebar.selectbox(
-      t("theme_label", lang),
+  selected_theme = st.sidebar.selectbox(      
+      t("theme_label", lang) if "theme_label" in globals() or True else "🎨 თემა (Theme)",
       options=theme_options,
       format_func=lambda x: theme_labels[x],
       index=current_theme_index,
