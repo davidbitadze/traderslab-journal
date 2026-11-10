@@ -213,3 +213,9 @@ def _trade_form(patterns_options, triggers_options):
         st.rerun()  # სრული rerun: ბარათების სია განახლდეს, ფორმა სუფთად დაიწყოს
       else:
         st.error("შენახვა ვერ მოხერხდა.")
+
+
+def render_add_trade_modal(lang="ka"):
+  btn_text = "➕ Add New Trade" if lang == "en" else "➕ ახალი გარიგების დამატება"
+  if st.button(btn_text, use_container_width=True):
+    # მოდალის გახსნის ლოგიკა...
