@@ -57,12 +57,10 @@ def apply_theme_styles(theme_mode):
 
 def is_user_admin(user_email, current_prefs):
   """ამოწმებს არის თუ არა იუზერი ადმინი (ბაზის სვეტით ან ფოლბექით)."""
-  # ჯერ ვამოწმებთ ბაზაში სვეტს (is_admin ან role == 'admin')
   db_is_admin = current_prefs.get("is_admin") or current_prefs.get("role") == "admin"
   if db_is_admin:
     return True
   
-  # ფოლბექი მთავარი შემქმნელის ელ-ფოსტაზე (სურვილისამებრ შეგიძლია შეცვალო ან ამოიღო)
   DEFAULT_ADMINS = ["eufrazio@yandex.ru"]
   return user_email in DEFAULT_ADMINS
 
