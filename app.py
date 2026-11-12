@@ -119,19 +119,19 @@ else:
       }
 
   current_prefs = st.session_state.user_prefs
-
-  # ახალი იუზერის ავტომატური რეგისტრაცია აქტიურ სტატუსზე
-  if not current_prefs.get("subscription_status"):
+    
+    # ახალი ან არასრული იუზერის ავტომატური განახლება (თუ სტატუსი ან მეილი აკლია)
+  if not current_prefs.get("subscription_status") or not current_prefs.get("User_Mail"):
     from database import get_data_client
     try:
       default_update = {
           "user_id": user_id,
           "User_Mail": user_email,
-          "subscription_status": "active",
+          "subscription_status": current_prefs.get("subscription_status") or "active",
           "credits_balance": float(current_prefs.get("credits_balance", 10.0) or 10.0)
       }
       get_data_client().table("user_preferences").upsert(default_update, on_conflict="user_id").execute()
-      current_prefs["subscription_status"] = "active"
+      current_prefs["subscription_status"] = default_update["subscription_status"]
       current_prefs["User_Mail"] = user_email
     except Exception:
       pass
