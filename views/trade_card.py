@@ -541,29 +541,35 @@ def show_trade_details_dialog(trade, df=None):
     
   with st.expander("➕ ახალი ქმედების დამატება (ნაწილობრივი/სრული გასვლა, დამატება)"):
     with st.form(key=f"form_add_sub_{trade_id}", clear_on_submit=True):
-      add_type = st.selectbox("მოქმედების ტიპი", SUB_ACTION_TYPES)
-      a1, a2 = st.columns(2)
-      add_price = a1.number_input("ფასი", value=0.0, format="%.5f")
-      add_qty = a2.number_input("მოცულობა (Qty)", value=1.0, format="%.2f")
-      
+      # 1. პირველი ველი: თარიღი და დრო
       add_date = st.text_input(
           "თარიღი და დრო",
           value=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
           key=f"add_sub_date_{trade_id}",
       )
+
+      # 2. მეორე ველი: მოქმედების ტიპი
+      add_type = st.selectbox("მოქმედების ტიპი", SUB_ACTION_TYPES)
+
+      # 3 & 4. ფასი და მოცულობა გვერდი-გვერდ
+      a1, a2 = st.columns(2)
+      add_price = a1.number_input("ფასი", value=0.0, format="%.5f")
+      add_qty = a2.number_input("მოცულობა (Qty)", value=1.0, format="%.2f")
       
-      # აღწერის/კომენტარის ველი ქვექმედებისთვის
+      # 5. აღწერა / კომენტარი
       add_description = st.text_area(
           "აღწერა / კომენტარი (Description)",
           value="",
           key=f"add_sub_desc_{trade_id}",
       )
 
+      # 6. სკრინშოტი
       add_file = st.file_uploader(
           "შუალედური სკრინშოტი (არასავალდებულო)",
           type=["png", "jpg", "jpeg"],
           key=f"sub_img_up_{trade_id}",
       )
+      
       add_submit = st.form_submit_button(
           "მონაცემის დამატება", use_container_width=True
       )
@@ -604,7 +610,7 @@ def show_trade_details_dialog(trade, df=None):
             "ActionType": add_type,
             "Entry Price": str(add_price),
             "Qty": str(add_qty),
-            "Description": add_description,  # აღწერის შენახვა ბაზაში
+            "Description": add_description,
             "Screenshot": sub_screenshot_url,
             "Finalized": "False",
         }
@@ -612,7 +618,6 @@ def show_trade_details_dialog(trade, df=None):
           recalc_net_pnl(trade_id, clear_if_none=False)
           st.toast("მონაცემი დაემატა!", icon="✅")
           st.rerun(scope="fragment")
-
     
   st.divider()
 
