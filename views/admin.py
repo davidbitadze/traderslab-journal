@@ -1,11 +1,10 @@
 import pandas as pd
 import streamlit as st
-from database import admin_update_user_credits, fetch_all_user_preferences
-
-# ადმინების მეილების სია (მხოლოდ ამ მეილებს ექნებათ წვდომა)
-ADMIN_EMAILS = [
-    "eufrazio@yandex.ru"
-]
+from database import (
+    admin_update_user_credits,
+    admin_update_user_role,
+    fetch_all_user_preferences,
+)
 
 
 def render_admin_view():
@@ -15,29 +14,40 @@ def render_admin_view():
       else ""
   )
 
-  # უსაფრთხოების შემოწმება: თუ იუზერი არ არის ადმინი, არ ვუშვებთ გვერდზე
-  if user_email not in ADMIN_EMAILS:
+  # უსაფრთხოების შემოწმება ბაზის მიხედვით (ან მყარი მეილით)
+  df_users = fetch_all_user_preferences()
+  current_user_row = (
+      df_users[df_users["User_Mail"] == user_email]
+      if not df_users.empty
+      else pd.DataFrame()
+  )
+  is_db_admin = (
+      not current_user_row.empty
+      and current_user_row.iloc[0].get("role") == "admin"
+  )
+  fallback_admin = user_email == "eufrazio@yandex.ru"
+
+  if not is_db_admin and not fallback_admin:
     st.error("⛔ თქვენ არ გაქვთ ადმინისტრატორის უფლებები.")
     return
 
   st.title("🛡️ ადმინისტრატორის პანელი")
   st.caption(f"ავტორიზებული ადმინი: **{user_email}**")
 
-  df_users = fetch_all_user_preferences()
-
   if df_users.empty:
     st.info("მომხმარებლების ჩანაწერები ჯერ არ არის.")
     return
 
-  st.markdown("### 👥 მომხმარებლების მართვა")
+  st.markdown("### 👥 მომხმარებლების მართვა და როლები")
 
-  # ძირითადი ცხრილის გამოჩენა
+  # ძირითადი ცხრილის გამოჩენა (როლის სვეტითურთ)
   display_df = df_users.copy()
   cols_to_show = [
       c
       for c in [
           "user_id",
           "User_Mail",
+          "role",
           "credits_balance",
           "subscription_status",
           "created_at",
@@ -48,17 +58,61 @@ def render_admin_view():
 
   st.divider()
 
-  # ქულების შევსების / რედაქტირების ფორმა
+  # --- მომხმარებლის როლის შეცვლა ---
+  st.markdown("### 🔑 მომხმარებლის როლის მართვა")
+  users_list_role = []
+  for _, row in df_users.iterrows():
+    u_id = row.get("user_id")
+    u_mail = row.get("User_Mail") or u_id[:8]
+    u_role = row.get("role") or "user"
+    users_list_role.append((u_id, f"{u_mail} (როლი: {u_role})"))
+
+  selected_role_tuple = st.selectbox(
+      "აირჩიეთ მომხმარებელი როლის შესაცვლელად",
+      options=users_list_role,
+      format_func=lambda x: x[1],
+      key="admin_role_select",
+  )
+
+  if selected_role_tuple:
+    target_u_id = selected_role_tuple[0]
+    target_row = df_users[df_users["user_id"] == target_u_id].iloc[0]
+    current_role = target_row.get("role") or ""
+
+    col_r1, col_r2 = st.columns(2)
+    with col_r1:
+      new_role_input = st.selectbox(
+          "ახალი როლი",
+          options=["user", "admin"],
+          index=0 if current_role != "admin" else 1,
+          key=f"role_box_{target_u_id}",
+      )
+    with col_r2:
+      st.write("")  # გასწორებისთვის
+      st.write("")
+      if st.button("💾 როლის შენახვა", use_container_width=True):
+        if admin_update_user_role(target_u_id, new_role_input):
+          st.success(f"მომხმარებლის როლი წარმატებით შეიცვალა ({new_role_input})-ზე!")
+          st.rerun()
+
+  st.divider()
+
+  # --- ქულების შევსების / რედაქტირების ფორმა ---
   st.markdown("### 💳 კრედიტების / ქულების ჩარიცხვა")
 
   users_list = []
   for _, row in df_users.iterrows():
     u_id = row.get("user_id")
     u_mail = row.get("User_Mail") or u_id[:8]
-    users_list.append((u_id, f"{u_mail} (მიმდინარე: {row.get('credits_balance', 0):g} ქულა)"))
+    users_list.append(
+        (
+            u_id,
+            f"{u_mail} (მიმდინარე: {row.get('credits_balance', 0):g} ქულა)",
+        )
+    )
 
   selected_user_tuple = st.selectbox(
-      "აირჩიეთ მომხმარებელი",
+      "აირჩიეთ მომხმარებელი ბალანსისთვის",
       options=users_list,
       format_func=lambda x: x[1],
       key="admin_user_select",
