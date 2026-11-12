@@ -289,7 +289,16 @@ def _render_sub_edit(trade_id, sub, date_col):
         value=orig_date,
         placeholder="YYYY-MM-DD HH:MM:SS",
     )
+    
+      # --- აქ ვამატებთ აღწერის ველს ---
+    orig_desc = _txt(sub.get("Description"))
+    desc_txt = st.text_area(
+        "აღწერა / კომენტარი (Description)",
+        value=orig_desc,
+        key=f"edit_sub_desc_{sub_id}",
+    )
 
+      
     if current_img:
       st.image(current_img, caption="მიმდინარე სკრინშოტი", width=280)
     new_file = st.file_uploader(
@@ -341,6 +350,7 @@ def _render_sub_edit(trade_id, sub, date_col):
       payload = {
           "Entry Price": str(parsed["ფასი"]),
           "Qty": str(parsed["მოცულობა"]),
+          "Description": desc_txt,  # აღწერის განახლება
       }
       if not is_start:
         payload["ActionType"] = new_type
