@@ -526,17 +526,29 @@ def show_trade_details_dialog(trade, df=None):
   else:
     st.info("ამ გარიგებაზე დამატებითი ქმედებები ჯერ არ ფიქსირდება.")
 
+
+
+    
   with st.expander("➕ ახალი ქმედების დამატება (ნაწილობრივი/სრული გასვლა, დამატება)"):
     with st.form(key=f"form_add_sub_{trade_id}", clear_on_submit=True):
       add_type = st.selectbox("მოქმედების ტიპი", SUB_ACTION_TYPES)
       a1, a2 = st.columns(2)
       add_price = a1.number_input("ფასი", value=0.0, format="%.5f")
       add_qty = a2.number_input("მოცულობა (Qty)", value=1.0, format="%.2f")
+      
       add_date = st.text_input(
           "თარიღი და დრო",
           value=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
           key=f"add_sub_date_{trade_id}",
       )
+      
+      # აღწერის/კომენტარის ველი ქვექმედებისთვის
+      add_description = st.text_area(
+          "აღწერა / კომენტარი (Description)",
+          value="",
+          key=f"add_sub_desc_{trade_id}",
+      )
+
       add_file = st.file_uploader(
           "შუალედური სკრინშოტი (არასავალდებულო)",
           type=["png", "jpg", "jpeg"],
@@ -547,9 +559,24 @@ def show_trade_details_dialog(trade, df=None):
       )
 
     if add_submit:
-      parsed_add_date = pd.to_datetime(add_date, errors="coerce")
+      # ჭკვიანი თარიღის პარსვა (ბროკერიდან დაკოპირებული წელმიუწერელი თარიღებისთვის)
+      date_str = add_date.strip()
+      parsed_add_date = pd.NaT
+      if date_str:
+        try:
+          parsed_add_date = pd.to_datetime(date_str, errors="coerce")
+          if pd.isna(parsed_add_date) or parsed_add_date.year < 1900:
+            from dateutil import parser as date_parser
+            current_year = datetime.now().year
+            dt_obj = date_parser.parse(date_str, default=datetime(current_year, 1, 1))
+            if dt_obj.year < 1900:
+              dt_obj = dt_obj.replace(year=current_year)
+            parsed_add_date = pd.to_datetime(dt_obj)
+        except Exception:
+          parsed_add_date = pd.NaT
+
       if pd.isna(parsed_add_date):
-        st.error("თარიღი ვერ იკითხება (გამოიყენე YYYY-MM-DD HH:MM:SS)")
+        st.error("თარიღი ვერ იკითხება (გამოიყენე YYYY-MM-DD HH:MM:SS ან ბროკერის ფორმატი)")
       else:
         sub_screenshot_url = ""
         if add_file is not None:
@@ -567,6 +594,7 @@ def show_trade_details_dialog(trade, df=None):
             "ActionType": add_type,
             "Entry Price": str(add_price),
             "Qty": str(add_qty),
+            "Description": add_description,  # აღწერის შენახვა ბაზაში
             "Screenshot": sub_screenshot_url,
             "Finalized": "False",
         }
@@ -575,6 +603,7 @@ def show_trade_details_dialog(trade, df=None):
           st.toast("მონაცემი დაემატა!", icon="✅")
           st.rerun(scope="fragment")
 
+    
   st.divider()
 
   # --- AI ასისტენტი ---
