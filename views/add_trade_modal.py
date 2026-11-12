@@ -2,6 +2,7 @@ import os
 import uuid
 from datetime import datetime
 from database import fetch_settings, insert_trade, upload_screenshot
+from dateutil import parser as date_parser
 import pandas as pd
 import streamlit as st
 from utils.formulas import calculate_rr, to_float
@@ -19,13 +20,37 @@ def _k(name):
   return f"modal_{name}_{st.session_state.get('modal_gen', 0)}"
 
 
+def _parse_smart_date(date_str):
+  """კითხულობს თარიღს; თუ წელი გამოტოვებულია (მაგ. 'Nov 10, 1:38:02 PM'), ამაგრებს მიმდინარე წელს."""
+  if not date_str or not date_str.strip():
+    return pd.NaT
+  clean_str = date_str.strip()
+  try:
+    parsed = pd.to_datetime(clean_str, errors="coerce")
+    if pd.isna(parsed) or parsed.year < 1900:
+      current_year = datetime.now().year
+      dt_obj = date_parser.parse(
+          clean_str, default=datetime(current_year, 1, 1)
+      )
+      if dt_obj.year < 1900:
+        dt_obj = dt_obj.replace(year=current_year)
+      return pd.to_datetime(dt_obj)
+    return parsed
+  except Exception:
+    return pd.NaT
+
+
 def _rr_html(side, entry, sl, tp, risk_usd, lang="ka"):
   """R/R ბარათი: კოეფიციენტი, შედეგი 1$ რისკზე და მთლიანი რისკი/მოგება დოლარებში."""
   r = calculate_rr(side, entry, sl, tp)
   status = r["status"]
 
   def box(inner):
-    title_text = "📊 პოტენციური რისკ-მოგება (R/R)" if lang == "ka" else "📊 Potential Risk/Reward (R/R)"
+    title_text = (
+        "📊 პოტენციური რისკ-მოგება (R/R)"
+        if lang == "ka"
+        else "📊 Potential Risk/Reward (R/R)"
+    )
     return (
         "<div style='border:1px solid rgba(148,163,184,0.35);border-radius:10px;"
         "padding:10px 14px;margin:4px 0 8px 0;'>"
@@ -37,11 +62,19 @@ def _rr_html(side, entry, sl, tp, risk_usd, lang="ka"):
     return box(f"<div style='color:{color};margin-top:4px;'>{text}</div>")
 
   if status == "bad_side":
-    return note("აირჩიე მიმართულება" if lang == "ka" else "Select direction", RED)
+    return note(
+        "აირჩიე მიმართულება" if lang == "ka" else "Select direction", RED
+    )
   if status == "no_entry":
-    return note("შეიყვანე შესვლის ფასი" if lang == "ka" else "Enter entry price")
+    return note(
+        "შეიყვანე შესვლის ფასი" if lang == "ka" else "Enter entry price"
+    )
   if status == "no_sl_tp":
-    return note("შეიყვანე სტოპ ლოსი და ტეიკ პროფიტი" if lang == "ka" else "Enter Stop Loss and Take Profit")
+    return note(
+        "შეიყვანე სტოპ ლოსი და ტეიკ პროფიტი"
+        if lang == "ka"
+        else "Enter Stop Loss and Take Profit"
+    )
   if status == "bad_sl":
     where = "ქვემოთ" if side == "Long" else "ზემოთ"
     if lang == "en":
@@ -60,29 +93,46 @@ def _rr_html(side, entry, sl, tp, risk_usd, lang="ka"):
   if status == "ok":
     rr = r["rr"]
     color = GREEN if rr >= 1 else AMBER
-    profit_text = f"1$ risk → <b style='color:{color};'>{rr:.2f}$</b> profit" if lang == "en" else f"1$ რისკზე → <b style='color:{color};'>{rr:.2f}$</b> მოგება"
+    profit_text = (
+        f"1$ risk → <b style='color:{color};'>{rr:.2f}$</b> profit"
+        if lang == "en"
+        else f"1$ რისკზე → <b style='color:{color};'>{rr:.2f}$</b> მოგება"
+    )
     parts.append(
-        f"<div style='font-size:1.7rem;font-weight:700;color:{color};'>1 : {rr:.2f}</div>"
-        f"<div>{profit_text}</div>"
+        f"<div style='font-size:1.7rem;font-weight:700;color:{color};'>1 :"
+        f" {rr:.2f}</div><div>{profit_text}</div>"
     )
     if risk_usd > 0:
       sl_label = "At SL:" if lang == "en" else "SL-ზე:"
       tp_label = "At TP:" if lang == "en" else "TP-ზე:"
       parts.append(
           "<div style='opacity:0.9;'>"
-          f"{sl_label} <b style='color:{RED};'>-{risk_usd:.2f}$</b> &nbsp;·&nbsp; "
+          f"{sl_label} <b style='color:{RED};'>-{risk_usd:.2f}$</b>"
+          " &nbsp;·&nbsp; "
           f"{tp_label} <b style='color:{GREEN};'>+{risk_usd * rr:.2f}$</b></div>"
       )
     if rr < 1:
-      low_rr_text = "Reward is less than risk" if lang == "en" else "მოგება რისკზე ნაკლებია"
+      low_rr_text = (
+          "Reward is less than risk"
+          if lang == "en"
+          else "მოგება რისკზე ნაკლებია"
+      )
       parts.append(
           f"<div style='color:{AMBER};font-size:0.85rem;'>{low_rr_text}</div>"
       )
   elif status == "no_tp":
-    msg = "Take Profit not specified: R/R cannot be calculated" if lang == "en" else "ტეიკ პროფიტი არ არის მითითებული: R/R ვერ გამოითვლება"
+    msg = (
+        "Take Profit not specified: R/R cannot be calculated"
+        if lang == "en"
+        else "ტეიკ პროფიტი არ არის მითითებული: R/R ვერ გამოითვლება"
+    )
     parts.append(f"<div style='color:{AMBER};margin-top:4px;'>{msg}</div>")
   elif status == "no_sl":
-    msg = "Stop Loss not specified: R/R cannot be calculated" if lang == "en" else "სტოპ ლოსი არ არის მითითებული: R/R ვერ გამოითვლება"
+    msg = (
+        "Stop Loss not specified: R/R cannot be calculated"
+        if lang == "en"
+        else "სტოპ ლოსი არ არის მითითებული: R/R ვერ გამოითვლება"
+    )
     parts.append(f"<div style='color:{AMBER};margin-top:4px;'>{msg}</div>")
 
   return box("".join(parts))
@@ -96,42 +146,87 @@ def render_add_trade_modal(lang="ka"):
 
 @st.fragment
 def _trade_form(patterns_options, triggers_options, lang="ka"):
-  # გამოყენებულია თავდაპირველი სტილი (use_container_width მოხსნილია, რომ არ გაწელოს)
-  btn_label = "➕ Add New Trade" if lang == "en" else "➕ ახალი გარიგების დამატება"
-  
+  btn_label = (
+      "➕ Add New Trade" if lang == "en" else "➕ ახალი გარიგების დამატება"
+  )
+
   with st.popover(btn_label):
-    title_text = "Open Main Trade" if lang == "en" else "მთავარი გარიგების გახსნა"
+    title_text = (
+        "Open Main Trade" if lang == "en" else "მთავარი გარიგების გახსნა"
+    )
     st.subheader(title_text)
 
-    date_label = "Date & Time (e.g: 2026-10-13 16:38:00)" if lang == "en" else "თარიღი და დრო (მაგ: 2026-10-13 16:38:00)"
+    date_label = (
+        "Date & Time (e.g: 2026-10-13 16:38:00)"
+        if lang == "en"
+        else "თარიღი და დრო (მაგ: 2026-10-13 16:38:00)"
+    )
     entry_date = st.text_input(
         date_label,
         value=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         key=_k("date"),
     )
-    parsed_date = pd.to_datetime(entry_date, errors="coerce") if entry_date.strip() else pd.NaT
+
+    parsed_date = _parse_smart_date(entry_date)
+
     if pd.isna(parsed_date):
-      warn_date = "⚠️ Date could not be parsed." if lang == "en" else "⚠️ თარიღი ვერ იკითხება."
+      warn_date = (
+          "⚠️ Date could not be parsed."
+          if lang == "en"
+          else "⚠️ თარიღი ვერ იკითხება."
+      )
       st.caption(warn_date)
     else:
-      ok_date = f"✅ Parsed as: {parsed_date.strftime('%d %b %Y, %H:%M:%S')}" if lang == "en" else f"✅ წაიკითხება როგორც: {parsed_date.strftime('%d %b %Y, %H:%M:%S')}"
+      ok_date = (
+          f"✅ Parsed as: {parsed_date.strftime('%d %b %Y, %H:%M:%S')}"
+          if lang == "en"
+          else (
+              "✅ წაიკითხება როგორც:"
+              f" {parsed_date.strftime('%d %b %Y, %H:%M:%S')}"
+          )
+      )
       st.caption(ok_date)
 
-    pair = st.text_input("Currency Pair (Pair)" if lang == "en" else "ვალუტის წყვილი (Pair)", "EURUSD", key=_k("pair"))
-    entry_price = st.number_input(
-        "Entry Price" if lang == "en" else "შესვლის ფასი (Price)", value=0.0, format="%.5f", key=_k("entry")
+    pair = st.text_input(
+        "Currency Pair (Pair)" if lang == "en" else "ვალუტის წყვილი (Pair)",
+        "EURUSD",
+        key=_k("pair"),
     )
-    qty = st.number_input("Volume (Qty)" if lang == "en" else "მოცულობა (Qty)", value=1000.0, step=100.0, key=_k("qty"))
+    entry_price = st.number_input(
+        "Entry Price" if lang == "en" else "შესვლის ფასი (Price)",
+        value=0.0,
+        format="%.5f",
+        key=_k("entry"),
+    )
+    qty = st.number_input(
+        "Volume (Qty)" if lang == "en" else "მოცულობა (Qty)",
+        value=1000.0,
+        step=100.0,
+        key=_k("qty"),
+    )
     risk_dollar = st.number_input(
-        "Risk in USD (Risk $)" if lang == "en" else "რისკი დოლარში (Risk $)", value=10.0, step=1.0, key=_k("risk")
+        "Risk in USD (Risk $)" if lang == "en" else "რისკი დოლარში (Risk $)",
+        value=10.0,
+        step=1.0,
+        key=_k("risk"),
     )
     sl_price = st.number_input(
-        "Stop Loss (SL Price)" if lang == "en" else "სტოპ ლოსი (SL Price)", value=0.0, format="%.5f", key=_k("sl")
+        "Stop Loss (SL Price)" if lang == "en" else "სტოპ ლოსი (SL Price)",
+        value=0.0,
+        format="%.5f",
+        key=_k("sl"),
     )
     tp_price = st.number_input(
-        "Take Profit (TP Price)" if lang == "en" else "ტეიკ პროფიტი (TP Price)", value=0.0, format="%.5f", key=_k("tp")
+        "Take Profit (TP Price)" if lang == "en" else "ტეიკ პროფიტი (TP Price)",
+        value=0.0,
+        format="%.5f",
+        key=_k("tp"),
     )
-    side = st.selectbox("Direction (Side)" if lang == "en" else "მიმართულება (Side)", ["Long", "Short"], key=_k("side"))
+    side = st.selectbox(
+        "Direction (Side)" if lang == "en" else "მიმართულება (Side)",
+        ["Long", "Short"],
+        key=_k("side"),
+    )
 
     st.markdown(
         _rr_html(side, entry_price, sl_price, tp_price, risk_dollar, lang),
@@ -139,35 +234,65 @@ def _trade_form(patterns_options, triggers_options, lang="ka"):
     )
 
     pattern = (
-        st.selectbox("Pattern" if lang == "en" else "პატერნი (Pattern)", patterns_options, key=_k("pattern"))
+        st.selectbox(
+            "Pattern" if lang == "en" else "პატერნი (Pattern)",
+            patterns_options,
+            key=_k("pattern"),
+        )
         if patterns_options
         else ""
     )
     trigger = (
-        st.selectbox("Trigger" if lang == "en" else "ტრიგერი (Trigger)", triggers_options, key=_k("trigger"))
+        st.selectbox(
+            "Trigger" if lang == "en" else "ტრიგერი (Trigger)",
+            triggers_options,
+            key=_k("trigger"),
+        )
         if triggers_options
         else ""
     )
-    formation = st.selectbox("Formation" if lang == "en" else "ფორმაცია (Formation)", FORMATIONS, key=_k("formation"))
-    description = st.text_area("Description / Comment" if lang == "en" else "აღწერა / კომენტარი (Description)", "", key=_k("desc"))
+    formation = st.selectbox(
+        "Formation" if lang == "en" else "ფორმაცია (Formation)",
+        FORMATIONS,
+        key=_k("formation"),
+    )
+    description = st.text_area(
+        "Description / Comment"
+        if lang == "en"
+        else "აღწერა / კომენტარი (Description)",
+        "",
+        key=_k("desc"),
+    )
     screenshot = st.file_uploader(
         "Trade Screenshot" if lang == "en" else "გარიგების სკრინშოტი (Screenshot)",
         type=["png", "jpg", "jpeg"],
         key=_k("shot"),
     )
 
-    save_btn_text = "Save Trade" if lang == "en" else "გარიგების შენახვა (Save Trade)"
+    save_btn_text = (
+        "Save Trade" if lang == "en" else "გარიგების შენახვა (Save Trade)"
+    )
     if st.button(save_btn_text, type="primary", key=_k("save")):
       errors = []
       if pd.isna(parsed_date):
         errors.append("Invalid date" if lang == "en" else "თარიღი ვერ იკითხება")
       if to_float(entry_price) <= 0:
-        errors.append("Enter entry price" if lang == "en" else "შეიყვანე შესვლის ფასი")
+        errors.append(
+            "Enter entry price" if lang == "en" else "შეიყვანე შესვლის ფასი"
+        )
       rr_state = calculate_rr(side, entry_price, sl_price, tp_price)["status"]
       if rr_state == "bad_sl":
-        errors.append("Stop Loss on wrong side" if lang == "en" else "სტოპი არასწორ მხარესაა")
+        errors.append(
+            "Stop Loss on wrong side"
+            if lang == "en"
+            else "სტოპი არასწორ მხარესაა"
+        )
       if rr_state == "bad_tp":
-        errors.append("Take Profit on wrong side" if lang == "en" else "ტეიკ პროფიტი არასწორ მხარესაა")
+        errors.append(
+            "Take Profit on wrong side"
+            if lang == "en"
+            else "ტეიკ პროფიტი არასწორ მხარესაა"
+        )
       if errors:
         prefix = "Not saved: " if lang == "en" else "არ შეინახა: "
         st.error(prefix + "; ".join(errors) + ".")
@@ -184,7 +309,11 @@ def _trade_form(patterns_options, triggers_options, lang="ka"):
           if uploaded_url:
             screenshot_value = uploaded_url
         except Exception as upload_err:
-          err_msg = f"Screenshot upload error: {upload_err}" if lang == "en" else f"სკრინშოტის ატვირთვის შეცდომა: {upload_err}"
+          err_msg = (
+              f"Screenshot upload error: {upload_err}"
+              if lang == "en"
+              else f"სკრინშოტის ატვირთვის შეცდომა: {upload_err}"
+          )
           st.error(err_msg)
 
       trade_data = {
@@ -208,10 +337,16 @@ def _trade_form(patterns_options, triggers_options, lang="ka"):
       }
 
       if insert_trade(trade_data):
-        toast_msg = "New trade successfully created!" if lang == "en" else "ახალი გარიგება წარმატებით შეიქმნა!"
+        toast_msg = (
+            "New trade successfully created!"
+            if lang == "en"
+            else "ახალი გარიგება წარმატებით შეიქმნა!"
+        )
         st.toast(toast_msg, icon="✅")
         st.session_state["modal_gen"] = st.session_state.get("modal_gen", 0) + 1
         st.rerun()
       else:
-        err_save = "Failed to save." if lang == "en" else "შენახვა ვერ მოხერხდა."
+        err_save = (
+            "Failed to save." if lang == "en" else "შენახვა ვერ მოხერხდა."
+        )
         st.error(err_save)
