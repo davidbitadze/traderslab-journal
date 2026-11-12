@@ -271,3 +271,15 @@ def admin_update_user_credits(user_id: str, new_balance: float):
   except Exception as e:
     st.error(f"კრედიტების განახლების შეცდომა: {e}")
     return False
+
+def admin_update_user_role(user_id: str, new_role: str):
+  """ადმინისთვის: ცვლის მომხმარებლის როლს (მაგ. 'admin' ან 'user' / None)."""
+  supabase = get_data_client()
+  try:
+    supabase.table("user_preferences").update(
+        {"role": new_role}
+    ).eq("user_id", user_id).execute()
+    return True
+  except Exception as e:
+    st.error(f"როლის განახლების შეცდომა: {e}")
+    return False
