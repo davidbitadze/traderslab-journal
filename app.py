@@ -2,11 +2,7 @@ from datetime import datetime
 from database import fetch_user_preferences
 import streamlit as st
 from utils import auth
-from utils.sidebar_manager import (
-    apply_ui_scaling,
-    render_sidebar_sidebar_and_navigation as render_sidebar_nav,
-)
-from utils.sidebar_manager import render_sidebar_and_navigation
+from utils.sidebar_manager import apply_ui_scaling, render_sidebar_and_navigation
 
 st.set_page_config(
     page_title="Traders Lab - სავაჭრო ჟურნალი", page_icon="📊", layout="wide"
