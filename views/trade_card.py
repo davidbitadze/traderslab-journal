@@ -348,7 +348,7 @@ def _render_sub_edit(trade_id, sub, date_col):
     tp_txt = r2_c2.text_input("თეიქ პროფიტი (TP ფასი)", value=_txt(sub.get("TP_Price")))
     risk_txt = r2_c3.text_input("რისკი დოლარში (Risk $)", value=_txt(sub.get("Risk ($)")))
 
-    # --- ზოლი 3: აღწერა / კომენტარი, სკრინშოტი ---
+    # --- ზოლი 3: აღწერა / კომენტარი, სკრინშოტი (ჰორიზონტალურად გვერდიგვერდ) ---
     orig_desc = _txt(sub.get("Description"))
     desc_txt = st.text_area(
         "აღწერა / კომენტარი (Description)",
@@ -356,13 +356,22 @@ def _render_sub_edit(trade_id, sub, date_col):
         key=f"edit_sub_desc_{sub_id}",
     )
 
-    if current_img:
-      st.image(current_img, caption="მიმდინარე სკრინშოტი", width=280)
-    new_file = st.file_uploader(
-        "🖼️ სკრინშოტის შეცვლა",
-        type=["png", "jpg", "jpeg"],
-        key=f"edit_sub_img_{sub_id}",
-    )
+    # ჰორიზონტალური განლაგება სკრინშოტისთვის და აფლოუდისთვის
+    img_col, upload_col = st.columns([1, 2], vertical_alignment="center")
+    
+    with img_col:
+      if current_img:
+        st.image(current_img, caption="მიმდინარე სკრინშოტი", width=180)
+      else:
+        st.caption("სკრინშოტი არ არის")
+
+    with upload_col:
+      new_file = st.file_uploader(
+          "🖼️ სკრინშოტის შეცვლა",
+          type=["png", "jpg", "jpeg"],
+          key=f"edit_sub_img_{sub_id}",
+      )
+        
 
     # --- ზოლი 4: პატერნი, ტრიგერი, მიმართულება ---
     r4_c1, r4_c2, r4_c3 = st.columns(3)
