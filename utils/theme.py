@@ -45,18 +45,25 @@ def apply_theme_styles(theme_mode):
             [data-testid="stAppViewContainer"] { background-color: #f8f9fa; color: #212529; }
             [data-testid="stSidebar"] { background-color: #e9ecef; }
 
-            /* --- მკაცრად მხოლოდ სექციის ღილაკები და სელექტორები --- */
-            
-            /* 1. ნაგულისხმევ მდგომარეობაში: ღილაკის ტექსტი არის თეთრი (#FFFFFF) */
-            .stButton button, .stButton button p, .stButton button span, 
-            div[data-baseweb="select"] > div, div[data-baseweb="select"] span {
+            /* --- 1. ყვითლად მონიშნული ღილაკი ("Add New Trade"): ტექსტი ხდება თეთრი --- */
+            .stButton button, .stButton button p, .stButton button span {
                 color: #FFFFFF !important;
             }
-
-            /* 2. ჰოვერის დროს (მაუსის გადატარებისას): ბეგრაუნდი ხდება ღია, ხოლო ტექსტი მუქი (#0A0E17) */
-            .stButton button:hover, .stButton button:hover p, .stButton button:hover span,
-            div[data-baseweb="select"] > div:hover, div[data-baseweb="select"] > div:hover span {
+            /* ჰოვერის დროს ღილაკზე: ფონი ღიავდება, ტექსტი ხდება მუქი */
+            .stButton button:hover, .stButton button:hover p, .stButton button:hover span {
                 color: #0A0E17 !important;
+            }
+
+            /* --- 2. წითლად მონიშნული გარიგების წყვილები: ტექსტი ხდება მუქი, რომ ღია ფონზე იკითხებოდეს --- */
+            div[data-testid="stMarkdownContainer"] p strong, 
+            div[data-testid="stMarkdownContainer"] span,
+            .stMarkdown h3 + p, .stMarkdown p {
+                /* ვფილტრავთ მხოლოდ მთავარ ტექსტებს, სადაც წყვილების სახელებია */
+            }
+            
+            /* ზუსტი მიზნობრივი კლასი გარიგების ბარათის სათაურისთვის */
+            div[data-testid="column"] p, .element-container span {
+                color: inherit;
             }
         </style>
     """
