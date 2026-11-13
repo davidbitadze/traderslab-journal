@@ -126,27 +126,24 @@ def delete_trade(trade_id):
     return False
 
 
-# ---------------------------------------------------------------- settings (იუზერ-იზოლირებული ახალი სტრუქტურით)
+# ---------------------------------------------------------------- settings (ახალი სვეტებით: pattern და trigger)
 @st.cache_data(ttl=SETTINGS_TTL, show_spinner=False)
 def _load_settings(uid, category):
   if not uid:
     return []
   client = get_data_client()
-  
-  # ვეძებთ სვეტს კატეგორიის მიხედვით (პატერნისთვის ვკითხულობთ 'pattern' სვეტს, ტრიგერისთვის - 'trigger' სვეტს)
-  target_column = "pattern" if category == "pattern" else "trigger"
+  target_col = "pattern" if category == "pattern" else "trigger"
   
   response = (
       client.table("user_settings")
-      .select(f"id, {target_column}")
+      .select(f"id, {target_col}")
       .eq("user_id", uid)
-      .not_.is_(target_column, "null")
       .execute()
   )
   
-  items = [row[target_column] for row in (response.data or []) if row.get(target_column)]
+  items = [row[target_col] for row in (response.data or []) if row.get(target_col)]
 
-  # თუ იუზერს ამ კატეგორიაში არაფერი აქვს, ვუწერთ საწყის (default) 3-3 ელემენტს
+  # თუ იუზერს ამ კატეგორიაში ჩანაწერი არ აქვს, ავტომატურად ვუწერთ საწყის 3-3 დეფოლტს
   if not items:
     defaults = (
         ["ვ-შემობრუნება", "ორმაგი წვერი", "თავი მხრები"]
@@ -157,7 +154,7 @@ def _load_settings(uid, category):
       try:
         client.table("user_settings").insert({
             "category": category,
-            target_column: d,
+            target_col: d,
             "user_id": uid
         }).execute()
       except Exception:
@@ -182,14 +179,20 @@ def add_setting_item(category, item_name):
     uid = _uid()
     if not uid or not item_name.strip():
       return False
-    target_column = "pattern" if category == "pattern" else "trigger"
+    target_col = "pattern" if category == "pattern" else "trigger"
     
+    # ვწერთ ზუსტად იმ სვეტში, რომელიც გჭირდება
     get_data_client().table("user_settings").insert(
-        {"category": category, target_column: item_name.strip(), "user_id": uid}
+        {
+            "category": category,
+            target_col: item_name.strip(),
+            "user_id": uid
+        }
     ).execute()
     _load_settings.clear()
     return True
-  except Exception:
+  except Exception as e:
+    st.error(f"დამატების შეცდომა: {e}")
     return False
 
 
@@ -198,11 +201,11 @@ def delete_setting_item(category, item_name):
     uid = _uid()
     if not uid:
       return False
-    target_column = "pattern" if category == "pattern" else "trigger"
+    target_col = "pattern" if category == "pattern" else "trigger"
     
     get_data_client().table("user_settings").delete().eq(
         "category", category
-    ).eq(target_column, item_name).eq("user_id", uid).execute()
+    ).eq(target_col, item_name).eq("user_id", uid).execute()
     _load_settings.clear()
     return True
   except Exception:
@@ -214,11 +217,11 @@ def update_setting_item(category, old_name, new_name):
     uid = _uid()
     if not uid or not new_name.strip():
       return False
-    target_column = "pattern" if category == "pattern" else "trigger"
+    target_col = "pattern" if category == "pattern" else "trigger"
     
     get_data_client().table("user_settings").update(
-        {target_column: new_name.strip()}
-    ).eq("category", category).eq(target_column, old_name).eq("user_id", uid).execute()
+        {target_col: new_name.strip()}
+    ).eq("category", category).eq(target_col, old_name).eq("user_id", uid).execute()
     _load_settings.clear()
     return True
   except Exception:
