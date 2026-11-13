@@ -46,9 +46,6 @@ def apply_theme_styles(theme_mode):
                 background-color: #0A0E17 !important;
                 color: #FFFFFF !important;
             }
-            [data-testid="stHeader"] {
-                background-color: rgba(10, 14, 23, 0.85) !important;
-            }
             [data-testid="stSidebar"] {
                 background-color: #121926 !important;
                 border-right: 1px solid rgba(0, 240, 255, 0.12) !important;
@@ -61,19 +58,16 @@ def apply_theme_styles(theme_mode):
                 border: 1px solid rgba(0, 240, 255, 0.18) !important;
                 border-radius: 10px !important;
             }
-            div[data-baseweb="notification"], .stAlert, div.stInfo, div.stSuccess {
-                background-color: #121926 !important;
-                color: #FFFFFF !important;
-                border-color: #00F0FF !important;
-            }
             h1, h2, h3, h4, h5, h6, p, label, .stMarkdown, [data-testid="stMetricValue"] {
                 color: #FFFFFF !important;
             }
             .stCaption, [data-testid="stMetricLabel"] {
                 color: #94A3B8 !important;
             }
-            a {
-                color: #00F0FF !important;
+            .stButton button {
+                background-color: #1A2333 !important;
+                color: #FFFFFF !important;
+                border: 1px solid rgba(0, 240, 255, 0.25) !important;
             }
             .stButton button[kind="primary"] {
                 background-color: #00F0FF !important;
@@ -81,26 +75,19 @@ def apply_theme_styles(theme_mode):
                 border: none !important;
                 font-weight: 700 !important;
             }
-            .stButton button[kind="secondary"] {
-                background-color: #1A2333 !important;
-                color: #FFFFFF !important;
-                border: 1px solid rgba(0, 240, 255, 0.25) !important;
-            }
         </style>
     """
     st.markdown(css, unsafe_allow_html=True)
   else:
+    # Light რეჟიმის სრული ჰარმონიზაცია (რომ მუქი ლაქები არ დარჩეს)
     css = """
         <style>
             [data-testid="stAppViewContainer"], .stApp {
-                background-color: #F4F7FA !important;
-                color: #0A0E17 !important;
-            }
-            [data-testid="stHeader"] {
-                background-color: rgba(244, 247, 250, 0.9) !important;
+                background-color: #F8FAFC !important;
+                color: #0F172A !important;
             }
             [data-testid="stSidebar"] {
-                background-color: #E6ECF2 !important;
+                background-color: #E2E8F0 !important;
                 border-right: 1px solid #CBD5E1 !important;
             }
             div[data-testid="stVerticalBlockBorderWrapper"],
@@ -111,23 +98,24 @@ def apply_theme_styles(theme_mode):
                 border-radius: 10px !important;
             }
             h1, h2, h3, h4, h5, h6, p, label, span, .stMarkdown, [data-testid="stMetricValue"] {
-                color: #0A0E17 !important;
+                color: #0F172A !important;
             }
             .stCaption, [data-testid="stMetricLabel"] {
-                color: #475569 !important;
+                color: #64748B !important;
             }
-            input, textarea, [data-baseweb="select"] > div {
-                background-color: #FFFFFF !important;
-                color: #0A0E17 !important;
-                border-color: #CBD5E1 !important;
-            }
+            /* ყველა ღილაკი Light რეჟიმში ხდება ღია და სუფთა */
             .stButton button {
                 background-color: #FFFFFF !important;
-                color: #0A0E17 !important;
+                color: #0F172A !important;
                 border: 1px solid #CBD5E1 !important;
             }
+            .stButton button:hover {
+                background-color: #F1F5F9 !important;
+                border-color: #00F0FF !important;
+            }
+            /* მთავარი/პრიმარი ღილაკები */
             .stButton button[kind="primary"] {
-                background-color: #0A0E17 !important;
+                background-color: #0F172A !important;
                 color: #00F0FF !important;
                 border: none !important;
             }
