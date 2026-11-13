@@ -45,19 +45,26 @@ def apply_theme_styles(theme_mode):
             [data-testid="stAppViewContainer"] { background-color: #f8f9fa; color: #212529; }
             [data-testid="stSidebar"] { background-color: #e9ecef; }
 
-            /* --- 1. ტესტი: "Add New Trade" ღილაკის ტექსტი ხდება წითელი (#FF0000) --- */
+            /* --- 1. ღილაკი ("Add New Trade"): ნაგულისხმევად თეთრი ტექსტი --- */
             button[kind="secondary"], .stButton button {
-                color: #FF0000 !important;
+                color: #FFFFFF !important;
             }
             button[kind="secondary"] *, .stButton button * {
-                color: #FF0000 !important;
+                color: #FFFFFF !important;
+            }
+            /* ჰოვერი: ბეგრაუნდი ღიავდება, ტექსტი ხდება მუქი (#0A0E17) */
+            button[kind="secondary"]:hover, .stButton button:hover {
+                background-color: #E2E8F0 !important;
+            }
+            button[kind="secondary"]:hover *, .stButton button:hover * {
+                color: #0A0E17 !important;
             }
 
-            /* --- 2. ტესტი: გარიგების წყვილების სახელები (AUDUSD, EURJPY და ა.შ.) ხდება მწვანე (#008000) --- */
-            div[data-testid="stMarkdownContainer"] strong,
-            div[data-testid="column"] strong,
-            .element-container strong {
-                color: #008000 !important;
+            /* --- 2. გარიგების წყვილების სათაურები მთავარ კონტენტში --- */
+            div[data-testid="stMain"] div[data-testid="stMarkdownContainer"] p strong,
+            div[data-testid="stMain"] div[data-testid="stMarkdownContainer"] h3,
+            div[data-testid="stMain"] .element-container p strong {
+                color: #0A0E17 !important;
             }
         </style>
     """
