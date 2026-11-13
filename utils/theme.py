@@ -168,7 +168,7 @@ def apply_theme_styles(theme_mode):
 
 
             /* ფორმის ღილაკები (გაუქმება, დამატება...) - st.form_submit_button .stButton კლასს არ ატარებს */
-            [data-testid="stFormSubmitButton"] button, [data-testid="stBaseButton-secondaryFormSubmit"],
+            [data-testid="stBaseButton-secondaryFormSubmit"],
             [data-testid="stBaseButton-secondary"] {
                 background-color: #1E293B !important;
                 border: 1px solid #334155 !important;
@@ -194,6 +194,45 @@ def apply_theme_styles(theme_mode):
             }
             [data-testid="stFileUploaderDropzone"] button * { color: #0F172A !important; }
             [data-testid="stFileUploaderFile"] * { color: #0F172A !important; }
+
+
+            /* დიალოგებში/პოპოვერში ღილაკების ტექსტი თეთრია (ზოგადი p/span წესზე უფრო მკაცრი სელექტორი) */
+            div[data-testid="stDialog"] button p, div[data-testid="stDialog"] button span, div[data-testid="stDialog"] button div,
+            div[data-testid="stModal"] button p, div[data-testid="stModal"] button span, div[data-testid="stModal"] button div,
+            [data-testid="stPopoverBody"] button p, [data-testid="stPopoverBody"] button span, [data-testid="stPopoverBody"] button div {
+                color: #FFFFFF !important;
+            }
+            div[data-testid="stDialog"] [data-testid="stFileUploaderDropzone"] button,
+            div[data-testid="stModal"] [data-testid="stFileUploaderDropzone"] button,
+            [data-testid="stPopoverBody"] [data-testid="stFileUploaderDropzone"] button {
+                background-color: #FFFFFF !important;
+            }
+            div[data-testid="stDialog"] [data-testid="stFileUploaderDropzone"] button *,
+            div[data-testid="stModal"] [data-testid="stFileUploaderDropzone"] button *,
+            [data-testid="stPopoverBody"] [data-testid="stFileUploaderDropzone"] button * {
+                color: #0F172A !important;
+            }
+
+            /* შეტყობინებები (Streamlit-ის ახალი სტრუქტურა) */
+            [data-testid="stAlertContainer"] {
+                background-color: #EFF6FF !important;
+                border: 1px solid #BFDBFE !important;
+            }
+            [data-testid="stAlertContainer"]:has([data-testid="stAlertContentSuccess"]) { background-color: #F0FDF4 !important; border-color: #BBF7D0 !important; }
+            [data-testid="stAlertContainer"]:has([data-testid="stAlertContentWarning"]) { background-color: #FFFBEB !important; border-color: #FDE68A !important; }
+            [data-testid="stAlertContainer"]:has([data-testid="stAlertContentError"]) { background-color: #FEF2F2 !important; border-color: #FECACA !important; }
+            [data-testid="stAlertContainer"] * { color: #0F172A !important; }
+
+            /* გამორთული ველები (მაგ. თარიღი) */
+            input:disabled, textarea:disabled, [data-baseweb="input"]:has(input:disabled), [data-baseweb="base-input"] {
+                background-color: #E2E8F0 !important;
+                color: #475569 !important;
+                -webkit-text-fill-color: #475569 !important;
+            }
+            [data-testid="stDateInput"] > div, [data-testid="stDateInput"] input, [data-testid="stTimeInput"] input {
+                background-color: #FFFFFF !important;
+                color: #0F172A !important;
+            }
 
             /* ზოგადი სათაურები და ტექსტები გვერდზე */
             h1, h2, h3, h4, h5, h6, p, label, .stMarkdown, span,
