@@ -38,49 +38,73 @@ def apply_ui_scaling(scale_mode):
 
 
 def apply_theme_styles(theme_mode):
-  """თემის CSS სტილების ინექცია."""
+  """თემის CSS სტილების ინექცია და ფერების ცენტრალიზებული მართვა."""
   if theme_mode == "light":
     css = """
         <style>
-            [data-testid="stAppViewContainer"] { background-color: #f8f9fa; color: #212529; }
-            [data-testid="stSidebar"] { background-color: #e9ecef; }
+            [data-testid="stAppViewContainer"], .stApp { 
+                background-color: #F8FAFC !important; 
+                color: #0F172A !important; 
+            }
+            [data-testid="stSidebar"] { 
+                background-color: #E2E8F0 !important; 
+                border-right: 1px solid #CBD5E1 !important;
+            }
 
-            /* 1. ღილაკები და პოპოვერები -> თეთრი ტექსტი */
+            /* ღილაკები და პოპოვერები -> თეთრი ტექსტი */
             .stButton button, .stButton button *,
             [data-testid="stPopover"] button, [data-testid="stPopover"] button * {
                 color: #FFFFFF !important;
             }
             .stButton button:hover, [data-testid="stPopover"] button:hover {
-                background-color: #E2E8F0 !important;
+                background-color: #1A2333 !important;
+                border-color: #00F0FF !important;
             }
             .stButton button:hover *, [data-testid="stPopover"] button:hover * {
-                color: #0A0E17 !important;
+                color: #00F0FF !important;
             }
 
-            /* 2. საიდბარი */
-            [data-testid="stSidebar"] label, 
-            [data-testid="stSidebar"] .stMarkdown p,
-            [data-testid="stSidebar"] span {
+            /* ზოგადი სათაურები, საიდბარი და მთავარი ტექსტები */
+            h1, h2, h3, h4, h5, h6, p, label, .stMarkdown,
+            [data-testid="stSidebar"] div, [data-testid="stSidebar"] span {
                 color: #0F172A !important;
             }
 
-            /* 3. მთავარი გვერდი და გარიგებების ბარათები (მათ შორის AUDUSD, EURJPY და ა.შ.) */
-            div[data-testid="stMain"] p,
-            div[data-testid="stMain"] span,
-            div[data-testid="stMain"] strong,
-            div[data-testid="stMain"] div {
-                color: #0F172A;
+            /* გარიგებების ბარათების ტექსტების მართვა თემიდან */
+            .trade-main-text {
+                color: #0F172A !important;
             }
-            
-            /* PnL ფერები რომ არ გაფუჭდეს (+25.49$ და -10.51$) */
-            div[data-testid="stMain"] span[style*="color: #4CAF50"],
-            div[data-testid="stMain"] span[style*="color: rgb"],
-            div[data-testid="stMain"] font {
-                /* ვტოვებთ დინამიკურ ფერებს */
+            .trade-sub-text {
+                color: #64748B !important;
             }
         </style>
     """
     st.markdown(css, unsafe_allow_html=True)
-  elif theme_mode == "dark":
-    # მუქი თემის სტილები...
-    pass
+  elif theme_mode in ("dark", "auto"):
+    css = """
+        <style>
+            [data-testid="stAppViewContainer"], .stApp { 
+                background-color: #0A0E17 !important; 
+                color: #FFFFFF !important; 
+            }
+            [data-testid="stSidebar"] { 
+                background-color: #121926 !important; 
+                border-right: 1px solid rgba(0, 240, 255, 0.12) !important;
+            }
+            
+            /* გარიგებების ბარათების ტექსტები მუქ თემაზე */
+            .trade-main-text {
+                color: #FFFFFF !important;
+            }
+            .trade-sub-text {
+                color: #94A3B8 !important;
+            }
+
+            div[data-baseweb="notification"], .stAlert, div.stInfo, div.stSuccess {
+                background-color: #121926 !important;
+                color: #FFFFFF !important;
+                border-color: rgba(0, 240, 255, 0.2) !important;
+            }
+        </style>
+    """
+    st.markdown(css, unsafe_allow_html=True)
