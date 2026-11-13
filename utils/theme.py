@@ -52,7 +52,7 @@ def apply_theme_styles(theme_mode):
                 border-right: 1px solid #CBD5E1 !important;
             }
 
-            /* Streamlit მოდალური ფანჯრები და დიალოგები ღია თემაზე */
+            /* Streamlit მოდალური ფანჯრები და დიალოგები ღია თემაზე - სრულად თეთრი ფონი */
             div[data-testid="stDialog"], div[data-testid="stModal"], div[aria-modal="true"] {
                 background-color: rgba(15, 23, 42, 0.25) !important;
             }
@@ -61,10 +61,11 @@ def apply_theme_styles(theme_mode):
                 color: #0F172A !important;
             }
             
-            /* მოდალის შიგნით არსებული ელემენტები, ტექსტები და ლეიბლები */
+            /* მოდალის შიგნით არსებული ყველა ლეიბლი და ტექსტი - მუქი ფერის, რომ იდეალურად ჩანდეს თეთრ ფონზე */
             div[data-testid="stDialog"] label, div[data-testid="stModal"] label,
             div[data-testid="stDialog"] p, div[data-testid="stModal"] p,
-            div[data-testid="stDialog"] span, div[data-testid="stModal"] span {
+            div[data-testid="stDialog"] span, div[data-testid="stModal"] span,
+            div[data-testid="stDialog"] h1, div[data-testid="stDialog"] h2, div[data-testid="stDialog"] h3 {
                 color: #0F172A !important;
             }
             
