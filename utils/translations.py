@@ -9,8 +9,8 @@ TRANSLATIONS = {
         "logout": "🚪 გასვლა (Logout)",
         "language": "Language / ენა",
         "device": "მოწყობილობა",
-        "desktop": "💻 დესკტოპი",
-        "mobile": "📱 მობილური",
+        "desktop_device": "💻 დესკტოპი",
+        "mobile_device": "📱 მობილური",
         "scale": "ზომა",
         "credits": "ბალანსი",
         "credit_unit": "ქულა",
@@ -23,6 +23,7 @@ TRANSLATIONS = {
         "credits_label": "ქულა",
         "add_trade_btn": "➕ ახალი გარიგების დამატება",
         "no_trades_msg": "ჟურნალში გარიგებები ჯერ არ არის. გამოიყენეთ ზედა ღილაკი.",
+        "select_page": "აირჩიეთ გვერდი",
         
         # ავტორიზაცია
         "auth_title": "🔐 Traders Lab - ავტორიზაცია",
@@ -80,8 +81,8 @@ TRANSLATIONS = {
         "logout": "🚪 Logout",
         "language": "Language / ენა",
         "device": "Device",
-        "desktop": "💻 Desktop",
-        "mobile": "📱 Mobile",
+        "desktop_device": "💻 Desktop",
+        "mobile_device": "📱 Mobile",
         "scale": "Scale",
         "credits": "Balance",
         "credit_unit": "credits",
@@ -94,6 +95,7 @@ TRANSLATIONS = {
         "credits_label": "credits",
         "add_trade_btn": "➕ Add New Trade",
         "no_trades_msg": "No trades in the journal yet. Use the button above.",
+        "select_page": "Select Page",
         
         # Authorization
         "auth_title": "🔐 Traders Lab - Authorization",
