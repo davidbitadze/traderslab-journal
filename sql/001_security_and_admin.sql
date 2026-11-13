@@ -13,13 +13,13 @@ begin;
 -- ---------------------------------------------------------------------
 -- 0. Settings: your e-mail (kept only in the database, not in the repo)
 -- ---------------------------------------------------------------------
-create temporary table _tl_owner (email text) on commit drop;
-insert into _tl_owner values ('eufrazio@yandex.ru');
+-- (transaction-local setting; no temporary table, so Supabase shows no RLS warning)
+select set_config('tl.owner_email', 'CHANGE_ME@example.com', true);
 
 do $$
 declare v_email text; v_uid uuid;
 begin
-  select email into v_email from _tl_owner;
+  v_email := current_setting('tl.owner_email');
   if v_email is null or v_email like 'CHANGE_ME%' then
     raise exception 'Edit the e-mail at the top of this script first (CHANGE_ME@example.com).';
   end if;
@@ -30,8 +30,23 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------------
--- 1. user_id columns on data tables (default = the calling user)
+-- 1. Data tables: create the ones that do not exist yet, add user_id
+--    (default = the calling user)
 -- ---------------------------------------------------------------------
+create table if not exists public.user_settings (
+  id        bigserial primary key,
+  category  text not null,
+  item_name text not null,
+  user_id   uuid default auth.uid()
+);
+create table if not exists public.balance_transactions (
+  "Transaction ID" text primary key,
+  "Date"           text,
+  "Amount"         numeric,
+  "Description"    text,
+  user_id          uuid default auth.uid()
+);
+
 alter table public.trades               add column if not exists user_id uuid;
 alter table public.user_settings        add column if not exists user_id uuid;
 alter table public.balance_transactions add column if not exists user_id uuid;
@@ -44,7 +59,7 @@ alter table public.balance_transactions alter column user_id set default auth.ui
 do $$
 declare v_uid uuid;
 begin
-  select u.id into v_uid from auth.users u, _tl_owner o where lower(u.email) = lower(o.email);
+  select id into v_uid from auth.users where lower(email) = lower(current_setting('tl.owner_email'));
   update public.trades               set user_id = v_uid where user_id is null;
   update public.user_settings        set user_id = v_uid where user_id is null;
   update public.balance_transactions set user_id = v_uid where user_id is null;
@@ -85,7 +100,7 @@ alter table public.staff_roles enable row level security;
 revoke all on public.staff_roles from anon, authenticated;
 
 insert into public.staff_roles (email, role, added_by)
-select lower(email), 'admin', 'bootstrap' from _tl_owner
+select lower(current_setting('tl.owner_email')), 'admin', 'bootstrap'
 on conflict (email) do update set role = 'admin';
 
 create or replace function public.is_admin()
