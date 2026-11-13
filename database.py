@@ -1,7 +1,7 @@
 import pandas as pd
 import streamlit as st
 
-# იმპორტები ახალი გამოყოფილი მოდულებიდან
+# იმპორტები დამხმარე და გამოყოფილი მოდულებიდან
 from utils.db_core import call_rpc, get_data_client, new_auth_client, get_supabase_client, _uid
 from utils.db_storage import thumb_url, delete_screenshot, upload_screenshot
 
@@ -92,8 +92,6 @@ def update_trade(trade_id, updated_data):
 
 
 def update_net_pnl_batch(updates):
-  """[(trade_id, net_pnl)] -> ბაზაში მხოლოდ Net P/L-ის განახლება; ქეში ბოლოს ერთხელ იწმინდება.
-  აბრუნებს წარმატებით ჩაწერილ წყვილებს. შეცდომა არასდროს ჩერდება მომხმარებლის ეკრანზე."""
   done = []
   client = get_data_client()
   for trade_id, value in updates:
@@ -108,7 +106,6 @@ def update_net_pnl_batch(updates):
 
 
 def delete_trade(trade_id):
-  """გარიგების და მასთან დაკავშირებული ქვემოქმედებების წაშლა Trade ID-ის მიხედვით."""
   try:
     supabase = get_data_client()
     urls = []
@@ -129,26 +126,48 @@ def delete_trade(trade_id):
     return False
 
 
-# ---------------------------------------------------------------- settings
+# ---------------------------------------------------------------- settings (იუზერ-იზოლირებული)
 @st.cache_data(ttl=SETTINGS_TTL, show_spinner=False)
 def _load_settings(uid, category):
   if not uid:
     return []
+  client = get_data_client()
   response = (
-      get_data_client()
-      .table("user_settings")
+      client.table("user_settings")
       .select("item_name")
       .eq("category", category)
-      .eq("user_id", uid)  # RLS-ის გარდა, კოდშიც ვფილტრავთ (ორმაგი დაცვა)
+      .eq("user_id", uid)
       .execute()
   )
-  return [row["item_name"] for row in response.data] if response.data else []
+  items = [row["item_name"] for row in response.data] if response.data else []
+
+  # თუ იუზერს ამ კატეგორიაში არაფერი აქვს, ვუწერთ საწყის (default) 3-3 ელემენტს
+  if not items:
+    defaults = (
+        ["ვ-შემობრუნება", "ორმაგი წვერი", "თავი მხრები"]
+        if category == "pattern"
+        else ["პინბარი", "ჩამყლაპავი", "გაფართოვება"]
+    )
+    for d in defaults:
+      try:
+        client.table("user_settings").insert({
+            "category": category,
+            "item_name": d,
+            "user_id": uid
+        }).execute()
+      except Exception:
+        pass
+    items = defaults
+
+  return items
 
 
 def fetch_settings(category):
-  """კატეგორიის მიხედვით სიის წამოღება ბაზიდან."""
   try:
-    return _load_settings(_uid(), category)
+    uid = _uid()
+    if not uid:
+      return []
+    return _load_settings(uid, category)
   except Exception:
     if category == "pattern":
       return ["ვ-შემობრუნება", "ორმაგი წვერი", "თავი მხრები"]
@@ -157,8 +176,11 @@ def fetch_settings(category):
 
 def add_setting_item(category, item_name):
   try:
+    uid = _uid()
+    if not uid or not item_name.strip():
+      return False
     get_data_client().table("user_settings").insert(
-        {"category": category, "item_name": item_name}
+        {"category": category, "item_name": item_name.strip(), "user_id": uid}
     ).execute()
     _load_settings.clear()
     return True
@@ -168,9 +190,12 @@ def add_setting_item(category, item_name):
 
 def delete_setting_item(category, item_name):
   try:
+    uid = _uid()
+    if not uid:
+      return False
     get_data_client().table("user_settings").delete().eq(
         "category", category
-    ).eq("item_name", item_name).execute()
+    ).eq("item_name", item_name).eq("user_id", uid).execute()
     _load_settings.clear()
     return True
   except Exception:
@@ -179,9 +204,12 @@ def delete_setting_item(category, item_name):
 
 def update_setting_item(category, old_name, new_name):
   try:
+    uid = _uid()
+    if not uid or not new_name.strip():
+      return False
     get_data_client().table("user_settings").update(
-        {"item_name": new_name}
-    ).eq("category", category).eq("item_name", old_name).execute()
+        {"item_name": new_name.strip()}
+    ).eq("category", category).eq("item_name", old_name).eq("user_id", uid).execute()
     _load_settings.clear()
     return True
   except Exception:
@@ -204,7 +232,6 @@ def _load_balance(uid):
 
 
 def fetch_balance_transactions():
-  """ბრუნავს ტრანზაქციების DataFrame-ს."""
   try:
     return _load_balance(_uid())
   except Exception:
@@ -212,8 +239,10 @@ def fetch_balance_transactions():
 
 
 def add_balance_transaction(data):
-  """ახალი ტრანზაქციის დამატება ბაზაში."""
   try:
+    uid = _uid()
+    if uid:
+      data["user_id"] = uid
     get_data_client().table("balance_transactions").insert(data).execute()
     _load_balance.clear()
     return True
@@ -223,7 +252,6 @@ def add_balance_transaction(data):
 
 
 def delete_balance_transaction(txn_id):
-  """ტრანზაქციის წაშლა ID-ის მიხედვით."""
   try:
     get_data_client().table("balance_transactions").delete().eq(
         "Transaction ID", txn_id
@@ -237,7 +265,6 @@ def delete_balance_transaction(txn_id):
 
 # ---------------------------------------------------------- user preferences
 def fetch_user_preferences(user_id):
-  """მოაქვს მომხმარებლის ვიზუალური პარამეტრები ბაზიდან."""
   try:
     response = (
         get_data_client()
@@ -255,8 +282,6 @@ def fetch_user_preferences(user_id):
 
 
 def upsert_user_preferences(user_id, mobile_mode=None, desktop_mode=None):
-  """ანახლებს მომხმარებლის ეკრანის ზომის პარამეტრებს (მხოლოდ უსაფრთხო სვეტებს).
-  რიგი ბაზაში უკვე არსებობს (იქმნება ავტომატურად), ამიტომ UPDATE საკმარისია."""
   data = {}
   if mobile_mode is not None:
     data["mobile_view_mode"] = mobile_mode
@@ -265,19 +290,15 @@ def upsert_user_preferences(user_id, mobile_mode=None, desktop_mode=None):
   return update_user_preference_fields(user_id, **data)
 
 
-# სვეტები, რომელთა შეცვლაც თავად მომხმარებელს შეუძლია (იხ. sql/001_security_and_admin.sql)
 EDITABLE_PREFERENCE_FIELDS = ("language", "theme", "mobile_view_mode", "desktop_view_mode")
 
 
 def update_user_preference_fields(user_id, **fields):
-  """ცვლის მხოლოდ დაშვებულ პარამეტრებს (ენა, თემა, ზომები). კრედიტები და გამოწერა
-  აქედან არ იცვლება: ბაზაც კრძალავს და აქაც არ ვუშვებთ."""
   data = {k: v for k, v in fields.items() if k in EDITABLE_PREFERENCE_FIELDS}
   if not data:
     return True
   try:
     get_data_client().table("user_preferences").update(data).eq("user_id", user_id).execute()
-    # სესიაში შენახული ასლიც ვანახლოთ, რომ შემდეგი rerun-ი ძველ მნიშვნელობას არ დაუბრუნდეს
     cached = st.session_state.get("user_prefs")
     if isinstance(cached, dict):
       cached.update(data)
@@ -289,7 +310,6 @@ def update_user_preference_fields(user_id, **fields):
 
 # ----------------------------------------------------------------- RPC helpers
 def ensure_user_preferences():
-  """თუ ამ მომხმარებელს პარამეტრების რიგი არ აქვს (ძველი ანგარიში), ბაზა ქმნის ნაგულისხმევს."""
   data, error = call_rpc("ensure_my_preferences")
   if error or not isinstance(data, dict):
     return None
@@ -297,7 +317,6 @@ def ensure_user_preferences():
 
 
 def fetch_my_staff_role():
-  """'admin' | 'mentor' | None. თუ ფუნქცია ბაზაში არ არის ან შეცდომაა, წვდომა არ გაიცემა."""
   data, error = call_rpc("my_staff_role")
   if error:
     return None
