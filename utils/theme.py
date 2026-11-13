@@ -51,14 +51,22 @@ def apply_theme_styles(theme_mode):
                 border-right: 1px solid #CBD5E1 !important;
             }
 
-            /* Streamlit მოდალური ფანჯრები ღია თემაზე */
-            div[data-testid="stModal"] {
-                background-color: rgba(15, 23, 42, 0.3) !important;
+            /* Streamlit მოდალური ფანჯრები და დიალოგები ღია თემაზე */
+            div[data-testid="stModal"], div[aria-modal="true"] {
+                background-color: rgba(15, 23, 42, 0.2) !important;
             }
-            div[data-testid="stModal"] > div {
+            div[data-testid="stModal"] > div, div[aria-modal="true"] > div {
                 background-color: #FFFFFF !important;
                 color: #0F172A !important;
             }
+            
+            /* მოდალის შიგნით არსებული კონტეინერები და ბარათები */
+            div[data-testid="stModal"] [data-testid="stVerticalBlock"] > div,
+            div[data-testid="stModal"] [data-testid="stContainer"] {
+                background-color: #FFFFFF !important;
+                color: #0F172A !important;
+            }
+
             div[data-testid="stModal"] h1, 
             div[data-testid="stModal"] h2, 
             div[data-testid="stModal"] h3, 
@@ -68,6 +76,7 @@ def apply_theme_styles(theme_mode):
             div[data-testid="stModal"] span {
                 color: #0F172A !important;
             }
+            
             div[data-testid="stModal"] input, 
             div[data-testid="stModal"] textarea,
             div[data-testid="stModal"] select {
@@ -76,19 +85,13 @@ def apply_theme_styles(theme_mode):
                 border-color: #CBD5E1 !important;
             }
 
-            /* ღილაკები და პოპოვერები -> თეთრი ტექსტი */
-            .stButton button, .stButton button *,
-            [data-testid="stPopover"] button, [data-testid="stPopover"] button * {
-                color: #FFFFFF !important;
-            }
-
-            /* ზოგადი სათაურები, საიდბარი და მთავარი ტექსტები */
+            /* ზოგადი სათაურები და მთავარი ტექსტები */
             h1, h2, h3, h4, h5, h6, p, label, .stMarkdown,
             [data-testid="stSidebar"] div, [data-testid="stSidebar"] span {
                 color: #0F172A !important;
             }
 
-            /* გარიგებების ბარათების ტექსტების მართვა თემიდან */
+            /* გარიგებების ბარათების ტექსტები თემიდან */
             .trade-main-text {
                 color: #0F172A !important;
             }
@@ -111,7 +114,7 @@ def apply_theme_styles(theme_mode):
             }
 
             /* Streamlit მოდალური ფანჯრები მუქ თემაზე */
-            div[data-testid="stModal"] > div {
+            div[data-testid="stModal"] > div, div[aria-modal="true"] > div {
                 background-color: #0E1117 !important;
                 color: #FFFFFF !important;
             }
