@@ -38,41 +38,45 @@ def apply_ui_scaling(scale_mode):
 
 
 def apply_theme_styles(theme_mode):
-  """თემის CSS სტილების ინექცია."""
+  """თემის CSS სტილების ინექცია მრავალფეროვანი ტესტით."""
   if theme_mode == "light":
     css = """
         <style>
             [data-testid="stAppViewContainer"] { background-color: #f8f9fa; color: #212529; }
             [data-testid="stSidebar"] { background-color: #e9ecef; }
 
-            /* --- 1. მკაცრად მხოლოდ ღილაკი: ტექსტი თეთრი (#FFFFFF) --- */
+            /* --- 1. ღილაკი იდეალურად თეთრია --- */
             .stButton > button p, 
             .stButton > button span, 
             .stButton > button div {
                 color: #FFFFFF !important;
             }
-
-            /* ღილაკის ჰოვერის ეფექტი */
             .stButton > button:hover {
                 background-color: #E2E8F0 !important;
             }
-            .stButton > button:hover p, 
-            .stButton > button:hover span, 
-            .stButton > button:hover div {
+            .stButton > button:hover * {
                 color: #0A0E17 !important;
             }
 
-            /* --- 2. საიდბარის სათაურები და ლეიბლები --- */
-            [data-testid="stSidebar"] label, 
-            [data-testid="stSidebar"] .stMarkdown p,
-            [data-testid="stSidebar"] span {
-                color: #0F172A !important;
+            /* --- ტესტ 1: პარაგრაფები მთავარ კონტენტში (მწვანე #008000) --- */
+            div[data-testid="stMain"] p {
+                color: #008000 !important;
             }
 
-            /* --- 3. მთავარი გვერდის გარიგებების ტექსტები: სუფთა მუქი ფერი (#0F172A) --- */
-            div[data-testid="stMain"] div[data-testid="stMarkdownContainer"] p,
-            div[data-testid="stMain"] div[data-testid="stMarkdownContainer"] span {
-                color: #0F172A !important;
+            /* --- ტესტ 2: სათაურები/სტრონგები (წითელი #FF0000) --- */
+            div[data-testid="stMain"] strong,
+            div[data-testid="stMain"] b {
+                color: #FF0000 !important;
+            }
+
+            /* --- ტესტ 3: სპანები და ტექსტის ბლოკები (ლურჯი #0000FF) --- */
+            div[data-testid="stMain"] span {
+                color: #0000FF !important;
+            }
+
+            /* --- ტესტ 4: ქოლუმნების შიგთავსი (ნარინჯისფერი #FF8C00) --- */
+            div[data-testid="column"] * {
+                color: #FF8C00 !important;
             }
         </style>
     """
