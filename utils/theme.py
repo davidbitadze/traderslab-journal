@@ -45,28 +45,34 @@ def apply_theme_styles(theme_mode):
             [data-testid="stAppViewContainer"] { background-color: #f8f9fa; color: #212529; }
             [data-testid="stSidebar"] { background-color: #e9ecef; }
 
-            /* ღილაკები: ნაგულისხმევად თეთრი ტექსტი, ჰოვერზე მუქი */
-            button[kind="secondary"], .stButton button {
+            /* --- 1. ღილაკების ტექსტი სრულად თეთრი (#FFFFFF) --- */
+            .stButton button, 
+            .stButton button div, 
+            .stButton button p, 
+            .stButton button span,
+            button[kind="secondary"], 
+            button[kind="secondary"] p, 
+            button[kind="secondary"] span {
                 color: #FFFFFF !important;
             }
-            button[kind="secondary"] *, .stButton button * {
-                color: #FFFFFF !important;
-            }
-            button[kind="secondary"]:hover, .stButton button:hover {
+
+            /* ღილაკის ჰოვერის ეფექტი */
+            .stButton button:hover {
                 background-color: #E2E8F0 !important;
             }
-            button[kind="secondary"]:hover *, .stButton button:hover * {
+            .stButton button:hover *, 
+            button[kind="secondary"]:hover * {
                 color: #0A0E17 !important;
             }
 
-            /* --- 1. საიდბარის ლეიბლები/სათაურები: სტანდარტული მუქი ბრენდული ფერი --- */
+            /* --- 2. საიდბარის სათაურები და ლეიბლები --- */
             [data-testid="stSidebar"] label, 
             [data-testid="stSidebar"] .stMarkdown p,
             [data-testid="stSidebar"] span {
                 color: #0F172A !important;
             }
 
-            /* --- 2. მთავარი გვერდის გარიგებების ტექსტები: სუფთა მუქი ფერი (#0F172A) --- */
+            /* --- 3. მთავარი გვერდის გარიგებების ტექსტები: სუფთა მუქი ფერი (#0F172A) --- */
             div[data-testid="stMain"] div[data-testid="stMarkdownContainer"] p,
             div[data-testid="stMain"] div[data-testid="stMarkdownContainer"] span {
                 color: #0F172A !important;
