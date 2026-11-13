@@ -36,6 +36,7 @@ def apply_ui_scaling(scale_mode):
   }
   st.markdown(styles.get(scale_mode, styles["medium"]), unsafe_allow_html=True)
 
+
 def apply_theme_styles(theme_mode):
   """თემის CSS სტილების ინექცია."""
   if theme_mode == "light":
@@ -44,42 +45,16 @@ def apply_theme_styles(theme_mode):
             [data-testid="stAppViewContainer"] { background-color: #f8f9fa; color: #212529; }
             [data-testid="stSidebar"] { background-color: #e9ecef; }
 
-            /* --- ღილაკები და სელექტორები ჰოვერის ეფექტით --- */
-            
-            .stButton button, button[kind="secondary"] {
-                background-color: #121926 !important;
+            /* მუქი ღილაკები/ელემენტები: ტექსტი ხდება თეთრი (#FFFFFF), ხოლო ჰოვერზე უნარჩუნდება ღია/აქცენტური ეფექტი */
+            .stButton button, div[data-baseweb="select"] > div, [data-testid="stMetric"] {
                 color: #FFFFFF !important;
-                border: 1px solid rgba(0, 240, 255, 0.3) !important;
-                transition: all 0.2s ease-in-out !important;
+            }
+            .stButton button span, div[data-baseweb="select"] span {
+                color: #FFFFFF !important;
             }
             .stButton button:hover {
-                background-color: #1A2333 !important; /* ჰოვერისას ხდება ოდნავ ღია/მუქი */
-                color: #00F0FF !important;           /* ტექსტი იცვლის ფერს ბრენდულ ცისფრად */
-                border-color: #00F0FF !important;    /* კიდეები ინთება ცისფრად */
-            }
-
-            /* სელექტორების ჰოვერი */
-            div[data-baseweb="select"] > div {
-                background-color: #121926 !important;
-                color: #FFFFFF !important;
-                border-color: rgba(0, 240, 255, 0.3) !important;
-                transition: all 0.2s ease-in-out !important;
-            }
-            div[data-baseweb="select"] > div:hover {
-                background-color: #1A2333 !important;
+                color: #00F0FF !important; /* მაუსის გადატარებისას იცვლის ფერს ღია ცისფრად */
                 border-color: #00F0FF !important;
-            }
-            div[data-baseweb="select"] span {
-                color: #FFFFFF !important;
-            }
-
-            /* ბალანსის ბეჯი და მეტრიკები */
-            [data-testid="stMetric"], .stMetric {
-                background-color: #121926 !important;
-                color: #FFFFFF !important;
-                padding: 6px 12px;
-                border-radius: 6px;
-                border: 1px solid rgba(0, 240, 255, 0.2);
             }
         </style>
     """
