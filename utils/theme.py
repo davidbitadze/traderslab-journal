@@ -38,51 +38,97 @@ def apply_ui_scaling(scale_mode):
 
 
 def apply_theme_styles(theme_mode):
-  """თემის CSS სტილების ინექცია."""
-  if theme_mode == "light":
+  """Traders Lab ბრენდული ფერების ინექცია თემების მიხედვით."""
+  if theme_mode in ("dark", "auto"):
     css = """
         <style>
-            [data-testid="stAppViewContainer"] { background-color: #f8f9fa; color: #212529; }
-            [data-testid="stSidebar"] { background-color: #e9ecef; }
-
-            /* ღილაკები: ნაგულისხმევად თეთრი ტექსტი, ჰოვერზე მუქი */
-            button[kind="secondary"], .stButton button {
+            [data-testid="stAppViewContainer"], .stApp {
+                background-color: #0A0E17 !important;
                 color: #FFFFFF !important;
             }
-            button[kind="secondary"] *, .stButton button * {
+            [data-testid="stSidebar"] {
+                background-color: #121926 !important;
+                border-right: 1px solid rgba(0, 240, 255, 0.12) !important;
+            }
+            div[data-testid="stVerticalBlockBorderWrapper"],
+            div[data-testid="stExpander"],
+            div.stForm,
+            div[data-testid="stDialog"] > div {
+                background-color: #121926 !important;
+                border: 1px solid rgba(0, 240, 255, 0.18) !important;
+                border-radius: 10px !important;
+            }
+            h1, h2, h3, h4, h5, h6, p, label, .stMarkdown, [data-testid="stMetricValue"] {
                 color: #FFFFFF !important;
             }
-            button[kind="secondary"]:hover, .stButton button:hover {
-                background-color: #E2E8F0 !important;
+            .stCaption, [data-testid="stMetricLabel"] {
+                color: #94A3B8 !important;
             }
-            button[kind="secondary"]:hover *, .stButton button:hover * {
+            .stButton button, div[data-baseweb="select"] > div {
+                background-color: #1A2333 !important;
+                color: #FFFFFF !important;
+                border: 1px solid rgba(0, 240, 255, 0.25) !important;
+            }
+            .stButton button:hover, div[data-baseweb="select"] > div:hover {
+                background-color: #222E44 !important;
+                border-color: #00F0FF !important;
+            }
+            .stButton button[kind="primary"] {
+                background-color: #00F0FF !important;
                 color: #0A0E17 !important;
-            }
-
-            /* --- 1. საიდბარის ლეიბლები/სათაურები ტესტი: მწვანე (#008000) --- */
-            [data-testid="stSidebar"] label, 
-            [data-testid="stSidebar"] .stMarkdown p,
-            [data-testid="stSidebar"] span {
-                color: #008000 !important;
-            }
-
-            /* --- 2. მთავარი გვერდის გარიგებების ტექსტები ტესტი: ნარინჯისფერი (#D97706) --- */
-            div[data-testid="stMain"] div[data-testid="stMarkdownContainer"] p,
-            div[data-testid="stMain"] div[data-testid="stMarkdownContainer"] span {
-                color: #D97706 !important;
+                border: none !important;
+                font-weight: 700 !important;
             }
         </style>
     """
     st.markdown(css, unsafe_allow_html=True)
-  elif theme_mode == "dark":
+  else:
+    # Light რეჟიმი სრულყოფილი ჰარმონიზაციით
     css = """
         <style>
-            [data-testid="stAppViewContainer"] { background-color: #0e1117; color: #fafafa; }
-            [data-testid="stSidebar"] { background-color: #1a1c23; color: #fafafa; }
-            div[data-baseweb="notification"], .stAlert, div.stInfo, div.stSuccess {
-                background-color: #1a1c23 !important;
-                color: #fafafa !important;
-                border-color: #333333 !important;
+            [data-testid="stAppViewContainer"], .stApp {
+                background-color: #F8FAFC !important;
+                color: #0F172A !important;
+            }
+            [data-testid="stSidebar"] {
+                background-color: #E2E8F0 !important;
+                border-right: 1px solid #CBD5E1 !important;
+            }
+            div[data-testid="stVerticalBlockBorderWrapper"],
+            div[data-testid="stExpander"],
+            div.stForm {
+                background-color: #FFFFFF !important;
+                border: 1px solid #CBD5E1 !important;
+                border-radius: 10px !important;
+            }
+            h1, h2, h3, h4, h5, h6, p, label, span, .stMarkdown, [data-testid="stMetricValue"] {
+                color: #0F172A !important;
+            }
+            .stCaption, [data-testid="stMetricLabel"] {
+                color: #64748B !important;
+            }
+            /* ყველა ღილაკი და სელექტორი იღებს მუქ სტილს თეთრი ტექსტით */
+            .stButton button, div[data-baseweb="select"] > div {
+                background-color: #121926 !important;
+                color: #FFFFFF !important;
+                border: 1px solid #00F0FF !important;
+                border-radius: 6px !important;
+            }
+            .stButton button:hover, div[data-baseweb="select"] > div:hover {
+                background-color: #1A2333 !important;
+                border-color: #00F0FF !important;
+                color: #00F0FF !important;
+            }
+            .stButton button[kind="primary"] {
+                background-color: #00F0FF !important;
+                color: #0A0E17 !important;
+                border: none !important;
+                font-weight: 700 !important;
+            }
+            /* მთავარი გვერდის გარიგებების წყვილების სათაურების მკაფიო მუქი ფერი */
+            div[data-testid="stMain"] div[data-testid="stMarkdownContainer"] p strong,
+            div[data-testid="stMain"] div[data-testid="stMarkdownContainer"] h3 {
+                color: #0F172A !important;
             }
         </style>
     """
