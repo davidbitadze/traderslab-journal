@@ -51,6 +51,23 @@ alter table public.trades               add column if not exists user_id uuid;
 alter table public.user_settings        add column if not exists user_id uuid;
 alter table public.balance_transactions add column if not exists user_id uuid;
 
+-- user_id may have been created as text in older versions: convert it to uuid
+do $$
+declare t text; v_type text;
+begin
+  foreach t in array array['trades', 'user_settings', 'balance_transactions'] loop
+    select data_type into v_type from information_schema.columns
+     where table_schema = 'public' and table_name = t and column_name = 'user_id';
+    if v_type is not null and v_type <> 'uuid' then
+      execute format('alter table public.%I alter column user_id drop default', t);
+      execute format(
+        'alter table public.%I alter column user_id type uuid
+           using (case when user_id::text ~* ''^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$''
+                       then user_id::text::uuid else null end)', t);
+    end if;
+  end loop;
+end $$;
+
 alter table public.trades               alter column user_id set default auth.uid();
 alter table public.user_settings        alter column user_id set default auth.uid();
 alter table public.balance_transactions alter column user_id set default auth.uid();
