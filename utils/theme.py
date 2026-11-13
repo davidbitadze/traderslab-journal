@@ -37,6 +37,7 @@ def apply_ui_scaling(scale_mode):
   st.markdown(styles.get(scale_mode, styles["medium"]), unsafe_allow_html=True)
 
 
+
 def apply_theme_styles(theme_mode):
   """თემის CSS სტილების ინექცია."""
   if theme_mode == "light":
@@ -45,16 +46,20 @@ def apply_theme_styles(theme_mode):
             [data-testid="stAppViewContainer"] { background-color: #f8f9fa; color: #212529; }
             [data-testid="stSidebar"] { background-color: #e9ecef; }
 
-            /* მუქი ღილაკები/ელემენტები: ტექსტი ხდება თეთრი (#FFFFFF), ხოლო ჰოვერზე უნარჩუნდება ღია/აქცენტური ეფექტი */
-            .stButton button, div[data-baseweb="select"] > div, [data-testid="stMetric"] {
+            /* --- ღილაკების და სელექტორების ფერები ჰოვერის ეფექტით --- */
+            
+            /* 1. ნაგულისხმევ მდგომარეობაში: მუქი ფონი და თეთრი ფონტი (#FFFFFF) */
+            .stButton button, button[kind="secondary"], div[data-baseweb="select"] > div {
                 color: #FFFFFF !important;
             }
             .stButton button span, div[data-baseweb="select"] span {
                 color: #FFFFFF !important;
             }
-            .stButton button:hover {
-                color: #00F0FF !important; /* მაუსის გადატარებისას იცვლის ფერს ღია ცისფრად */
-                border-color: #00F0FF !important;
+
+            /* 2. ჰოვერის დროს (მაუსის მიტანისას): ფონტი ხდება მუქი (#0A0E17), ხოლო ბეგრაუნდი ღია */
+            .stButton button:hover, .stButton button:hover span, 
+            div[data-baseweb="select"] > div:hover, div[data-baseweb="select"] > div:hover span {
+                color: #0A0E17 !important;
             }
         </style>
     """
