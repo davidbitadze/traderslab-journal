@@ -10,27 +10,6 @@ GREEN = "#22c55e"
 RED = "#ef4444"
 GRAY = "#94a3b8"
 
-DAYS_KA = [
-    "ორშაბათი",
-    "სამშაბათი",
-    "ოთხშაბათი",
-    "ხუთშაბათი",
-    "პარასკევი",
-    "შაბათი",
-    "კვირა",
-]
-
-DAYS_EN = [
-    "Monday",
-    "Tuesday",
-    "Wednesday",
-    "Thursday",
-    "Friday",
-    "Saturday",
-    "Sunday",
-]
-
-
 # ---------------------------------------------------------------- helpers
 def _is_true(value):
   if isinstance(value, str):
@@ -141,6 +120,7 @@ def _bar(g, key, value_col="Total", height=320):
 
 
 # ------------------------------------------------------------------- view
+# ------------------------------------------------------------------- view
 def render_analytics_view(lang="ka"):
   st.title(t("analytics_page_title", lang))
 
@@ -171,7 +151,6 @@ def render_analytics_view(lang="ka"):
       label_visibility="collapsed",
   )
 
-  # ვპოულობთ ინდექსს ორიგინალური ლოგიკისთვის
   idx = period_labels.index(selected_period)
   period = period_raw[idx]
 
@@ -246,7 +225,8 @@ def render_analytics_view(lang="ka"):
       [t("tab_day_label", lang), t("tab_pair_label", lang), t("tab_pattern_label", lang), t("tab_trigger_label", lang), t("tab_side_label", lang)]
   )
 
-  days_list = DAYS_KA if lang == "ka" else DAYS_EN
+  # ვიღებთ დღეების სიას უშუალოდ თარგმანების მოდულიდან
+  days_list = t("days_of_week", lang)
 
   with tab_day:
     dated = trades.dropna(subset=["Date"]).copy()
