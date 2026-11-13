@@ -250,6 +250,20 @@ def apply_theme_styles(theme_mode):
                 opacity: 1 !important;
             }
 
+
+            /* გარიგების ჩანაწერები: ღია თემაზე გამოყოფა ფონითა და ჩარჩოთი */
+            [data-testid="stAppViewContainer"] [data-testid="stHorizontalBlock"]:has(.trade-row-marker) {
+                background-color: #FFFFFF !important;
+                border: 1px solid #CBD5E1 !important;
+                box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06) !important;
+            }
+            [data-testid="stAppViewContainer"] .trade-thumb-img {
+                border: 1px solid #CBD5E1 !important;
+            }
+            [data-testid="stAppViewContainer"] .trade-thumb-placeholder {
+                background: #E2E8F0 !important;
+            }
+
             /* ზოგადი სათაურები და ტექსტები გვერდზე */
             h1, h2, h3, h4, h5, h6, p, label, .stMarkdown, span,
             [data-testid="stSidebar"] div, [data-testid="stSidebar"] span {

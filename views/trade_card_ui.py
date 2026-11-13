@@ -32,6 +32,13 @@ div[data-testid="element-container"]:has(> [data-testid="stHorizontalBlock"] .tr
     display: flex !important;
     justify-content: flex-end !important;
     margin-left: auto !important;
+    flex: 0 0 68px !important;
+    width: 68px !important;
+    min-width: 68px !important;
+}
+[data-testid="stHorizontalBlock"]:has(.trade-row-marker) > div:last-child button {
+    min-width: 60px !important;
+    white-space: nowrap !important;
 }
 .trade-thumb-img {
     width: __SIZE__ !important;
