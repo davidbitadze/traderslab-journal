@@ -99,15 +99,16 @@ def apply_theme_styles(theme_mode):
                 border: 1px solid #CBD5E1 !important;
             }
 
-            /* ბალანსის ბარათი (ზედა მარჯვენა კუთხეში) - მუქი ფონი და თეთრი ტექსტი */
+            /* ბალანსის ბარათი (ზედა მარჯვენა კუთხეში) - ღია თემაზე თეთრი ფონი და მუქი ტექსტი */
             div:has(> [data-testid="stMarkdownContainer"] *:contains("Balance")) {
-                background-color: #1E293B !important;
-                color: #FFFFFF !important;
-                border-radius: 6px !important;
-                padding: 4px 8px !important;
+                background-color: #FFFFFF !important;
+                color: #0F172A !important;
+                border: 1px solid #CBD5E1 !important;
+                border-radius: 8px !important;
+                padding: 4px 10px !important;
             }
             div:has(> [data-testid="stMarkdownContainer"] *:contains("Balance")) * {
-                color: #FFFFFF !important;
+                color: #0F172A !important;
             }
 
             /* "გარიგების წაშლა" და სხვა მუქი ღილაკები მოდალში/ინტერფეისში */
