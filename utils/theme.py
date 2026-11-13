@@ -52,7 +52,7 @@ def apply_theme_styles(theme_mode):
                 border-right: 1px solid #CBD5E1 !important;
             }
 
-            /* Streamlit მოდალური ფანჯრები და დიალოგები */
+            /* Streamlit მოდალური ფანჯრები და დიალოგები ღია თემაზე */
             div[data-testid="stDialog"], div[data-testid="stModal"], div[aria-modal="true"] {
                 background-color: rgba(15, 23, 42, 0.25) !important;
             }
@@ -61,10 +61,14 @@ def apply_theme_styles(theme_mode):
                 color: #0F172A !important;
             }
             
-            /* მოდალის შიგნით არსებული კონტეინერები და ფორმები */
-            div[data-testid="stDialog"] *, div[data-testid="stModal"] * {
-                color: #0F172A;
+            /* მოდალის შიგნით არსებული ელემენტები, ტექსტები და ლეიბლები */
+            div[data-testid="stDialog"] label, div[data-testid="stModal"] label,
+            div[data-testid="stDialog"] p, div[data-testid="stModal"] p,
+            div[data-testid="stDialog"] span, div[data-testid="stModal"] span {
+                color: #0F172A !important;
             }
+            
+            /* ინფუთები და ველები მოდალში */
             div[data-testid="stDialog"] input, div[data-testid="stDialog"] textarea, div[data-testid="stDialog"] select,
             div[data-testid="stModal"] input, div[data-testid="stModal"] textarea, div[data-testid="stModal"] select {
                 background-color: #F8FAFC !important;
@@ -72,7 +76,7 @@ def apply_theme_styles(theme_mode):
                 border: 1px solid #CBD5E1 !important;
             }
 
-            /* მთავარი და მართვის ღილაკები: შავი ფონი, თეთრი ტექსტი და ჰოვერი (როგორც ადრე იყო) */
+            /* ზოგადი ღილაკები ჰოვერ ეფექტით */
             .stButton button, button[kind="secondary"], button[kind="primary"] {
                 background-color: #1E293B !important;
                 color: #FFFFFF !important;
@@ -80,16 +84,15 @@ def apply_theme_styles(theme_mode):
                 transition: all 0.2s ease-in-out;
             }
             .stButton button:hover, button[kind="secondary"]:hover, button[kind="primary"]:hover {
-                background-color: #0F172A !important;
+                background-color: #334155 !important;
                 border-color: #475569 !important;
                 color: #FFFFFF !important;
             }
-            /* ღილაკების შიგნით არსებული ტექსტები ან იკონები */
             .stButton button *, button[kind="secondary"] *, button[kind="primary"] * {
                 color: #FFFFFF !important;
             }
 
-            /* სათაურები და ზოგადი ტექსტები */
+            /* ზოგადი სათაურები და ტექსტები გვერდზე */
             h1, h2, h3, h4, h5, h6, p, label, .stMarkdown, span,
             [data-testid="stSidebar"] div, [data-testid="stSidebar"] span {
                 color: #0F172A !important;
