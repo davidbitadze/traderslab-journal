@@ -53,7 +53,7 @@ def apply_theme_styles(theme_mode):
 
             /* Streamlit მოდალური ფანჯრები ღია თემაზე */
             div[data-testid="stModal"] {
-                background-color: rgba(15, 23, 42, 0.4) !important;
+                background-color: rgba(15, 23, 42, 0.3) !important;
             }
             div[data-testid="stModal"] > div {
                 background-color: #FFFFFF !important;
@@ -62,23 +62,24 @@ def apply_theme_styles(theme_mode):
             div[data-testid="stModal"] h1, 
             div[data-testid="stModal"] h2, 
             div[data-testid="stModal"] h3, 
+            div[data-testid="stModal"] h4,
             div[data-testid="stModal"] p, 
             div[data-testid="stModal"] label,
             div[data-testid="stModal"] span {
                 color: #0F172A !important;
+            }
+            div[data-testid="stModal"] input, 
+            div[data-testid="stModal"] textarea,
+            div[data-testid="stModal"] select {
+                background-color: #F8FAFC !important;
+                color: #0F172A !important;
+                border-color: #CBD5E1 !important;
             }
 
             /* ღილაკები და პოპოვერები -> თეთრი ტექსტი */
             .stButton button, .stButton button *,
             [data-testid="stPopover"] button, [data-testid="stPopover"] button * {
                 color: #FFFFFF !important;
-            }
-            .stButton button:hover, [data-testid="stPopover"] button:hover {
-                background-color: #1A2333 !important;
-                border-color: #00F0FF !important;
-            }
-            .stButton button:hover *, [data-testid="stPopover"] button:hover * {
-                color: #00F0FF !important;
             }
 
             /* ზოგადი სათაურები, საიდბარი და მთავარი ტექსტები */
