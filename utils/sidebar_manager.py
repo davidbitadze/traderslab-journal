@@ -12,7 +12,6 @@ from views.journal import render_journal_view
 from views.settings import render_settings_view
 
 # გვერდები: გასაღები -> (მენიუს თარგმანის გასაღები, ფუნქცია, მხოლოდ ადმინისთვის?)
-# ახალი გვერდის დასამატებლად საკმარისია აქ ერთი ხაზი.
 PAGES = {
     "journal": ("journal", render_journal_view, False),
     "analytics": ("analytics", render_analytics_view, False),
@@ -23,7 +22,7 @@ PAGES = {
 
 def _language_picker(user_id, lang):
   selected = st.sidebar.selectbox(
-      "Language / ენა",
+      t("language", lang) if "language" in t(lang) else "Language / ენა",
       options=["ka", "en"],
       format_func=lambda x: "🇬🇪 ქართული" if x == "ka" else "🇬🇧 English",
       index=0 if lang == "ka" else 1,
@@ -59,7 +58,8 @@ def render_sidebar_and_navigation(user_id, user_email, account, is_mobile):
 
   st.sidebar.title(t("settings_title", lang))
   st.sidebar.write(f"👤 {user_email}")
-  device_label = "📱 მობილური" if is_mobile else "💻 დესკტოპი"
+  
+  device_label = t("mobile_device", lang) if is_mobile else t("desktop_device", lang)
   active_scale = st.session_state.get("ui_scale", "medium")
   st.sidebar.caption(f"{t('device', lang)}: **{device_label}** | {t('scale', lang)}: **{active_scale}**")
 
@@ -77,10 +77,12 @@ def render_sidebar_and_navigation(user_id, user_email, account, is_mobile):
   _theme_picker(user_id, lang)
 
   st.sidebar.title(t("nav_header", lang))
-  # ადმინის გვერდი მხოლოდ ბაზაში დადასტურებულ ადმინს ეჩვენება (staff_roles ცხრილი)
+  
+  # ადმინის გვერდი მხოლოდ ბაზაში დადასტურებულ ადმინს ეჩვენება
   visible = [key for key, (_, _, admin_only) in PAGES.items() if account.is_admin or not admin_only]
+  
   page = st.sidebar.selectbox(
-      "აირჩიეთ გვერდი",
+      t("select_page", lang),
       visible,
       format_func=lambda key: t(PAGES[key][0], lang),
       key="main_navigation_select",
