@@ -283,6 +283,10 @@ def _render_sub_edit(trade_id, sub, date_col):
 
 @st.dialog("🔍 გარიგების დეტალები და მართვა", width="large")
 def show_trade_details_dialog(trade, df=None):
+  # ვუზრუნველყოფთ თემის სტილების გავრცელებას მოდალზეც
+  from theme import apply_theme_styles
+  apply_theme_styles(st.session_state.get("theme", "dark"))
+
   trade_id = trade.get("Trade ID") or trade.get("Parent Trade ID")
 
   df = fetch_trades()
