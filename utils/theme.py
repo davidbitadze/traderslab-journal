@@ -34,7 +34,7 @@ def apply_ui_scaling(scale_mode):
             </style>
         """,
   }
-  st.markdown(styles.get(scale_mode, styles["medium"], unsafe_allow_html=True))
+  st.markdown(styles.get(scale_mode, styles["medium"]), unsafe_allow_html=True)
 
 
 def apply_theme_styles(theme_mode):
@@ -45,6 +45,20 @@ def apply_theme_styles(theme_mode):
             [data-testid="stAppViewContainer"] { background-color: #f8f9fa; color: #212529; }
             [data-testid="stSidebar"] { background-color: #e9ecef; }
 
+            /* ღილაკები: ნაგულისხმევად თეთრი ტექსტი, ჰოვერზე მუქი */
+            button[kind="secondary"], .stButton button {
+                color: #FFFFFF !important;
+            }
+            button[kind="secondary"] *, .stButton button * {
+                color: #FFFFFF !important;
+            }
+            button[kind="secondary"]:hover, .stButton button:hover {
+                background-color: #E2E8F0 !important;
+            }
+            button[kind="secondary"]:hover *, .stButton button:hover * {
+                color: #0A0E17 !important;
+            }
+
             /* --- 1. საიდბარის ლეიბლები/სათაურები ტესტი: მწვანე (#008000) --- */
             [data-testid="stSidebar"] label, 
             [data-testid="stSidebar"] .stMarkdown p,
@@ -52,7 +66,7 @@ def apply_theme_styles(theme_mode):
                 color: #008000 !important;
             }
 
-            /* --- 2. მთავარი გვერდის გარიგებების ტექსტები ტესტი: ყვითელი/ნარინჯისფერი (#D97706) --- */
+            /* --- 2. მთავარი გვერდის გარიგებების ტექსტები ტესტი: ნარინჯისფერი (#D97706) --- */
             div[data-testid="stMain"] div[data-testid="stMarkdownContainer"] p,
             div[data-testid="stMain"] div[data-testid="stMarkdownContainer"] span {
                 color: #D97706 !important;
