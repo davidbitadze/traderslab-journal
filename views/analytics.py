@@ -2,6 +2,7 @@ from database import fetch_trades
 from utils.dates import parse_trade_datetime
 from utils.formulas import calculate_stats
 from utils.trades import compute_pnl_map, split_trades
+from utils.translations import t
 import pandas as pd
 import streamlit as st
 
@@ -19,6 +20,16 @@ DAYS_KA = [
     "კვირა",
 ]
 
+DAYS_EN = [
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday",
+    "Sunday",
+]
+
 
 # ---------------------------------------------------------------- helpers
 def _is_true(value):
@@ -34,11 +45,6 @@ def _clean_label(value):
 
 
 def _collect_trades(df):
-  """ამზადებს დასრულებული გარიგებების ცხრილს (თითო რიგი = ერთი გარიგება).
-
-  Net P/L აქ ზუსტად ისე ითვლება, როგორც ჟურნალში (utils/trades.py), ბაზაში შენახულ
-  შესაძლოდ მოძველებულ მნიშვნელობას არ ვეყრდნობით, ამიტომ ორი გვერდის ციფრები ერთმანეთს
-  ყოველთვის ემთხვევა."""
   main_trades, subs_map = split_trades(df)
   if main_trades.empty:
     return pd.DataFrame()
@@ -74,7 +80,6 @@ def _collect_trades(df):
 
 
 def _stats(d):
-  """ძირითადი მაჩვენებლები გარიგებების ნებისმიერი ჩანაკვეთისთვის."""
   return calculate_stats(d["PnL"])
 
 
@@ -113,19 +118,18 @@ def _group(d, key):
   return g.sort_values("Total", ascending=False).reset_index(drop=True)
 
 
-def _group_table(g, key, label):
-  """იღებს უკვე გამოთვლილ _group შედეგს (ორჯერ აღარ ითვლება)."""
+def _group_table(g, key, label, lang):
   table = g.rename(
       columns={
           key: label,
-          "Trades": "გარიგება",
-          "WinRate": "Win Rate %",
-          "Total": "ჯამური P&L",
-          "Avg": "საშუალო P&L",
+          "Trades": t("table_trade_count", lang),
+          "WinRate": t("table_win_rate", lang),
+          "Total": t("table_total_pnl", lang),
+          "Avg": t("table_avg_pnl", lang),
       }
-  )[[label, "გარიგება", "Win Rate %", "ჯამური P&L", "საშუალო P&L"]]
-  table["Win Rate %"] = table["Win Rate %"].round(0)
-  _show_table(table, ["ჯამური P&L", "საშუალო P&L"])
+  )[[label, t("table_trade_count", lang), t("table_win_rate", lang), t("table_total_pnl", lang), t("table_avg_pnl", lang)]]
+  table[t("table_win_rate", lang)] = table[t("table_win_rate", lang)].round(0)
+  _show_table(table, [t("table_total_pnl", lang), t("table_avg_pnl", lang)])
 
 
 def _bar(g, key, value_col="Total", height=320):
@@ -138,27 +142,39 @@ def _bar(g, key, value_col="Total", height=320):
 
 # ------------------------------------------------------------------- view
 def render_analytics_view(lang="ka"):
-  st.title("📈 სტატისტიკა და ანალიტიკა")
+  st.title(t("analytics_page_title", lang))
 
   df = fetch_trades()
   if df.empty:
-    st.info("ანალიტიკისთვის მონაცემები ჯერ არ არის ჟურნალში.")
+    st.info(t("no_analytics_data", lang))
     return
 
-  all_trades = _collect_trades(df)  # ერთხელ ითვლება და პერიოდების შედარებაშიც გამოიყენება
+  all_trades = _collect_trades(df)
   if all_trades.empty:
-    st.info(
-        "დასრულებული (Finalized) გარიგებები ანალიტიკისთვის ჯერ არ მოიძებნა."
-    )
+    st.info(t("no_finalized_trades", lang))
     return
 
   # ---- პერიოდის ფილტრი
-  period = st.radio(
-      "პერიოდი",
-      ["ყველა", "ბოლო 100", "ბოლო 50", "ბოლო 20", "ბოლო 10"],
+  period_labels = [
+      t("p_all", lang),
+      t("p_100", lang),
+      t("p_50", lang),
+      t("p_20", lang),
+      t("p_10", lang),
+  ]
+  period_raw = ["ყველა", "ბოლო 100", "ბოლო 50", "ბოლო 20", "ბოლო 10"]
+
+  selected_period = st.radio(
+      "period",
+      period_labels,
       horizontal=True,
       label_visibility="collapsed",
   )
+
+  # ვპოულობთ ინდექსს ორიგინალური ლოგიკისთვის
+  idx = period_labels.index(selected_period)
+  period = period_raw[idx]
+
   if period != "ყველა":
     trades = all_trades.tail(int(period.split()[1])).reset_index(drop=True)
   else:
@@ -170,92 +186,95 @@ def render_analytics_view(lang="ka"):
   row1 = st.columns(4)
   with row1[0]:
     with st.container(border=True):
-      st.metric("ჯამური P&L", f"{s['total']:+.2f}$")
+      st.metric(t("metric_total_pnl", lang), f"{s['total']:+.2f}$")
   with row1[1]:
     with st.container(border=True):
-      st.metric("Win Rate", f"{s['win_rate']:.1f}%", f"{s['wins']} / {s['losses']}", delta_color="off")
+      st.metric(t("metric_win_rate", lang), f"{s['win_rate']:.1f}%", f"{s['wins']} / {s['losses']}", delta_color="off")
   with row1[2]:
     with st.container(border=True):
-      st.metric("Profit Factor", _fmt(s["pf"]))
+      st.metric(t("metric_pf", lang), _fmt(s["pf"]))
   with row1[3]:
     with st.container(border=True):
-      st.metric("მოლოდინი (Expectancy)", _fmt(s["expectancy"], "{:+.2f}", "$"))
+      st.metric(t("metric_expectancy", lang), _fmt(s["expectancy"], "{:+.2f}", "$"))
 
   row2 = st.columns(4)
   with row2[0]:
     with st.container(border=True):
-      st.metric("საშ. მოგება", f"{s['avg_win']:.2f}$")
+      st.metric(t("metric_avg_win", lang), f"{s['avg_win']:.2f}$")
   with row2[1]:
     with st.container(border=True):
-      st.metric("საშ. ზარალი", f"-{s['avg_loss']:.2f}$")
+      st.metric(t("metric_avg_loss", lang), f"-{s['avg_loss']:.2f}$")
   with row2[2]:
     with st.container(border=True):
-      st.metric("Payoff Ratio", _fmt(s["payoff"]))
+      st.metric(t("metric_payoff", lang), _fmt(s["payoff"]))
   with row2[3]:
     with st.container(border=True):
-      st.metric("გარიგებები", s["n"])
+      st.metric(t("metric_trades_count", lang), s["n"])
 
   # ---- კაპიტალის მრუდი
-  st.subheader("💹 კაპიტალის მრუდი")
+  st.subheader(t("equity_curve_title", lang))
   equity = pd.DataFrame({
-      "გარიგება #": range(1, len(trades) + 1),
-      "კუმულაციური P&L": trades["PnL"].cumsum().round(2),
+      t("equity_chart_x", lang): range(1, len(trades) + 1),
+      t("equity_chart_y", lang): trades["PnL"].cumsum().round(2),
   })
   line_color = GREEN if s["total"] >= 0 else RED
   st.area_chart(
-      equity, x="გარიგება #", y="კუმულაციური P&L", color=line_color, height=300
+      equity, x=t("equity_chart_x", lang), y=t("equity_chart_y", lang), color=line_color, height=300
   )
 
   # ---- პერიოდების შედარება
-  st.subheader("🔄 პერიოდების შედარება")
+  st.subheader(t("periods_comp_title", lang))
   comp = []
-  for label, count in [("ბოლო 100", 100), ("ბოლო 50", 50), ("ბოლო 20", 20), ("ბოლო 10", 10)]:
+  for label, count in [(t("p_100", lang), 100), (t("p_50", lang), 50), (t("p_20", lang), 20), (t("p_10", lang), 10)]:
     ps = _stats(all_trades.tail(count))
     if ps:
       comp.append({
-          "პერიოდი": label,
-          "გარიგება": ps["n"],
-          "Win Rate %": round(ps["win_rate"]),
-          "Profit Factor": round(ps["pf"], 2) if ps["pf"] is not None else None,
-          "მოლოდინი": round(ps["expectancy"], 2),
-          "ჯამური P&L": round(ps["total"], 2),
+          t("table_period", lang): label,
+          t("table_trade_count", lang): ps["n"],
+          t("table_win_rate", lang): round(ps["win_rate"]),
+          t("table_pf", lang): round(ps["pf"], 2) if ps["pf"] is not None else None,
+          t("table_expectancy", lang): round(ps["expectancy"], 2),
+          t("table_total_pnl", lang): round(ps["total"], 2),
       })
   if comp:
-    _show_table(pd.DataFrame(comp), ["მოლოდინი", "ჯამური P&L"])
+    _show_table(pd.DataFrame(comp), [t("table_expectancy", lang), t("table_total_pnl", lang)])
 
   st.divider()
 
   # ---- დეტალური ანალიზი ტაბებში
   tab_day, tab_pair, tab_pattern, tab_trigger, tab_side = st.tabs(
-      ["📅 კვირის დღე", "💱 წყვილი", "📌 პატერნი", "⚡ ტრიგერი", "↕️ Long / Short"]
+      [t("tab_day_label", lang), t("tab_pair_label", lang), t("tab_pattern_label", lang), t("tab_trigger_label", lang), t("tab_side_label", lang)]
   )
+
+  days_list = DAYS_KA if lang == "ka" else DAYS_EN
 
   with tab_day:
     dated = trades.dropna(subset=["Date"]).copy()
     if dated.empty:
-      st.info("თარიღების მონაცემი არასაკმარისია.")
+      st.info(t("insufficient_date_data", lang))
     else:
-      dated["Day"] = dated["Date"].dt.weekday.map(lambda i: DAYS_KA[i])
+      days_map = dict(zip(range(7), days_list))
+      dated["Day"] = dated["Date"].dt.weekday.map(lambda i: days_map[i])
       g = _group(dated, "Day")
-      g["order"] = g["Day"].map({d: i for i, d in enumerate(DAYS_KA)})
+      g["order"] = g["Day"].map({d: i for i, d in enumerate(days_list)})
       g = g.sort_values("order")
       _bar(g, "Day")
-      _group_table(g, "Day", "დღე")
+      _group_table(g, "Day", t("col_day", lang), lang)
 
   with tab_pair:
     g = _group(trades, "Pair")
     _bar(g, "Pair")
-    _group_table(g, "Pair", "წყვილი")
+    _group_table(g, "Pair", t("col_pair", lang), lang)
 
   with tab_pattern:
     g = _group(trades, "Pattern")
     _bar(g, "Pattern")
-    _group_table(g, "Pattern", "პატერნი")
+    _group_table(g, "Pattern", t("col_pattern", lang), lang)
 
   with tab_trigger:
     g = _group(trades, "Trigger")
     _bar(g, "Trigger")
-    _group_table(g, "Trigger", "ტრიგერი")
+    _group_table(g, "Trigger", t("col_trigger", lang), lang)
 
   with tab_side:
     g = _group(trades, "Side")
@@ -270,4 +289,4 @@ def render_analytics_view(lang="ka"):
               f"Win Rate {row['WinRate']:.0f}%",
               delta_color="off",
           )
-    _group_table(g, "Side", "მიმართულება")
+    _group_table(g, "Side", t("col_side", lang), lang)
