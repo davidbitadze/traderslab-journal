@@ -139,7 +139,7 @@ def render_trade_card(trade, df, subs=None, pnl=None):
       raw_net = trade.get("Net P/L")
       pnl = to_float(raw_net) if _has_value(raw_net) else 0.0
 
-  state_key = `mode_{trade_id}`
+  state_key = f"mode_{trade_id}"
   current_mode = st.session_state.get(state_key, None)
 
   if is_finalized:
