@@ -36,7 +36,6 @@ def apply_ui_scaling(scale_mode):
   }
   st.markdown(styles.get(scale_mode, styles["medium"]), unsafe_allow_html=True)
 
-
 def apply_theme_styles(theme_mode):
   """თემის CSS სტილების ინექცია."""
   if theme_mode == "light":
