@@ -75,7 +75,7 @@ def apply_theme_styles(theme_mode):
                 color: #0F172A !important;
             }
 
-            /* Streamlit პოპოვერები (Add New Trade მენიუ) - სრულად თეთრი ფონი და მუქი ტექსტები */
+            /* Streamlit პოპოვერები (Add New Trade მენიუ) */
             [data-testid="stPopoverBody"] {
                 background-color: #FFFFFF !important;
                 color: #0F172A !important;
@@ -99,11 +99,26 @@ def apply_theme_styles(theme_mode):
                 border: 1px solid #CBD5E1 !important;
             }
 
-            /* ბალანსის ბარათი (ზედა მარჯვენა კუთხეში) - ტექსტი თეთრი */
+            /* ბალანსის ბარათი (ზედა მარჯვენა კუთხეში) - მუქი ფონი და თეთრი ტექსტი */
             div:has(> [data-testid="stMarkdownContainer"] *:contains("Balance")) {
+                background-color: #1E293B !important;
                 color: #FFFFFF !important;
+                border-radius: 6px !important;
+                padding: 4px 8px !important;
             }
             div:has(> [data-testid="stMarkdownContainer"] *:contains("Balance")) * {
+                color: #FFFFFF !important;
+            }
+
+            /* "გარიგების წაშლა" და სხვა მუქი ღილაკები მოდალში/ინტერფეისში */
+            div[data-testid="stDialog"] .stButton button, 
+            div[data-testid="stModal"] .stButton button {
+                background-color: #1E293B !important;
+                color: #FFFFFF !important;
+                border: 1px solid #334155 !important;
+            }
+            div[data-testid="stDialog"] .stButton button *, 
+            div[data-testid="stModal"] .stButton button * {
                 color: #FFFFFF !important;
             }
 
