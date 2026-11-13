@@ -40,8 +40,18 @@ TRANSLATIONS = {
         
         # ჟურნალი
         "trade_journal_title": "სავაჭრო ჟურნალი",
-        "add_trade_btn": "➕ ახალი გარიგების დამატება",
         "no_trades": "ჟურნალში გარიგებები ჯერ არ არის. გამოიყენეთ ზედა ღილაკი.",
+        
+        # ანალიტიკა და პარამეტრები
+        "analytics_title": "📊 სტატისტიკა და ანალიტიკა",
+        "settings_main_title": "⚙️ კონფიგურაცია და პარამეტრები (Settings)",
+        "settings_subtitle": "მართეთ პლატფორმის ძირითადი ცნობარები, სავაჭრო ელემენტები და ფინანსური ბალანსი.",
+        "screen_vis_title": "📱 ეკრანისა და ვიზუალიზაციის ზომები",
+        "mobile_view_label": "მობილურის ვიზუალური ზომა",
+        "desktop_view_label": "დესკტოპის ვიზუალური ზომა",
+        "deposit_history_title": "💰 დეპოზიტისა და ბალანსის ისტორია",
+        "patterns_title": "📌 პატერნების სია (Patterns)",
+        "triggers_title": "⚡ ტრიგერების სია (Triggers)",
         
         # ადმინ პანელი
         "admin_title": "🛡️ ადმინისტრატორის პანელი",
@@ -101,8 +111,18 @@ TRANSLATIONS = {
         
         # Journal
         "trade_journal_title": "Trade Journal",
-        "add_trade_btn": "➕ Add New Trade",
         "no_trades": "No trades in the journal yet. Use the button above.",
+        
+        # Analytics & Settings
+        "analytics_title": "📊 Statistics & Analytics",
+        "settings_main_title": "⚙️ Configuration & Settings",
+        "settings_subtitle": "Manage platform references, trade elements, and financial balance.",
+        "screen_vis_title": "📱 Screen & Visualization Scales",
+        "mobile_view_label": "Mobile View Scale",
+        "desktop_view_label": "Desktop View Scale",
+        "deposit_history_title": "💰 Deposit & Balance History",
+        "patterns_title": "📌 Patterns List",
+        "triggers_title": "⚡ Triggers List",
         
         # Admin Panel
         "admin_title": "🛡️ Administrator Panel",
