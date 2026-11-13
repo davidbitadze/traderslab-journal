@@ -38,7 +38,7 @@ def apply_ui_scaling(scale_mode):
 
 
 def apply_theme_styles(theme_mode):
-  """თემის CSS სტილების ინექცია და ფერების ცენტრალიზებული მართვა."""
+  """თემის CSS სტილების ინექცია და ფერების ცენტრალიზებული მართვა მოდალების ჩათვლით."""
   if theme_mode == "light":
     css = """
         <style>
@@ -49,6 +49,23 @@ def apply_theme_styles(theme_mode):
             [data-testid="stSidebar"] { 
                 background-color: #E2E8F0 !important; 
                 border-right: 1px solid #CBD5E1 !important;
+            }
+
+            /* Streamlit მოდალური ფანჯრები ღია თემაზე */
+            div[data-testid="stModal"] {
+                background-color: rgba(15, 23, 42, 0.4) !important;
+            }
+            div[data-testid="stModal"] > div {
+                background-color: #FFFFFF !important;
+                color: #0F172A !important;
+            }
+            div[data-testid="stModal"] h1, 
+            div[data-testid="stModal"] h2, 
+            div[data-testid="stModal"] h3, 
+            div[data-testid="stModal"] p, 
+            div[data-testid="stModal"] label,
+            div[data-testid="stModal"] span {
+                color: #0F172A !important;
             }
 
             /* ღილაკები და პოპოვერები -> თეთრი ტექსტი */
@@ -90,6 +107,12 @@ def apply_theme_styles(theme_mode):
             [data-testid="stSidebar"] { 
                 background-color: #121926 !important; 
                 border-right: 1px solid rgba(0, 240, 255, 0.12) !important;
+            }
+
+            /* Streamlit მოდალური ფანჯრები მუქ თემაზე */
+            div[data-testid="stModal"] > div {
+                background-color: #0E1117 !important;
+                color: #FFFFFF !important;
             }
             
             /* გარიგებების ბარათების ტექსტები მუქ თემაზე */
