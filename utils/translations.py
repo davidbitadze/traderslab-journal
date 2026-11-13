@@ -24,6 +24,10 @@ TRANSLATIONS = {
         "add_trade_btn": "➕ ახალი გარიგების დამატება",
         "no_trades_msg": "ჟურნალში გარიგებები ჯერ არ არის. გამოიყენეთ ზედა ღილაკი.",
         "select_page": "აირჩიეთ გვერდი",
+        "edit_pattern_caption": "პატერნის შეცვლა",
+        "edit_trigger_caption": "ტრიგერის შეცვლა",
+        "pattern_added_msg": "პატერნი '{name}' დაემატა!",
+        "trigger_added_msg": "ტრიგერი '{name}' დაემატა!",
         
         # ავტორიზაცია
         "auth_title": "🔐 Traders Lab - ავტორიზაცია",
@@ -161,6 +165,10 @@ TRANSLATIONS = {
         "add_trade_btn": "➕ Add New Trade",
         "no_trades_msg": "No trades in the journal yet. Use the button above.",
         "select_page": "Select Page",
+        "edit_pattern_caption": "Edit pattern",
+        "edit_trigger_caption": "Edit trigger",
+        "pattern_added_msg": "Pattern '{name}' added!",
+        "trigger_added_msg": "Trigger '{name}' added!",
         
         # Authorization
         "auth_title": "🔐 Traders Lab - Authorization",

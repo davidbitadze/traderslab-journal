@@ -99,18 +99,6 @@ def apply_theme_styles(theme_mode):
                 border: 1px solid #CBD5E1 !important;
             }
 
-            /* ბალანსის ბარათი (ზედა მარჯვენა კუთხეში) - ღია თემაზე თეთრი ფონი და მუქი ტექსტი */
-            div:has(> [data-testid="stMarkdownContainer"] *:contains("Balance")) {
-                background-color: #FFFFFF !important;
-                color: #0F172A !important;
-                border: 1px solid #CBD5E1 !important;
-                border-radius: 8px !important;
-                padding: 4px 10px !important;
-            }
-            div:has(> [data-testid="stMarkdownContainer"] *:contains("Balance")) * {
-                color: #0F172A !important;
-            }
-
             /* "გარიგების წაშლა" და სხვა მუქი ღილაკები მოდალში/ინტერფეისში */
             div[data-testid="stDialog"] .stButton button, 
             div[data-testid="stModal"] .stButton button {
@@ -146,6 +134,37 @@ def apply_theme_styles(theme_mode):
             .stButton button *, button[kind="secondary"] *, button[kind="primary"] * {
                 color: #FFFFFF !important;
             }
+
+
+            /* ღილაკები გვერდით მენიუშიც: ტექსტი თეთრი რჩება (ზოგადი div წესს არ ემორჩილება) */
+            [data-testid="stSidebar"] .stButton button, [data-testid="stSidebar"] .stButton button * {
+                color: #FFFFFF !important;
+            }
+
+            /* ინფუთები მთავარ გვერდზეც */
+            [data-testid="stAppViewContainer"] input, [data-testid="stAppViewContainer"] textarea,
+            [data-baseweb="select"] > div, [data-baseweb="input"] {
+                background-color: #FFFFFF !important;
+                color: #0F172A !important;
+                border-color: #CBD5E1 !important;
+            }
+            [data-baseweb="popover"] ul, [data-baseweb="menu"] {
+                background-color: #FFFFFF !important;
+                color: #0F172A !important;
+            }
+
+            /* ტაბები, მეტრიკები, ბარათები */
+            [data-baseweb="tab"] { color: #334155 !important; }
+            [data-testid="stMetricValue"], [data-testid="stMetricLabel"] { color: #0F172A !important; }
+            [data-testid="stCaptionContainer"] { color: #64748B !important; }
+            [data-testid="stVerticalBlockBorderWrapper"] { border-color: #CBD5E1 !important; }
+
+            /* შეტყობინებები (info/success/warning/error) */
+            [data-testid="stAlert"], div[data-baseweb="notification"] {
+                background-color: #EFF6FF !important;
+                border: 1px solid #BFDBFE !important;
+            }
+            [data-testid="stAlert"] * { color: #0F172A !important; }
 
             /* ზოგადი სათაურები და ტექსტები გვერდზე */
             h1, h2, h3, h4, h5, h6, p, label, .stMarkdown, span,

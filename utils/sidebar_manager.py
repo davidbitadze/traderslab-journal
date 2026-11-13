@@ -22,7 +22,7 @@ PAGES = {
 
 def _language_picker(user_id, lang):
   selected = st.sidebar.selectbox(
-      t("language", lang) if "language" in t(lang) else "Language / ენა",
+      "Language / ენა",
       options=["ka", "en"],
       format_func=lambda x: "🇬🇪 ქართული" if x == "ka" else "🇬🇧 English",
       index=0 if lang == "ka" else 1,
