@@ -133,6 +133,8 @@ TRANSLATIONS = {
         "col_pattern": "პატერნი",
         "col_trigger": "ტრიგერი",
         "col_side": "მიმართულება",
+
+        "days_of_week": ["ორშაბათი", "სამშაბათი", "ოთხშაბათი", "ხუთშაბათი", "პარასკევი", "შაბათი", "კვირა"],
     },
     "en": {
         # Navigation & General
@@ -268,6 +270,8 @@ TRANSLATIONS = {
         "col_pattern": "Pattern",
         "col_trigger": "Trigger",
         "col_side": "Side",
+
+        "days_of_week": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
     }
 }
 
