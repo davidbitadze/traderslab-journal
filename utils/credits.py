@@ -1,15 +1,36 @@
 import time
+from dataclasses import dataclass
+from typing import Optional
 
-from database import get_data_client
 import streamlit as st
 
+from database import call_rpc, get_data_client
+
 # ეკრანზე საჩვენებელი ბალანსი სესიაში ინახება და ბაზას მხოლოდ ამდენი წამის შემდეგ ეკითხება.
-# ჩამოჭრა/შევსება კი ყოველთვის ბაზის ახალ მონაცემზე მუშაობს (იხ. get_user_credits).
+# ჩამოჭრა/დაბრუნება კი ყოველთვის ბაზის ატომურ ფუნქციებზე მუშაობს.
 CREDITS_DISPLAY_TTL = 30
+
+# ბაზის შეცდომის კოდი -> გასაგები ტექსტი
+ERROR_TEXTS = {
+    "insufficient_credits": "არ გაქვთ საკმარისი ქულები.",
+    "subscription_inactive": "გამოწერა აქტიური არ არის.",
+    "invalid_amount": "ქულების რაოდენობა არასწორია.",
+    "not_authenticated": "ავტორიზაციის შეცდომა.",
+}
+
+
+@dataclass
+class ChargeResult:
+  ok: bool
+  balance: Optional[float] = None
+  entry_id: Optional[int] = None
+  error: Optional[str] = None  # ადამიანისთვის გასაგები ტექსტი
 
 
 def _remember_credits(user_id: str, balance: float) -> None:
   st.session_state["_credits_cache"] = (user_id, balance, time.time())
+  if "user_prefs" in st.session_state:
+    st.session_state.user_prefs["credits_balance"] = balance
 
 
 def get_user_credits(user_id: str) -> float:
@@ -21,7 +42,7 @@ def get_user_credits(user_id: str) -> float:
         .eq("user_id", user_id)
         .execute()
     )
-    if response.data and len(response.data) > 0:
+    if response.data:
       balance = response.data[0].get("credits_balance")
       return float(balance) if balance is not None else 0.0
     return 0.0
@@ -30,9 +51,7 @@ def get_user_credits(user_id: str) -> float:
     return 0.0
 
 
-def get_user_credits_cached(
-    user_id: str, max_age: float = CREDITS_DISPLAY_TTL
-) -> float:
+def get_user_credits_cached(user_id: str, max_age: float = CREDITS_DISPLAY_TTL) -> float:
   """მხოლოდ ჩვენებისთვის: სესიის ქეშიდან, ბაზაში ზედმეტი მოთხოვნის გარეშე."""
   cached = st.session_state.get("_credits_cache")
   if cached and cached[0] == user_id and time.time() - cached[2] < max_age:
@@ -43,64 +62,35 @@ def get_user_credits_cached(
 
 
 def check_has_enough_credits(user_id: str, required_credits: float) -> bool:
-  """ამოწმებს, ყოფნის თუ არა მომხმარებელს ქულები ოპერაციისთვის."""
-  current_balance = get_user_credits(user_id)
-  return current_balance >= required_credits
+  """სწრაფი წინასწარი შემოწმება (UX-ისთვის). საბოლოო გადაწყვეტილებას ბაზა იღებს."""
+  return get_user_credits(user_id) >= required_credits
 
 
-def deduct_credits(user_id: str, amount: float) -> bool:
-  """ქულების ჩამოჭრა (1, 3, 5...). ჯერ ბაზის ატომური ფუნქცია spend_credits, რომელიც
-  ბალანსს და ჩამოჭრას ერთ ნაბიჯში ამოწმებს. თუ ფუნქცია ბაზაში ჯერ არ არის
-  შექმნილი, ვრჩებით ძველ ვარიანტზე (წაკითხვა -> ჩაწერა)."""
-  try:
-    response = get_data_client().rpc("spend_credits", {"p_amount": amount}).execute()
-    new_balance = response.data
-    if isinstance(new_balance, list):
-      new_balance = new_balance[0] if new_balance else None
-    if isinstance(new_balance, dict):
-      new_balance = next(iter(new_balance.values()), None)
-    if new_balance is None:  # ბალანსი არ ჰყოფნის
-      return False
-    new_balance = float(new_balance)
-    if "user_prefs" in st.session_state:
-      st.session_state.user_prefs["credits_balance"] = new_balance
-    _remember_credits(user_id, new_balance)
-    return True
-  except Exception:
-    pass  # ფუნქცია არ არსებობს ან დროებითი შეცდომაა: ძველი გზა
+def charge_credits(user_id: str, amount: float, reason: str) -> ChargeResult:
+  """ქულების ჩამოჭრა ბაზის ატომური ფუნქციით spend_credits.
 
-  current_balance = get_user_credits(user_id)
-  if current_balance < amount:
+  ბალანსის შემოწმება, ჩამოჭრა და ჟურნალში ჩაწერა ერთ ნაბიჯშია, ამიტომ ორმაგი
+  დაჭერითაც ვერ ჩავარდება მინუსში. კლიენტიდან ბალანსის პირდაპირ ჩაწერა აკრძალულია.
+  თუ ფუნქცია ბაზაში არ არის (მიგრაცია არ გაშვებულა) — ვუარებთ, არასდროს ვწერთ ბალანსს
+  სხვა გზით.
+  """
+  data, error = call_rpc("spend_credits", {"p_amount": float(amount), "p_reason": reason})
+  if error or not isinstance(data, dict):
+    return ChargeResult(False, error="ქულების სისტემა ხელმისაწვდომი არ არის. სცადეთ მოგვიანებით.")
+  if not data.get("ok"):
+    code = data.get("error", "")
+    return ChargeResult(False, error=ERROR_TEXTS.get(code, f"ჩამოჭრა ვერ მოხერხდა ({code})."))
+  balance = float(data["balance"])
+  _remember_credits(user_id, balance)
+  return ChargeResult(True, balance=balance, entry_id=data.get("entry_id"))
+
+
+def refund_charge(user_id: str, charge: ChargeResult) -> bool:
+  """უკან უბრუნებს მხოლოდ ამ კონკრეტულ ჩამოჭრას (ერთხელ, 15 წუთის განმავლობაში)."""
+  if not charge or not charge.ok or charge.entry_id is None:
     return False
-
-  new_balance = current_balance - amount
-  try:
-    get_data_client().table("user_preferences").update(
-        {"credits_balance": new_balance}
-    ).eq("user_id", user_id).execute()
-    if "user_prefs" in st.session_state:
-      st.session_state.user_prefs["credits_balance"] = new_balance
-    _remember_credits(user_id, new_balance)
-    return True
-  except Exception as e:
-    st.error(f"ქულების ჩამოჭრის შეცდომა: {e}")
+  data, error = call_rpc("refund_spend", {"p_entry_id": int(charge.entry_id)})
+  if error or not isinstance(data, dict) or not data.get("ok"):
     return False
-
-
-def add_credits(user_id: str, amount: float) -> bool:
-  """უმატებს ქულებს მომხმარებლის ბალანსს (მაგ. ყიდვისას ან ბონუსად)."""
-  current_balance = get_user_credits(user_id)
-  new_balance = current_balance + amount
-  try:
-    get_data_client().table("user_preferences").update(
-        {"credits_balance": new_balance}
-    ).eq("user_id", user_id).execute()
-
-    if "user_prefs" in st.session_state:
-      st.session_state.user_prefs["credits_balance"] = new_balance
-    _remember_credits(user_id, new_balance)
-
-    return True
-  except Exception as e:
-    st.error(f"ბალანსის შევსების შეცდომა: {e}")
-    return False
+  _remember_credits(user_id, float(data["balance"]))
+  return True

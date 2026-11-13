@@ -215,7 +215,7 @@ def logout(rerun=True, revoke=True):
       client.auth.sign_out()
     except Exception:
       pass
-  for key in ("sb", "user", "user_prefs", "_credits_cache", "_remember"):
+  for key in ("sb", "user", "user_prefs", "staff_role", "_prefs_loaded_at", "_credits_cache", "_pnl_sync_tried", "_remember"):
     st.session_state.pop(key, None)
   st.session_state["_logged_out"] = True
   _queue_cookie("clear")

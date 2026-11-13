@@ -40,3 +40,12 @@ def _uid():
   """ქეშის გასაღებში ვრთავთ user_id-ს, რომ ერთი მომხმარებლის მონაცემი სხვას არ დაუბრუნდეს."""
   user = str_lit.session_state.get("user")
   return getattr(user, "id", None)
+
+
+def call_rpc(name, params=None):
+  """Supabase-ის ფუნქციის გამოძახება. აბრუნებს (data, error_text); წარმატებისას error=None."""
+  try:
+    response = get_data_client().rpc(name, params or {}).execute()
+    return response.data, None
+  except Exception as e:
+    return None, getattr(e, "message", None) or str(e)

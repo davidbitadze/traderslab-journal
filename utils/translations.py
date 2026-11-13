@@ -54,6 +54,11 @@ TRANSLATIONS = {
         "topup_btn": "➕ ქულების ჩარიცხვა",
         "exact_balance_label": "ზუსტი ბალანსის მითითება",
         "update_balance_btn": "✏️ ბალანსის განახლება",
+        "account_load_error": "⚠️ ანგარიშის მონაცემების ჩატვირთვა ვერ მოხერხდა. სცადეთ ხელახლა.",
+        "retry": "🔄 ხელახლა ცდა",
+        "settings_title": "⚙️ პარამეტრები",
+        "subscription_until": "გამოწერა ვრცელდება",
+        "days_short": "დღე",
     },
     "en": {
         # Navigation & General
@@ -110,9 +115,15 @@ TRANSLATIONS = {
         "topup_btn": "➕ Top-up Credits",
         "exact_balance_label": "Set Exact Balance",
         "update_balance_btn": "✏️ Update Balance",
+        "account_load_error": "⚠️ Could not load your account data. Please try again.",
+        "retry": "🔄 Retry",
+        "settings_title": "⚙️ Settings",
+        "subscription_until": "Subscription until",
+        "days_short": "days",
     }
 }
 
-def t(key, lang="ka"):
-  """აბრუნებს ტექსტს არჩეული ენის მიხედვით."""
-  return TRANSLATIONS.get(lang, TRANSLATIONS["ka"]).get(key, key)
+def t(key, lang="ka", **fmt):
+  """აბრუნებს ტექსტს არჩეული ენის მიხედვით ({name} ადგილებს ავსებს fmt-ით)."""
+  text = TRANSLATIONS.get(lang, TRANSLATIONS["ka"]).get(key, key)
+  return text.format(**fmt) if fmt else text
