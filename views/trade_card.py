@@ -292,16 +292,17 @@ def _run_ai_analysis(
   st.rerun(scope="fragment")
 
 
+
+
 def _render_sub_edit(trade_id, sub, date_col):
-  """ეტაპის რედაქტირების ცალკე ეკრანი დეტალების დიალოგის შიგნით.
-  (Streamlit-ში ერთდროულად მხოლოდ ერთი dialog შეიძლება იყოს გახსნილი, ამიტომ
-  რედაქტირება იმავე ფანჯარაში ცალკე ეკრანად ჩანს და 'გაუქმება' უკან აბრუნებს.)"""
+  """ეტაპის რედაქტირების ცალკე ეკრანი დეტალების დიალოგის შიგნით (4 ზოლიანი სტრუქტურა პატერნებით და ტრიგერებით)."""
+  from database import fetch_settings  # იმპორტი იუზერის პატერნებისა და ტრიგერების ასაღებად
+
   sub_id = sub.get("Trade ID")
   sub_type = _txt(sub.get("ActionType"))
   is_start = START_ROW_MARK in sub_type
   date_col = date_col or "Entry Date"
   orig_date = _txt(sub.get(date_col))
-  # ველში სწორი ფორმატით ვაჩვენებთ (ძველი/დაზიანებული თარიღი, მაგ. წელი 0001, ჩაწერისას გასწორდება)
   parsed_orig = parse_trade_datetime(orig_date)
   shown_date = format_db_datetime(parsed_orig) if not pd.isna(parsed_orig) else orig_date
   current_img = _get_image_url(sub.get("Screenshot"))
@@ -309,36 +310,45 @@ def _render_sub_edit(trade_id, sub, date_col):
   st.markdown("### ✏️ ეტაპის რედაქტირება")
   st.caption(f"{sub.get('Pair', '')} · {sub_type}")
 
+  # ვიღებთ იუზერის ინდივიდუალურ პატერნებს და ტრიგერებს ბაზიდან
+  user_patterns = fetch_settings("pattern")
+  user_triggers = fetch_settings("trigger")
+
+  orig_pattern = _txt(sub.get("Pattern"))
+  orig_trigger = _txt(sub.get("Trigger"))
+  orig_side = _txt(sub.get("Side")) or "Long"
+
   with st.form(key=f"form_edit_sub_{sub_id}"):
     if is_start:
       new_type = sub_type
     else:
       options = list(SUB_ACTION_TYPES)
       if sub_type and sub_type not in options:
-        options.insert(0, sub_type)  # უცნობი ტიპი არ იკარგება და არ იცვლება
+        options.insert(0, sub_type)
       new_type = st.selectbox(
           "მოქმედება",
           options,
           index=options.index(sub_type) if sub_type in options else 0,
       )
 
-    c1, c2 = st.columns(2)
-    price_txt = c1.text_input("ფასი", value=_txt(sub.get("Entry Price")))
-    qty_txt = c2.text_input("მოცულობა", value=_txt(sub.get("Qty")))
-
-    if is_start:
-      c3, c4, c5 = st.columns(3)
-      sl_txt = c3.text_input("სტოპ ლოსი (SL ფასი)", value=_txt(sub.get("SL_Price")))
-      tp_txt = c4.text_input("თეიქ პროფიტი (TP ფასი)", value=_txt(sub.get("TP_Price")))
-      risk_txt = c5.text_input("რისკი დოლარში (Risk $)", value=_txt(sub.get("Risk ($)")))
-
-    date_txt = st.text_input(
+    # --- ზოლი 1: თარიღი და დრო, შესვლის ფასი, მოცულობა ---
+    st.markdown("---")
+    r1_c1, r1_c2, r1_c3 = st.columns(3)
+    date_txt = r1_c1.text_input(
         "თარიღი და დრო",
         value=shown_date,
         placeholder="YYYY-MM-DD HH:MM:SS",
     )
-    
-      # --- აქ ვამატებთ აღწერის ველს ---
+    price_txt = r1_c2.text_input("შესვლის ფასი", value=_txt(sub.get("Entry Price")))
+    qty_txt = r1_c3.text_input("მოცულობა", value=_txt(sub.get("Qty")))
+
+    # --- ზოლი 2: სტოპ ლოსი, თეიქ პროფიტი, რისკი დოლარში ---
+    r2_c1, r2_c2, r2_c3 = st.columns(3)
+    sl_txt = r2_c1.text_input("სტოპ ლოსი (SL ფასი)", value=_txt(sub.get("SL_Price")))
+    tp_txt = r2_c2.text_input("თეიქ პროფიტი (TP ფასი)", value=_txt(sub.get("TP_Price")))
+    risk_txt = r2_c3.text_input("რისკი დოლარში (Risk $)", value=_txt(sub.get("Risk ($)")))
+
+    # --- ზოლი 3: აღწერა / კომენტარი, სკრინშოტი ---
     orig_desc = _txt(sub.get("Description"))
     desc_txt = st.text_area(
         "აღწერა / კომენტარი (Description)",
@@ -346,7 +356,6 @@ def _render_sub_edit(trade_id, sub, date_col):
         key=f"edit_sub_desc_{sub_id}",
     )
 
-      
     if current_img:
       st.image(current_img, caption="მიმდინარე სკრინშოტი", width=280)
     new_file = st.file_uploader(
@@ -355,6 +364,43 @@ def _render_sub_edit(trade_id, sub, date_col):
         key=f"edit_sub_img_{sub_id}",
     )
 
+    # --- ზოლი 4: პატერნი, ტრიგერი, მიმართულება ---
+    r4_c1, r4_c2, r4_c3 = st.columns(3)
+
+    # პატერნის არჩევანი
+    p_opts = user_patterns if user_patterns else ["ვ-შემობრუნება", "ორმაგი წვერი", "თავი მხრები"]
+    if orig_pattern and orig_pattern not in p_opts:
+      p_opts.insert(0, orig_pattern)
+    selected_pattern = r4_c1.selectbox(
+        "პატერნი",
+        p_opts,
+        index=p_opts.index(orig_pattern) if orig_pattern in p_opts else 0,
+        key=f"edit_pattern_{sub_id}",
+    )
+
+    # ტრიგერის არჩევანი
+    t_opts = user_triggers if user_triggers else ["პინბარი", "ჩამყლაპავი", "გაფართოვება"]
+    if orig_trigger and orig_trigger not in t_opts:
+      t_opts.insert(0, orig_trigger)
+    selected_trigger = r4_c2.selectbox(
+        "ტრიგერი",
+        t_opts,
+        index=t_opts.index(orig_trigger) if orig_trigger in t_opts else 0,
+        key=f"edit_trigger_{sub_id}",
+    )
+
+    # მიმართულება (Long / Short)
+    side_opts = ["Long", "Short"]
+    if orig_side.capitalize() not in side_opts:
+      side_opts.insert(0, orig_side)
+    selected_side = r4_c3.selectbox(
+        "მიმართულება",
+        side_opts,
+        index=side_opts.index(orig_side.capitalize()) if orig_side.capitalize() in side_opts else 0,
+        key=f"edit_side_{sub_id}",
+    )
+
+    st.markdown("---")
     b1, b2 = st.columns(2)
     save = b1.form_submit_button(
         "💾 შენახვა", type="primary", use_container_width=True
@@ -365,29 +411,26 @@ def _render_sub_edit(trade_id, sub, date_col):
     _close_edit_screen()
 
   if save:
-    required = {"ფასი": price_txt, "მოცულობა": qty_txt}
-    if is_start:
-      required["რისკი"] = risk_txt
+    required = {"ფასი": price_txt, "მოცულობა": qty_txt, "რისკი": risk_txt}
     parsed = {name: _parse_num(text) for name, text in required.items()}
     errors = [f"არასწორი რიცხვი: {n}" for n, v in parsed.items() if v is None]
 
     optional = {}
-    if is_start:  # SL/TP-ის ცარიელი ველი = "არ არის მითითებული" (0.0), როგორც ახალი გარიგებისას
-      for name, text in (("SL", sl_txt), ("TP", tp_txt)):
-        if not text.strip():
-          optional[name] = 0.0
+    for name, text in (("SL", sl_txt), ("TP", tp_txt)):
+      if not text.strip():
+        optional[name] = 0.0
+      else:
+        value = _parse_num(text)
+        if value is None:
+          errors.append(f"არასწორი რიცხვი: {name}")
         else:
-          value = _parse_num(text)
-          if value is None:
-            errors.append(f"არასწორი რიცხვი: {name}")
-          else:
-            optional[name] = value
+          optional[name] = value
 
     new_date = None
     if date_txt.strip() != orig_date:
       parsed_date = parse_trade_datetime(date_txt)
       if pd.isna(parsed_date):
-        errors.append("თარიღი ვერ იკითხება (მაგ. 2026-11-10 13:38:02 ან Nov 10, 1:38:02 PM)")
+        errors.append("თარიღი ვერ იკითხება (მაგ. 2026-11-10 13:38:02)")
       else:
         new_date = format_db_datetime(parsed_date)
 
@@ -398,14 +441,16 @@ def _render_sub_edit(trade_id, sub, date_col):
       payload = {
           "Entry Price": str(parsed["ფასი"]),
           "Qty": str(parsed["მოცულობა"]),
-          "Description": desc_txt,  # აღწერის განახლება
+          "Description": desc_txt,
+          "Risk ($)": str(parsed["რისკი"]),
+          "SL_Price": str(optional["SL"]),
+          "TP_Price": str(optional["TP"]),
+          "Pattern": selected_pattern,
+          "Trigger": selected_trigger,
+          "Side": selected_side,
       }
       if not is_start:
         payload["ActionType"] = new_type
-      else:
-        payload["Risk ($)"] = str(parsed["რისკი"])
-        payload["SL_Price"] = str(optional["SL"])
-        payload["TP_Price"] = str(optional["TP"])
       if new_date is not None:
         payload[date_col] = new_date
       if new_file is not None:
@@ -418,7 +463,7 @@ def _render_sub_edit(trade_id, sub, date_col):
 
       if update_trade(sub_id, payload):
         if new_file is not None and uploaded_url and current_img:
-          delete_screenshot(current_img)  # ჩანაცვლებული ძველი სურათი Storage-ში აღარ რჩება
+          delete_screenshot(current_img)
         recalc_net_pnl(trade_id)
         st.toast("ეტაპი განახლდა!", icon="✅")
         _close_edit_screen()
@@ -438,6 +483,7 @@ def _render_sub_edit(trade_id, sub, date_col):
         recalc_net_pnl(trade_id)
         st.toast("ეტაპი წაიშალა!", icon="🗑️")
         _close_edit_screen()
+
 
 
 @st.dialog("🔍 გარიგების დეტალები და მართვა", width="large")
