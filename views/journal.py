@@ -55,6 +55,13 @@ def render_journal_view(lang="ka"):
   balance_label_str = t("credits", lang) if "credits" in t(lang) else ("Balance" if lang == "en" else "ბალანსი")
   credit_unit_str = t("credit_unit", lang) if "credit_unit" in t(lang) else ("credits" if lang == "en" else "ქულა")
 
+# თემის მიხედვით ბალანსის ვიჯეტის ფერები
+  is_light = st.session_state.get("theme", "dark") == "light"
+  bal_bg = "#FFFFFF" if is_light else "#1E293B"
+  bal_border = "#CBD5E1" if is_light else "#334155"
+  bal_text = "#0F172A" if is_light else "#38BDF8"
+  bal_card_bg = "#F8FAFC" if is_light else "#121926"
+
   # 6. სათაური ფინანსური და AI ბალანსით
   st.markdown(
       f"""
@@ -62,8 +69,8 @@ def render_journal_view(lang="ka"):
           <h3 style='margin: 0px; font-size: 20px; font-weight: 600;'>
               📊 {journal_title_str} — <span style='color: #4CAF50;'>{final_balance:.2f}$</span>
           </h3>
-          <span style='background-color: #1E293B; border: 1px solid #334155; padding: 4px 10px; border-radius: 8px; font-size: 13px; font-weight: 500; color: #38BDF8;'>
-              💳 {balance_label_str}: <b>{ai_credits:g} {credit_unit_str}</b>
+          <span style='background-color: {bal_bg}; border: 1px solid {bal_border}; padding: 4px 10px; border-radius: 8px; font-size: 13px; font-weight: 500; color: {bal_text}; box-shadow: 0 1px 3px rgba(0,0,0,0.05);'>
+              💳 {balance_label_str}: <b style='color: {bal_text};'>{ai_credits:g} {credit_unit_str}</b>
           </span>
       </div>
       """,
