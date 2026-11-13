@@ -1,4 +1,6 @@
 streamlit
 supabase
+httpx
 pandas
+python-dateutil
 pillow
