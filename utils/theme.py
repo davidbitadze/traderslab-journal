@@ -45,23 +45,20 @@ def apply_theme_styles(theme_mode):
             [data-testid="stAppViewContainer"] { background-color: #f8f9fa; color: #212529; }
             [data-testid="stSidebar"] { background-color: #e9ecef; }
 
-            /* --- 1. ღილაკების ტექსტი სრულად თეთრი (#FFFFFF) --- */
-            .stButton button, 
-            .stButton button div, 
-            .stButton button p, 
-            .stButton button span,
-            button[kind="secondary"], 
-            button[kind="secondary"] p, 
-            button[kind="secondary"] span {
+            /* --- 1. მკაცრად მხოლოდ ღილაკი: ტექსტი თეთრი (#FFFFFF) --- */
+            .stButton > button p, 
+            .stButton > button span, 
+            .stButton > button div {
                 color: #FFFFFF !important;
             }
 
             /* ღილაკის ჰოვერის ეფექტი */
-            .stButton button:hover {
+            .stButton > button:hover {
                 background-color: #E2E8F0 !important;
             }
-            .stButton button:hover *, 
-            button[kind="secondary"]:hover * {
+            .stButton > button:hover p, 
+            .stButton > button:hover span, 
+            .stButton > button:hover div {
                 color: #0A0E17 !important;
             }
 
