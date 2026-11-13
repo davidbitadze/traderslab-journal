@@ -234,6 +234,22 @@ def apply_theme_styles(theme_mode):
                 color: #0F172A !important;
             }
 
+
+            /* გამორთული თარიღის ველი (Last day UTC): ყველა შიდა ფენა ღია ფონზე, ტექსტი მუქი */
+            [data-testid="stDateInput"] div, [data-testid="stDateInput"] input,
+            [data-testid="stDateInputField"], [data-testid="stDateInput"] [data-baseweb] {
+                background-color: #E2E8F0 !important;
+                color: #334155 !important;
+                -webkit-text-fill-color: #334155 !important;
+                opacity: 1 !important;
+            }
+            [data-testid="stDateInput"] svg { fill: #334155 !important; color: #334155 !important; }
+            [aria-disabled="true"] input, input[disabled] {
+                color: #334155 !important;
+                -webkit-text-fill-color: #334155 !important;
+                opacity: 1 !important;
+            }
+
             /* ზოგადი სათაურები და ტექსტები გვერდზე */
             h1, h2, h3, h4, h5, h6, p, label, .stMarkdown, span,
             [data-testid="stSidebar"] div, [data-testid="stSidebar"] span {
