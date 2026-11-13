@@ -12,12 +12,17 @@ def _load_settings(uid, category):
   
   response = (
       client.table("user_settings")
-      .select(f"id, {target_col}")
+      .select(f"id, {target_col}, item_name")
       .eq("user_id", uid)
       .execute()
   )
   
-  items = [row[target_col] for row in (response.data or []) if row.get(target_col)]
+  # ვკითხულობთ ახალი სვეტებიდან, ხოლო თუ ცარიელია, ძველი item_name-იდან
+  items = []
+  for row in (response.data or []):
+    val = row.get(target_col) or row.get("item_name")
+    if val:
+      items.append(val)
 
   # თუ იუზერს ამ კატეგორიაში ჩანაწერი არ აქვს, ვუწერთ საწყის 3-3 დეფოლტს
   if not items:
@@ -31,6 +36,7 @@ def _load_settings(uid, category):
         client.table("user_settings").insert({
             "category": category,
             target_col: d,
+            "item_name": d,  # ორივეს ვავსებთ, რომ not-null შეცდომა არ ამოვარდეს
             "user_id": uid
         }).execute()
       except Exception:
@@ -56,11 +62,14 @@ def add_setting_item(category, item_name):
     if not uid or not item_name.strip():
       return False
     target_col = "pattern" if category == "pattern" else "trigger"
+    clean_name = item_name.strip()
     
+    # ვწერთ როგორც ახალ სვეტში, ისე ძველ item_name-ში (not-null შეზღუდვის ასაცილებლად)
     get_data_client().table("user_settings").insert(
         {
             "category": category,
-            target_col: item_name.strip(),
+            target_col: clean_name,
+            "item_name": clean_name,
             "user_id": uid
         }
     ).execute()
@@ -94,9 +103,10 @@ def update_setting_item(category, old_name, new_name):
     if not uid or not new_name.strip():
       return False
     target_col = "pattern" if category == "pattern" else "trigger"
+    clean_new = new_name.strip()
     
     get_data_client().table("user_settings").update(
-        {target_col: new_name.strip()}
+        {target_col: clean_new, "item_name": clean_new}
     ).eq("category", category).eq(target_col, old_name).eq("user_id", uid).execute()
     _load_settings.clear()
     return True
