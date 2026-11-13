@@ -14,7 +14,7 @@ begin;
 -- 0. Settings: your e-mail (kept only in the database, not in the repo)
 -- ---------------------------------------------------------------------
 create temporary table _tl_owner (email text) on commit drop;
-insert into _tl_owner values ('CHANGE_ME@example.com');
+insert into _tl_owner values ('eufrazio@yandex.ru');
 
 do $$
 declare v_email text; v_uid uuid;
