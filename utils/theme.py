@@ -42,54 +42,45 @@ def apply_theme_styles(theme_mode):
   if theme_mode == "light":
     css = """
         <style>
-            [data-testid="stAppViewContainer"], .stApp { 
-                background-color: #F8FAFC !important; 
-                color: #0F172A !important; 
-            }
-            [data-testid="stSidebar"] { 
-                background-color: #E2E8F0 !important; 
-            }
+            [data-testid="stAppViewContainer"] { background-color: #f8f9fa; color: #212529; }
+            [data-testid="stSidebar"] { background-color: #e9ecef; }
 
-            /* 1. ყველა ღილაკი და Popover ("+ Add New Trade", Logout, "...") -> თეთრი ტექსტი */
+            /* 1. ღილაკები და პოპოვერები -> თეთრი ტექსტი */
             .stButton button, .stButton button *,
-            [data-testid="stPopover"] button, [data-testid="stPopover"] button *,
-            div[data-baseweb="select"] > div, div[data-baseweb="select"] span {
+            [data-testid="stPopover"] button, [data-testid="stPopover"] button * {
                 color: #FFFFFF !important;
             }
             .stButton button:hover, [data-testid="stPopover"] button:hover {
-                background-color: #1A2333 !important;
-                border-color: #00F0FF !important;
+                background-color: #E2E8F0 !important;
             }
             .stButton button:hover *, [data-testid="stPopover"] button:hover * {
-                color: #00F0FF !important;
+                color: #0A0E17 !important;
             }
 
-            /* 2. ზოგადი ტექსტები (საიდბარი და მთავარი გვერდი) -> მუქი ფერი */
-            h1, h2, h3, h4, h5, h6, p, label, .stMarkdown,
-            [data-testid="stSidebar"] div, [data-testid="stSidebar"] span {
+            /* 2. საიდბარი */
+            [data-testid="stSidebar"] label, 
+            [data-testid="stSidebar"] .stMarkdown p,
+            [data-testid="stSidebar"] span {
                 color: #0F172A !important;
             }
 
-            /* 3. HTML-ში ხელით გაწერილი თეთრი ფერის გადაწერა (AUDUSD, EURJPY და სხვ.) */
-            [data-testid="stMarkdownContainer"] div[style*="color"],
-            [data-testid="stMarkdownContainer"] span[style*="color: #fff"],
-            [data-testid="stMarkdownContainer"] span[style*="color: #FFF"],
-            [data-testid="stMarkdownContainer"] span[style*="color: white"] {
-                color: #0F172A !important;
+            /* 3. მთავარი გვერდი და გარიგებების ბარათები (მათ შორის AUDUSD, EURJPY და ა.შ.) */
+            div[data-testid="stMain"] p,
+            div[data-testid="stMain"] span,
+            div[data-testid="stMain"] strong,
+            div[data-testid="stMain"] div {
+                color: #0F172A;
+            }
+            
+            /* PnL ფერები რომ არ გაფუჭდეს (+25.49$ და -10.51$) */
+            div[data-testid="stMain"] span[style*="color: #4CAF50"],
+            div[data-testid="stMain"] span[style*="color: rgb"],
+            div[data-testid="stMain"] font {
+                /* ვტოვებთ დინამიკურ ფერებს */
             }
         </style>
     """
     st.markdown(css, unsafe_allow_html=True)
-  elif theme_mode in ("dark", "auto"):
-    css = """
-        <style>
-            [data-testid="stAppViewContainer"], .stApp { background-color: #0A0E17 !important; color: #FFFFFF !important; }
-            [data-testid="stSidebar"] { background-color: #121926 !important; }
-            div[data-baseweb="notification"], .stAlert, div.stInfo, div.stSuccess {
-                background-color: #121926 !important;
-                color: #FFFFFF !important;
-                border-color: rgba(0, 240, 255, 0.2) !important;
-            }
-        </style>
-    """
-    st.markdown(css, unsafe_allow_html=True)
+  elif theme_mode == "dark":
+    # მუქი თემის სტილები...
+    pass
