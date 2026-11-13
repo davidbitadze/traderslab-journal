@@ -75,23 +75,44 @@ def apply_theme_styles(theme_mode):
                 color: #0F172A !important;
             }
 
-            /* Streamlit პოპოვერები (მაგ. Add New Trade-ის მენიუ) და ბალანსის ბარათი */
-            [data-testid="stPopoverBody"], div:has(> [data-testid="stMarkdownContainer"] *:contains("Balance")) {
+            /* Streamlit პოპოვერები (Add New Trade მენიუ) - სრულად თეთრი ფონი და მუქი ტექსტები */
+            [data-testid="stPopoverBody"] {
                 background-color: #FFFFFF !important;
                 color: #0F172A !important;
                 border: 1px solid #CBD5E1 !important;
                 box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important;
             }
-            [data-testid="stPopoverBody"] label, [data-testid="stPopoverBody"] p, [data-testid="stPopoverBody"] span,
-            div:has(> [data-testid="stMarkdownContainer"] *:contains("Balance")) * {
+            [data-testid="stPopoverBody"] label, 
+            [data-testid="stPopoverBody"] p, 
+            [data-testid="stPopoverBody"] span, 
+            [data-testid="stPopoverBody"] h1, 
+            [data-testid="stPopoverBody"] h2, 
+            [data-testid="stPopoverBody"] h3,
+            [data-testid="stPopoverBody"] div {
                 color: #0F172A !important;
             }
-
-            /* ინფუთები და ველები */
-            input, textarea, select, [data-baseweb="input"] {
+            [data-testid="stPopoverBody"] input, 
+            [data-testid="stPopoverBody"] textarea, 
+            [data-testid="stPopoverBody"] select {
                 background-color: #F8FAFC !important;
                 color: #0F172A !important;
-                border-color: #CBD5E1 !important;
+                border: 1px solid #CBD5E1 !important;
+            }
+
+            /* ბალანსის ბარათი (ზედა მარჯვენა კუთხეში) - ტექსტი თეთრი */
+            div:has(> [data-testid="stMarkdownContainer"] *:contains("Balance")) {
+                color: #FFFFFF !important;
+            }
+            div:has(> [data-testid="stMarkdownContainer"] *:contains("Balance")) * {
+                color: #FFFFFF !important;
+            }
+
+            /* ინფუთები და ველები დიალოგებში */
+            div[data-testid="stDialog"] input, div[data-testid="stDialog"] textarea, div[data-testid="stDialog"] select,
+            div[data-testid="stModal"] input, div[data-testid="stModal"] textarea, div[data-testid="stModal"] select {
+                background-color: #F8FAFC !important;
+                color: #0F172A !important;
+                border: 1px solid #CBD5E1 !important;
             }
 
             /* ზოგადი ღილაკები ჰოვერ ეფექტით */
