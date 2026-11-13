@@ -38,92 +38,55 @@ def apply_ui_scaling(scale_mode):
 
 
 def apply_theme_styles(theme_mode):
-  """Traders Lab ბრენდული ფერების ინექცია თემების მიხედვით."""
-  if theme_mode in ("dark", "auto"):
+  """თემის CSS სტილების ინექცია."""
+  if theme_mode == "light":
     css = """
         <style>
-            [data-testid="stAppViewContainer"], .stApp {
-                background-color: #0A0E17 !important;
-                color: #FFFFFF !important;
+            [data-testid="stAppViewContainer"] { background-color: #f8f9fa; color: #212529; }
+            [data-testid="stSidebar"] { background-color: #e9ecef; }
+
+            /* --- მონიშნული ღილაკები, სელექტორები და მენეჯმენტ ელემენტები Light რეჟიმში --- */
+            
+            /* 1. ყველა სტანდარტული ღილაკი და Action ღილაკები (მაგ: Add New Trade, Logout) */
+            .stButton button, button[kind="secondary"] {
+                background-color: #121926 !important; /* <--- აქ შეგიძლია შეცვალო ფონი */
+                color: #FFFFFF !important;             /* <--- აქ შეგიძლია შეცვალო ტექსტის ფერი (#FFFFFF) */
+                border: 1px solid #00F0FF !important;
             }
-            [data-testid="stSidebar"] {
-                background-color: #121926 !important;
-                border-right: 1px solid rgba(0, 240, 255, 0.12) !important;
-            }
-            div[data-testid="stVerticalBlockBorderWrapper"],
-            div[data-testid="stExpander"],
-            div.stForm,
-            div[data-testid="stDialog"] > div {
-                background-color: #121926 !important;
-                border: 1px solid rgba(0, 240, 255, 0.18) !important;
-                border-radius: 10px !important;
-            }
-            h1, h2, h3, h4, h5, h6, p, label, .stMarkdown, [data-testid="stMetricValue"] {
-                color: #FFFFFF !important;
-            }
-            .stCaption, [data-testid="stMetricLabel"] {
-                color: #94A3B8 !important;
-            }
-            .stButton button, div[data-baseweb="select"] > div {
+            .stButton button:hover {
                 background-color: #1A2333 !important;
-                color: #FFFFFF !important;
-                border: 1px solid rgba(0, 240, 255, 0.25) !important;
+                color: #00F0FF !important;
             }
-            .stButton button:hover, div[data-baseweb="select"] > div:hover {
-                background-color: #222E44 !important;
+
+            /* 2. სელექტორები (Language, Theme, Navigation მენიუები სადღაც მარცხნივ/მარჯვნივ) */
+            div[data-baseweb="select"] > div {
+                background-color: #121926 !important; /* <--- სელექტორის ფონი */
+                color: #FFFFFF !important;             /* <--- სელექტორის ტექსტის ფერი */
                 border-color: #00F0FF !important;
             }
-            .stButton button[kind="primary"] {
-                background-color: #00F0FF !important;
-                color: #0A0E17 !important;
-                border: none !important;
-                font-weight: 700 !important;
+            div[data-baseweb="select"] span {
+                color: #FFFFFF !important;
+            }
+
+            /* 3. მარჯვენა სამწერტილიანი მენიუს ღილაკები და ბალანსის ბეჯი */
+            [data-testid="stMetric"], .stMetric {
+                background-color: #121926 !important;
+                color: #FFFFFF !important;
+                padding: 6px 12px;
+                border-radius: 6px;
             }
         </style>
     """
     st.markdown(css, unsafe_allow_html=True)
-  else:
-    # Light რეჟიმი, სადაც ღილაკები და სელექტორები იღებენ ზუსტად იმ მუქ სტილს (როგორც ჰოვერზეა)
+  elif theme_mode == "dark":
     css = """
         <style>
-            [data-testid="stAppViewContainer"], .stApp {
-                background-color: #F8FAFC !important;
-                color: #0F172A !important;
-            }
-            [data-testid="stSidebar"] {
-                background-color: #E2E8F0 !important;
-                border-right: 1px solid #CBD5E1 !important;
-            }
-            div[data-testid="stVerticalBlockBorderWrapper"],
-            div[data-testid="stExpander"],
-            div.stForm {
-                background-color: #FFFFFF !important;
-                border: 1px solid #CBD5E1 !important;
-                border-radius: 10px !important;
-            }
-            h1, h2, h3, h4, h5, h6, p, label, span, .stMarkdown, [data-testid="stMetricValue"] {
-                color: #0F172A !important;
-            }
-            .stCaption, [data-testid="stMetricLabel"] {
-                color: #64748B !important;
-            }
-            /* ყველა ღილაკი და სელექტორი იღებს მუქ სტილს თეთრი ტექსტით */
-            .stButton button, div[data-baseweb="select"] > div {
-                background-color: #121926 !important;
-                color: #FFFFFF !important;
-                border: 1px solid #00F0FF !important;
-                border-radius: 6px !important;
-            }
-            .stButton button:hover, div[data-baseweb="select"] > div:hover {
-                background-color: #1A2333 !important;
-                border-color: #00F0FF !important;
-                color: #00F0FF !important;
-            }
-            .stButton button[kind="primary"] {
-                background-color: #00F0FF !important;
-                color: #0A0E17 !important;
-                border: none !important;
-                font-weight: 700 !important;
+            [data-testid="stAppViewContainer"] { background-color: #0e1117; color: #fafafa; }
+            [data-testid="stSidebar"] { background-color: #1a1c23; color: #fafafa; }
+            div[data-baseweb="notification"], .stAlert, div.stInfo, div.stSuccess {
+                background-color: #1a1c23 !important;
+                color: #fafafa !important;
+                border-color: #333333 !important;
             }
         </style>
     """
