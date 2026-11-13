@@ -42,6 +42,7 @@ def apply_theme_styles(theme_mode):
   if theme_mode == "light":
     css = """
         <style>
+            /* მთავარი ფონი და ტექსტი */
             [data-testid="stAppViewContainer"], .stApp { 
                 background-color: #F8FAFC !important; 
                 color: #0F172A !important; 
@@ -51,47 +52,48 @@ def apply_theme_styles(theme_mode):
                 border-right: 1px solid #CBD5E1 !important;
             }
 
-            /* Streamlit მოდალური ფანჯრები და დიალოგები ღია თემაზე */
-            div[data-testid="stModal"], div[aria-modal="true"] {
-                background-color: rgba(15, 23, 42, 0.2) !important;
+            /* Streamlit მოდალური ფანჯრები და დიალოგები (ახალი და ძველი სელექტორები) */
+            div[data-testid="stDialog"], div[data-testid="stModal"], div[aria-modal="true"] {
+                background-color: rgba(15, 23, 42, 0.25) !important;
             }
-            div[data-testid="stModal"] > div, div[aria-modal="true"] > div {
+            div[data-testid="stDialog"] > div, div[data-testid="stModal"] > div, div[aria-modal="true"] > div {
                 background-color: #FFFFFF !important;
                 color: #0F172A !important;
             }
             
             /* მოდალის შიგნით არსებული კონტეინერები და ბარათები */
-            div[data-testid="stModal"] [data-testid="stVerticalBlock"] > div,
-            div[data-testid="stModal"] [data-testid="stContainer"] {
-                background-color: #FFFFFF !important;
-                color: #0F172A !important;
+            div[data-testid="stDialog"] *, div[data-testid="stModal"] * {
+                color: #0F172A;
             }
-
-            div[data-testid="stModal"] h1, 
-            div[data-testid="stModal"] h2, 
-            div[data-testid="stModal"] h3, 
-            div[data-testid="stModal"] h4,
-            div[data-testid="stModal"] p, 
-            div[data-testid="stModal"] label,
-            div[data-testid="stModal"] span {
-                color: #0F172A !important;
-            }
-            
-            div[data-testid="stModal"] input, 
-            div[data-testid="stModal"] textarea,
-            div[data-testid="stModal"] select {
+            div[data-testid="stDialog"] input, div[data-testid="stDialog"] textarea, div[data-testid="stDialog"] select,
+            div[data-testid="stModal"] input, div[data-testid="stModal"] textarea, div[data-testid="stModal"] select {
                 background-color: #F8FAFC !important;
                 color: #0F172A !important;
-                border-color: #CBD5E1 !important;
+                border: 1px solid #CBD5E1 !important;
             }
 
-            /* ზოგადი სათაურები და მთავარი ტექსტები */
-            h1, h2, h3, h4, h5, h6, p, label, .stMarkdown,
+            /* ზოგადი ღილაკები ღია თემაზე (რომ აღარ იყოს შავი) */
+            .stButton button, button[kind="secondary"], button[kind="primary"] {
+                background-color: #FFFFFF !important;
+                color: #0F172A !important;
+                border: 1px solid #CBD5E1 !important;
+            }
+            .stButton button:hover {
+                background-color: #F1F5F9 !important;
+                border-color: #94A3B8 !important;
+            }
+            /* ძირითადი/Primary ღილაკები */
+            .stButton button[kind="primary"], button[data-baseweb="button"] {
+                color: #0F172A !important;
+            }
+
+            /* სათაურები და ტექსტები */
+            h1, h2, h3, h4, h5, h6, p, label, .stMarkdown, span,
             [data-testid="stSidebar"] div, [data-testid="stSidebar"] span {
                 color: #0F172A !important;
             }
 
-            /* გარიგებების ბარათების ტექსტები თემიდან */
+            /* გარიგებების ბარათების ტექსტები */
             .trade-main-text {
                 color: #0F172A !important;
             }
@@ -114,7 +116,7 @@ def apply_theme_styles(theme_mode):
             }
 
             /* Streamlit მოდალური ფანჯრები მუქ თემაზე */
-            div[data-testid="stModal"] > div, div[aria-modal="true"] > div {
+            div[data-testid="stDialog"] > div, div[data-testid="stModal"] > div, div[aria-modal="true"] > div {
                 background-color: #0E1117 !important;
                 color: #FFFFFF !important;
             }
