@@ -52,7 +52,7 @@ def apply_theme_styles(theme_mode):
                 border-right: 1px solid #CBD5E1 !important;
             }
 
-            /* Streamlit მოდალური ფანჯრები და დიალოგები ღია თემაზე - სრულად თეთრი ფონი */
+            /* Streamlit მოდალური ფანჯრები და დიალოგები (სრულად თეთრი ფონი) */
             div[data-testid="stDialog"], div[data-testid="stModal"], div[aria-modal="true"] {
                 background-color: rgba(15, 23, 42, 0.25) !important;
             }
@@ -61,16 +61,12 @@ def apply_theme_styles(theme_mode):
                 color: #0F172A !important;
             }
             
-            /* მოდალის შიგნით არსებული ყველა კონტეინერი, ბარათი და ელემენტი იყოს თეთრი ფონის */
+            /* მოდალის შიგნით არსებული კონტეინერები და ტექსტები */
             div[data-testid="stDialog"] [data-testid="stVerticalBlock"] > div,
-            div[data-testid="stDialog"] [data-testid="stContainer"],
-            div[data-testid="stModal"] [data-testid="stVerticalBlock"] > div,
-            div[data-testid="stModal"] [data-testid="stContainer"] {
+            div[data-testid="stModal"] [data-testid="stVerticalBlock"] > div {
                 background-color: #FFFFFF !important;
                 color: #0F172A !important;
             }
-
-            /* მოდალის შიგნით არსებული ყველა ლეიბლი, ტექსტი და სათაური - მუქი ფერის */
             div[data-testid="stDialog"] label, div[data-testid="stModal"] label,
             div[data-testid="stDialog"] p, div[data-testid="stModal"] p,
             div[data-testid="stDialog"] span, div[data-testid="stModal"] span,
@@ -78,13 +74,24 @@ def apply_theme_styles(theme_mode):
             div[data-testid="stModal"] h1, div[data-testid="stModal"] h2, div[data-testid="stModal"] h3 {
                 color: #0F172A !important;
             }
-            
-            /* ინფუთები და ველები მოდალში */
-            div[data-testid="stDialog"] input, div[data-testid="stDialog"] textarea, div[data-testid="stDialog"] select,
-            div[data-testid="stModal"] input, div[data-testid="stModal"] textarea, div[data-testid="stModal"] select {
-                background-color: #F8FAFC !important;
+
+            /* Streamlit პოპოვერები (მაგ. Add New Trade-ის მენიუ) და ბალანსის ბარათი */
+            [data-testid="stPopoverBody"], div:has(> [data-testid="stMarkdownContainer"] *:contains("Balance")) {
+                background-color: #FFFFFF !important;
                 color: #0F172A !important;
                 border: 1px solid #CBD5E1 !important;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important;
+            }
+            [data-testid="stPopoverBody"] label, [data-testid="stPopoverBody"] p, [data-testid="stPopoverBody"] span,
+            div:has(> [data-testid="stMarkdownContainer"] *:contains("Balance")) * {
+                color: #0F172A !important;
+            }
+
+            /* ინფუთები და ველები */
+            input, textarea, select, [data-baseweb="input"] {
+                background-color: #F8FAFC !important;
+                color: #0F172A !important;
+                border-color: #CBD5E1 !important;
             }
 
             /* ზოგადი ღილაკები ჰოვერ ეფექტით */
