@@ -45,18 +45,16 @@ def apply_theme_styles(theme_mode):
             [data-testid="stAppViewContainer"] { background-color: #f8f9fa; color: #212529; }
             [data-testid="stSidebar"] { background-color: #e9ecef; }
 
-            /* --- მკაცრად მხოლოდ ღილაკების და სელექტორების კონტროლი --- */
+            /* --- მკაცრად მხოლოდ სექციის ღილაკები და სელექტორები --- */
             
-            /* 1. ნაგულისხმევ მდგომარეობაში: მუქი ფონი და სუფთა თეთრი ფონტი (#FFFFFF) */
-            .stButton button, button[kind="secondary"], div[data-baseweb="select"] > div {
-                color: #FFFFFF !important;
-            }
-            .stButton button span, div[data-baseweb="select"] span {
+            /* 1. ნაგულისხმევ მდგომარეობაში: ღილაკის ტექსტი არის თეთრი (#FFFFFF) */
+            .stButton button, .stButton button p, .stButton button span, 
+            div[data-baseweb="select"] > div, div[data-baseweb="select"] span {
                 color: #FFFFFF !important;
             }
 
-            /* 2. ჰოვერის დროს (მაუსის მიტანისას): ფონტი ხდება მუქი (#0A0E17), ბეგრაუნდი კი ღია */
-            .stButton button:hover, .stButton button:hover span, 
+            /* 2. ჰოვერის დროს (მაუსის გადატარებისას): ბეგრაუნდი ხდება ღია, ხოლო ტექსტი მუქი (#0A0E17) */
+            .stButton button:hover, .stButton button:hover p, .stButton button:hover span,
             div[data-baseweb="select"] > div:hover, div[data-baseweb="select"] > div:hover span {
                 color: #0A0E17 !important;
             }
