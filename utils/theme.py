@@ -83,7 +83,7 @@ def apply_theme_styles(theme_mode):
     """
     st.markdown(css, unsafe_allow_html=True)
   else:
-    # Light რეჟიმი სრულყოფილი ჰარმონიზაციით
+    # Light რეჟიმი: იდეალური ბალანსი თეთრ ღილაკებსა და მუქ გარიგებებს შორის
     css = """
         <style>
             [data-testid="stAppViewContainer"], .stApp {
@@ -107,27 +107,24 @@ def apply_theme_styles(theme_mode):
             .stCaption, [data-testid="stMetricLabel"] {
                 color: #64748B !important;
             }
-            /* ყველა ღილაკი და სელექტორი იღებს მუქ სტილს თეთრი ტექსტით */
-            .stButton button, div[data-baseweb="select"] > div {
-                background-color: #121926 !important;
+
+            /* --- 1. ღილაკების და სელექტორების ტექსტი მკაცრად თეთრი --- */
+            .stButton button, .stButton button *, 
+            div[data-baseweb="select"] > div, div[data-baseweb="select"] span {
                 color: #FFFFFF !important;
-                border: 1px solid #00F0FF !important;
-                border-radius: 6px !important;
             }
-            .stButton button:hover, div[data-baseweb="select"] > div:hover {
+            .stButton button:hover {
                 background-color: #1A2333 !important;
                 border-color: #00F0FF !important;
+            }
+            .stButton button:hover * {
                 color: #00F0FF !important;
             }
-            .stButton button[kind="primary"] {
-                background-color: #00F0FF !important;
-                color: #0A0E17 !important;
-                border: none !important;
-                font-weight: 700 !important;
-            }
-            /* მთავარი გვერდის გარიგებების წყვილების სათაურების მკაფიო მუქი ფერი */
+
+            /* --- 2. გარიგებების წყვილების სათაურები მთავარ გვერდზე: მუქი ფერი (#0F172A) --- */
             div[data-testid="stMain"] div[data-testid="stMarkdownContainer"] p strong,
-            div[data-testid="stMain"] div[data-testid="stMarkdownContainer"] h3 {
+            div[data-testid="stMain"] div[data-testid="stMarkdownContainer"] h3,
+            div[data-testid="stMain"] .element-container p strong {
                 color: #0F172A !important;
             }
         </style>
