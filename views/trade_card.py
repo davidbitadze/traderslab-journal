@@ -123,7 +123,6 @@ div[data-testid="element-container"]:has(> [data-testid="stHorizontalBlock"] .tr
 .trade-main-text {
     font-size: __FONT_MAIN__;
     font-weight: 600;
-    color: #ffffff;
     display: flex;
     align-items: center;
     gap: 6px;
