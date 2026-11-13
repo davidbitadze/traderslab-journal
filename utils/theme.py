@@ -166,6 +166,35 @@ def apply_theme_styles(theme_mode):
             }
             [data-testid="stAlert"] * { color: #0F172A !important; }
 
+
+            /* ფორმის ღილაკები (გაუქმება, დამატება...) - st.form_submit_button .stButton კლასს არ ატარებს */
+            [data-testid="stFormSubmitButton"] button, [data-testid="stBaseButton-secondaryFormSubmit"],
+            [data-testid="stBaseButton-secondary"] {
+                background-color: #1E293B !important;
+                border: 1px solid #334155 !important;
+            }
+            [data-testid="stFormSubmitButton"] button *, [data-testid="stBaseButton-secondaryFormSubmit"] *,
+            [data-testid="stBaseButton-secondary"] *, [data-testid="stBaseButton-primary"] *,
+            [data-testid="stBaseButton-primaryFormSubmit"] * {
+                color: #FFFFFF !important;
+            }
+
+            /* ფაილის ასატვირთი (სკრინშოტი): ღია ფონი და მუქი ტექსტი */
+            [data-testid="stFileUploaderDropzone"] {
+                background-color: #F1F5F9 !important;
+                border: 1px dashed #94A3B8 !important;
+            }
+            [data-testid="stFileUploaderDropzone"] span, [data-testid="stFileUploaderDropzone"] small,
+            [data-testid="stFileUploaderDropzone"] div, [data-testid="stFileUploaderDropzoneInstructions"] * {
+                color: #475569 !important;
+            }
+            [data-testid="stFileUploaderDropzone"] button {
+                background-color: #FFFFFF !important;
+                border: 1px solid #CBD5E1 !important;
+            }
+            [data-testid="stFileUploaderDropzone"] button * { color: #0F172A !important; }
+            [data-testid="stFileUploaderFile"] * { color: #0F172A !important; }
+
             /* ზოგადი სათაურები და ტექსტები გვერდზე */
             h1, h2, h3, h4, h5, h6, p, label, .stMarkdown, span,
             [data-testid="stSidebar"] div, [data-testid="stSidebar"] span {
