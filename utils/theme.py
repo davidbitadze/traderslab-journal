@@ -45,35 +45,42 @@ def apply_theme_styles(theme_mode):
             [data-testid="stAppViewContainer"] { background-color: #f8f9fa; color: #212529; }
             [data-testid="stSidebar"] { background-color: #e9ecef; }
 
-            /* --- მონიშნული ღილაკები, სელექტორები და მენეჯმენტ ელემენტები Light რეჟიმში --- */
+            /* --- ღილაკები და სელექტორები ჰოვერის ეფექტით --- */
             
-            /* 1. ყველა სტანდარტული ღილაკი და Action ღილაკები (მაგ: Add New Trade, Logout) */
             .stButton button, button[kind="secondary"] {
-                background-color: #121926 !important; /* <--- აქ შეგიძლია შეცვალო ფონი */
-                color: #FFFFFF !important;             /* <--- აქ შეგიძლია შეცვალო ტექსტის ფერი (#FFFFFF) */
-                border: 1px solid #00F0FF !important;
+                background-color: #121926 !important;
+                color: #FFFFFF !important;
+                border: 1px solid rgba(0, 240, 255, 0.3) !important;
+                transition: all 0.2s ease-in-out !important;
             }
             .stButton button:hover {
-                background-color: #1A2333 !important;
-                color: #00F0FF !important;
+                background-color: #1A2333 !important; /* ჰოვერისას ხდება ოდნავ ღია/მუქი */
+                color: #00F0FF !important;           /* ტექსტი იცვლის ფერს ბრენდულ ცისფრად */
+                border-color: #00F0FF !important;    /* კიდეები ინთება ცისფრად */
             }
 
-            /* 2. სელექტორები (Language, Theme, Navigation მენიუები სადღაც მარცხნივ/მარჯვნივ) */
+            /* სელექტორების ჰოვერი */
             div[data-baseweb="select"] > div {
-                background-color: #121926 !important; /* <--- სელექტორის ფონი */
-                color: #FFFFFF !important;             /* <--- სელექტორის ტექსტის ფერი */
+                background-color: #121926 !important;
+                color: #FFFFFF !important;
+                border-color: rgba(0, 240, 255, 0.3) !important;
+                transition: all 0.2s ease-in-out !important;
+            }
+            div[data-baseweb="select"] > div:hover {
+                background-color: #1A2333 !important;
                 border-color: #00F0FF !important;
             }
             div[data-baseweb="select"] span {
                 color: #FFFFFF !important;
             }
 
-            /* 3. მარჯვენა სამწერტილიანი მენიუს ღილაკები და ბალანსის ბეჯი */
+            /* ბალანსის ბეჯი და მეტრიკები */
             [data-testid="stMetric"], .stMetric {
                 background-color: #121926 !important;
                 color: #FFFFFF !important;
                 padding: 6px 12px;
                 border-radius: 6px;
+                border: 1px solid rgba(0, 240, 255, 0.2);
             }
         </style>
     """
