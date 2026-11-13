@@ -38,58 +38,57 @@ def apply_ui_scaling(scale_mode):
 
 
 def apply_theme_styles(theme_mode):
-  """თემის CSS სტილების ინექცია მრავალფეროვანი ტესტით."""
+  """თემის CSS სტილების ინექცია."""
   if theme_mode == "light":
     css = """
         <style>
-            [data-testid="stAppViewContainer"] { background-color: #f8f9fa; color: #212529; }
-            [data-testid="stSidebar"] { background-color: #e9ecef; }
+            [data-testid="stAppViewContainer"], .stApp { 
+                background-color: #F8FAFC !important; 
+                color: #0F172A !important; 
+            }
+            [data-testid="stSidebar"] { 
+                background-color: #E2E8F0 !important; 
+            }
 
-            /* --- 1. ღილაკი იდეალურად თეთრია --- */
-            .stButton > button p, 
-            .stButton > button span, 
-            .stButton > button div {
+            /* 1. ყველა ღილაკი და Popover ("+ Add New Trade", Logout, "...") -> თეთრი ტექსტი */
+            .stButton button, .stButton button *,
+            [data-testid="stPopover"] button, [data-testid="stPopover"] button *,
+            div[data-baseweb="select"] > div, div[data-baseweb="select"] span {
                 color: #FFFFFF !important;
             }
-            .stButton > button:hover {
-                background-color: #E2E8F0 !important;
+            .stButton button:hover, [data-testid="stPopover"] button:hover {
+                background-color: #1A2333 !important;
+                border-color: #00F0FF !important;
             }
-            .stButton > button:hover * {
-                color: #0A0E17 !important;
-            }
-
-            /* --- ტესტ 1: პარაგრაფები მთავარ კონტენტში (მწვანე #008000) --- */
-            div[data-testid="stMain"] p {
-                color: #008000 !important;
+            .stButton button:hover *, [data-testid="stPopover"] button:hover * {
+                color: #00F0FF !important;
             }
 
-            /* --- ტესტ 2: სათაურები/სტრონგები (წითელი #FF0000) --- */
-            div[data-testid="stMain"] strong,
-            div[data-testid="stMain"] b {
-                color: #FF0000 !important;
+            /* 2. ზოგადი ტექსტები (საიდბარი და მთავარი გვერდი) -> მუქი ფერი */
+            h1, h2, h3, h4, h5, h6, p, label, .stMarkdown,
+            [data-testid="stSidebar"] div, [data-testid="stSidebar"] span {
+                color: #0F172A !important;
             }
 
-            /* --- ტესტ 3: სპანები და ტექსტის ბლოკები (ლურჯი #0000FF) --- */
-            div[data-testid="stMain"] span {
-                color: #0000FF !important;
-            }
-
-            /* --- ტესტ 4: ქოლუმნების შიგთავსი (ნარინჯისფერი #FF8C00) --- */
-            div[data-testid="column"] * {
-                color: #FF8C00 !important;
+            /* 3. HTML-ში ხელით გაწერილი თეთრი ფერის გადაწერა (AUDUSD, EURJPY და სხვ.) */
+            [data-testid="stMarkdownContainer"] div[style*="color"],
+            [data-testid="stMarkdownContainer"] span[style*="color: #fff"],
+            [data-testid="stMarkdownContainer"] span[style*="color: #FFF"],
+            [data-testid="stMarkdownContainer"] span[style*="color: white"] {
+                color: #0F172A !important;
             }
         </style>
     """
     st.markdown(css, unsafe_allow_html=True)
-  elif theme_mode == "dark":
+  elif theme_mode in ("dark", "auto"):
     css = """
         <style>
-            [data-testid="stAppViewContainer"] { background-color: #0e1117; color: #fafafa; }
-            [data-testid="stSidebar"] { background-color: #1a1c23; color: #fafafa; }
+            [data-testid="stAppViewContainer"], .stApp { background-color: #0A0E17 !important; color: #FFFFFF !important; }
+            [data-testid="stSidebar"] { background-color: #121926 !important; }
             div[data-baseweb="notification"], .stAlert, div.stInfo, div.stSuccess {
-                background-color: #1a1c23 !important;
-                color: #fafafa !important;
-                border-color: #333333 !important;
+                background-color: #121926 !important;
+                color: #FFFFFF !important;
+                border-color: rgba(0, 240, 255, 0.2) !important;
             }
         </style>
     """
