@@ -52,29 +52,35 @@ def apply_theme_styles(theme_mode):
                 border-right: 1px solid #CBD5E1 !important;
             }
 
-            /* Streamlit მოდალური ფანჯრები და დიალოგები ღია თემაზე - სრულად თეთრი ფონი */
+            /* Streamlit მოდალური ფანჯრები და დიალოგები (მუქი ფონი -> თეთრი ტექსტები) */
             div[data-testid="stDialog"], div[data-testid="stModal"], div[aria-modal="true"] {
-                background-color: rgba(15, 23, 42, 0.25) !important;
+                background-color: rgba(15, 23, 42, 0.4) !important;
             }
             div[data-testid="stDialog"] > div, div[data-testid="stModal"] > div, div[aria-modal="true"] > div {
-                background-color: #FFFFFF !important;
-                color: #0F172A !important;
+                background-color: #1E293B !important;
+                color: #FFFFFF !important;
             }
             
-            /* მოდალის შიგნით არსებული ყველა ლეიბლი და ტექსტი - მუქი ფერის, რომ იდეალურად ჩანდეს თეთრ ფონზე */
+            /* მოდალის შიგნით არსებული ყველა ლეიბლი, სათაური და ტექსტი იყოს თეთრი */
             div[data-testid="stDialog"] label, div[data-testid="stModal"] label,
             div[data-testid="stDialog"] p, div[data-testid="stModal"] p,
             div[data-testid="stDialog"] span, div[data-testid="stModal"] span,
-            div[data-testid="stDialog"] h1, div[data-testid="stDialog"] h2, div[data-testid="stDialog"] h3 {
-                color: #0F172A !important;
+            div[data-testid="stDialog"] h1, div[data-testid="stDialog"] h2, div[data-testid="stDialog"] h3,
+            div[data-testid="stModal"] h1, div[data-testid="stModal"] h2, div[data-testid="stModal"] h3 {
+                color: #FFFFFF !important;
             }
             
             /* ინფუთები და ველები მოდალში */
             div[data-testid="stDialog"] input, div[data-testid="stDialog"] textarea, div[data-testid="stDialog"] select,
             div[data-testid="stModal"] input, div[data-testid="stModal"] textarea, div[data-testid="stModal"] select {
-                background-color: #F8FAFC !important;
-                color: #0F172A !important;
-                border: 1px solid #CBD5E1 !important;
+                background-color: #0F172A !important;
+                color: #FFFFFF !important;
+                border: 1px solid #334155 !important;
+            }
+
+            /* ბალანსის ბარათი (ზედა მარჯვენა კუთხეში) - მუქი ფონი და თეთრი ტექსტი */
+            div:has(> [data-testid="stMarkdownContainer"] *:contains("Balance")) {
+                color: #FFFFFF !important;
             }
 
             /* ზოგადი ღილაკები ჰოვერ ეფექტით */
@@ -93,8 +99,8 @@ def apply_theme_styles(theme_mode):
                 color: #FFFFFF !important;
             }
 
-            /* ზოგადი სათაურები და ტექსტები გვერდზე */
-            h1, h2, h3, h4, h5, h6, p, label, .stMarkdown, span,
+            /* ზოგადი სათაურები და ტექსტები ძირითად გვერდზე (სადაც ფონი ღიაა) */
+            h1, h2, h3, h4, h5, h6, p:not(div[data-testid="stDialog"] p), label:not(div[data-testid="stDialog"] label), .stMarkdown, span:not(div[data-testid="stDialog"] span),
             [data-testid="stSidebar"] div, [data-testid="stSidebar"] span {
                 color: #0F172A !important;
             }
