@@ -52,7 +52,7 @@ def apply_theme_styles(theme_mode):
                 border-right: 1px solid #CBD5E1 !important;
             }
 
-            /* Streamlit მოდალური ფანჯრები და დიალოგები (ახალი და ძველი სელექტორები) */
+            /* Streamlit მოდალური ფანჯრები და დიალოგები */
             div[data-testid="stDialog"], div[data-testid="stModal"], div[aria-modal="true"] {
                 background-color: rgba(15, 23, 42, 0.25) !important;
             }
@@ -61,7 +61,7 @@ def apply_theme_styles(theme_mode):
                 color: #0F172A !important;
             }
             
-            /* მოდალის შიგნით არსებული კონტეინერები და ბარათები */
+            /* მოდალის შიგნით არსებული კონტეინერები და ფორმები */
             div[data-testid="stDialog"] *, div[data-testid="stModal"] * {
                 color: #0F172A;
             }
@@ -72,22 +72,24 @@ def apply_theme_styles(theme_mode):
                 border: 1px solid #CBD5E1 !important;
             }
 
-            /* ზოგადი ღილაკები ღია თემაზე (რომ აღარ იყოს შავი) */
+            /* მთავარი და მართვის ღილაკები: შავი ფონი, თეთრი ტექსტი და ჰოვერი (როგორც ადრე იყო) */
             .stButton button, button[kind="secondary"], button[kind="primary"] {
-                background-color: #FFFFFF !important;
-                color: #0F172A !important;
-                border: 1px solid #CBD5E1 !important;
+                background-color: #1E293B !important;
+                color: #FFFFFF !important;
+                border: 1px solid #334155 !important;
+                transition: all 0.2s ease-in-out;
             }
-            .stButton button:hover {
-                background-color: #F1F5F9 !important;
-                border-color: #94A3B8 !important;
+            .stButton button:hover, button[kind="secondary"]:hover, button[kind="primary"]:hover {
+                background-color: #0F172A !important;
+                border-color: #475569 !important;
+                color: #FFFFFF !important;
             }
-            /* ძირითადი/Primary ღილაკები */
-            .stButton button[kind="primary"], button[data-baseweb="button"] {
-                color: #0F172A !important;
+            /* ღილაკების შიგნით არსებული ტექსტები ან იკონები */
+            .stButton button *, button[kind="secondary"] *, button[kind="primary"] * {
+                color: #FFFFFF !important;
             }
 
-            /* სათაურები და ტექსტები */
+            /* სათაურები და ზოგადი ტექსტები */
             h1, h2, h3, h4, h5, h6, p, label, .stMarkdown, span,
             [data-testid="stSidebar"] div, [data-testid="stSidebar"] span {
                 color: #0F172A !important;
