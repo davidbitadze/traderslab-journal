@@ -28,19 +28,26 @@ div[data-testid="element-container"]:has(> [data-testid="stHorizontalBlock"] .tr
     margin: 0px !important;
     width: 100% !important;
 }
+[data-testid="stHorizontalBlock"]:has(.trade-row-marker) {
+    flex-wrap: nowrap !important;
+}
+[data-testid="stHorizontalBlock"]:has(.trade-row-marker) > div:first-child {
+    flex: 0 0 auto !important;
+    width: auto !important;
+    min-width: 0 !important;
+}
+[data-testid="stHorizontalBlock"]:has(.trade-row-marker) > div:nth-child(2) {
+    flex: 1 1 0 !important;
+    width: auto !important;
+    min-width: 0 !important;
+}
 [data-testid="stHorizontalBlock"]:has(.trade-row-marker) > div:last-child {
     display: flex !important;
     justify-content: flex-end !important;
     margin-left: auto !important;
-    overflow: visible !important;
-    flex-direction: column !important;
-    align-items: flex-end !important;
-    padding-right: 10px !important;
-}
-[data-testid="stHorizontalBlock"]:has(.trade-row-marker) > div:last-child button {
-    min-width: 56px !important;
-    flex-shrink: 0 !important;
-    white-space: nowrap !important;
+    flex: 0 0 auto !important;
+    width: auto !important;
+    min-width: 0 !important;
 }
 .trade-thumb-img {
     width: __SIZE__ !important;
