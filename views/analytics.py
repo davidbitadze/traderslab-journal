@@ -1,5 +1,7 @@
 from database import fetch_trades
+from utils.dates import parse_trade_datetime
 from utils.formulas import calculate_stats
+from utils.trades import compute_pnl_map, split_trades
 import pandas as pd
 import streamlit as st
 
@@ -33,23 +35,14 @@ def _clean_label(value):
 
 def _collect_trades(df):
   """ამზადებს დასრულებული გარიგებების ცხრილს (თითო რიგი = ერთი გარიგება).
-  P&L-ის ჯამები ერთი groupby-თი ითვლება (ნაცვლად ყოველი გარიგებისთვის მთელი ცხრილის გაფილტვრისა)."""
-  main_trades = df[
-      df["ActionType"].astype(str).str.contains("Start Row", case=False, na=False)
-  ]
+
+  Net P/L აქ ზუსტად ისე ითვლება, როგორც ჟურნალში (utils/trades.py), ბაზაში შენახულ
+  შესაძლოდ მოძველებულ მნიშვნელობას არ ვეყრდნობით, ამიტომ ორი გვერდის ციფრები ერთმანეთს
+  ყოველთვის ემთხვევა."""
+  main_trades, subs_map = split_trades(df)
   if main_trades.empty:
-    main_trades = df.drop_duplicates(subset=["Parent Trade ID"])
-
-  if "Net P/L" in df.columns:
-    pnl_values = pd.to_numeric(df["Net P/L"], errors="coerce").fillna(0.0)
-  else:
-    pnl_values = pd.Series(0.0, index=df.index)
-
-  # გარიგების ჯამი = ყველა რიგი, სადაც Parent Trade ID == id, პლუს რიგი, სადაც Trade ID == id
-  # (თუ ის Parent-ით სხვაა; ორმაგად არ ითვლება)
-  by_parent = pnl_values.groupby(df["Parent Trade ID"]).sum()
-  own_only = pnl_values.where(df["Parent Trade ID"] != df["Trade ID"], 0.0)
-  by_own = own_only.groupby(df["Trade ID"]).sum()
+    return pd.DataFrame()
+  pnl_map = compute_pnl_map(main_trades, subs_map)
 
   rows = []
   for _, trade in main_trades.iterrows():
@@ -58,25 +51,24 @@ def _collect_trades(df):
     if not _is_true(trade.get("Finalized", False)):
       continue
 
-    total_pnl = float(by_parent.get(trade_id, 0.0)) + float(by_own.get(trade_id, 0.0))
-
     pattern = trade.get("Pattern")
     if pattern is None or pd.isna(pattern) or not str(pattern).strip():
       pattern = trade.get("Formation")
 
     rows.append({
         "Trade ID": trade_id,
-        "Date": pd.to_datetime(trade.get("Entry Date"), errors="coerce"),
+        "Date": parse_trade_datetime(trade.get("Entry Date")),
         "Pair": _clean_label(trade.get("Pair")),
         "Side": _clean_label(trade.get("Side")),
         "Pattern": _clean_label(pattern),
         "Trigger": _clean_label(trade.get("Trigger")),
-        "PnL": total_pnl,
+        "PnL": float(pnl_map.get(trade_id, 0.0)),
     })
 
   out = pd.DataFrame(rows)
   if out.empty:
     return out
+  out["Date"] = pd.to_datetime(out["Date"])
   out = out.sort_values("Date", na_position="first").reset_index(drop=True)
   return out
 

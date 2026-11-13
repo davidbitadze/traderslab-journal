@@ -13,11 +13,18 @@ from database import (
     delete_screenshot,
     thumb_url,
 )
-from utils.ai_mentor import generate_trade_analysis
+from utils.ai_mentor import ai_status, calculate_cost, generate_trade_analysis
 from utils.credits import (
+    charge_credits,
     check_has_enough_credits,
-    deduct_credits,
     get_user_credits_cached,
+    refund_charge,
+)
+from utils.dates import (
+    format_db_datetime,
+    format_display_datetime,
+    parse_date_series,
+    parse_trade_datetime,
 )
 from utils.formulas import calculate_net_pnl, pnl_breakdown, to_float
 
@@ -199,10 +206,7 @@ def _get_image_url(val):
 
 
 def _pretty_date(value):
-  try:
-    return pd.to_datetime(value).strftime("%d %b %Y, %H:%M")
-  except Exception:
-    return str(value)
+  return format_display_datetime(value)
 
 
 def _side_label(side):
@@ -223,7 +227,7 @@ def _sort_by_date(frame):
       break
   if date_col is None or frame.empty:
     return frame, date_col
-  order = pd.to_datetime(frame[date_col], errors="coerce", format="mixed")
+  order = parse_date_series(frame[date_col])
   ordered = frame.assign(_order=order).sort_values("_order", kind="stable")
   return ordered.drop(columns="_order"), date_col
 
@@ -247,6 +251,48 @@ def _close_edit_screen():
   st.rerun(scope="fragment")  # მხოლოდ დიალოგის შიგთავსი ახლდება, დიალოგი არ იხურება
 
 
+def _run_ai_analysis(
+    trade, sub_actions, trade_id, user_id, mode, cost, opt_detailed, opt_advice
+):
+  """ქულებს ჯერ ვჭრით (ატომურად), შემდეგ ვაგზავნით AI-ს; თუ ანალიზი ვერ მოხერხდა,
+  ზუსტად ეს ჩამოჭრა უკან ბრუნდება."""
+  if not user_id:
+    st.error("ავტორიზაციის შეცდომა.")
+    return
+
+  charge = None
+  if cost > 0:
+    if not check_has_enough_credits(user_id, cost):
+      st.error(f"❌ არ გაქვთ საკმარისი ქულები. საჭიროა: {cost:g}")
+      return
+    charge = charge_credits(user_id, cost, f"ai_analysis:{trade_id}")
+    if not charge.ok:
+      st.error(f"❌ {charge.error}")
+      return
+
+  lang = st.session_state.get("lang", "ka")
+  with st.spinner("მიმდინარეობს AI ანალიზი..."):
+    result = generate_trade_analysis(trade, sub_actions, opt_detailed, opt_advice, lang)
+
+  saved = False
+  if result.ok:
+    saved = update_trade(trade_id, {"ai_analysis": result.analysis, "ai_scores": result.scores})
+
+  if not (result.ok and saved):
+    refunded = refund_charge(user_id, charge) if charge else True
+    reason = result.error or "შედეგის შენახვა ვერ მოხერხდა."
+    suffix = " ქულები დაგიბრუნდათ." if charge and refunded else ""
+    st.error(f"❌ {reason}{suffix}")
+    if charge and not refunded:
+      st.warning("ქულების დაბრუნება ავტომატურად ვერ მოხერხდა. მიმართეთ ადმინისტრატორს.")
+    return
+
+  trade["ai_analysis"] = result.analysis
+  trade["ai_scores"] = result.scores
+  st.success("✅ AI ანალიზი წარმატებით დასრულდა!")
+  st.rerun(scope="fragment")
+
+
 def _render_sub_edit(trade_id, sub, date_col):
   """ეტაპის რედაქტირების ცალკე ეკრანი დეტალების დიალოგის შიგნით.
   (Streamlit-ში ერთდროულად მხოლოდ ერთი dialog შეიძლება იყოს გახსნილი, ამიტომ
@@ -256,6 +302,9 @@ def _render_sub_edit(trade_id, sub, date_col):
   is_start = START_ROW_MARK in sub_type
   date_col = date_col or "Entry Date"
   orig_date = _txt(sub.get(date_col))
+  # ველში სწორი ფორმატით ვაჩვენებთ (ძველი/დაზიანებული თარიღი, მაგ. წელი 0001, ჩაწერისას გასწორდება)
+  parsed_orig = parse_trade_datetime(orig_date)
+  shown_date = format_db_datetime(parsed_orig) if not pd.isna(parsed_orig) else orig_date
   current_img = _get_image_url(sub.get("Screenshot"))
 
   st.markdown("### ✏️ ეტაპის რედაქტირება")
@@ -286,7 +335,7 @@ def _render_sub_edit(trade_id, sub, date_col):
 
     date_txt = st.text_input(
         "თარიღი და დრო",
-        value=orig_date,
+        value=shown_date,
         placeholder="YYYY-MM-DD HH:MM:SS",
     )
     
@@ -337,11 +386,11 @@ def _render_sub_edit(trade_id, sub, date_col):
 
     new_date = None
     if date_txt.strip() != orig_date:
-      parsed_date = pd.to_datetime(date_txt, errors="coerce")
+      parsed_date = parse_trade_datetime(date_txt)
       if pd.isna(parsed_date):
-        errors.append("თარიღი ვერ იკითხება (გამოიყენე YYYY-MM-DD HH:MM:SS)")
+        errors.append("თარიღი ვერ იკითხება (მაგ. 2026-11-10 13:38:02 ან Nov 10, 1:38:02 PM)")
       else:
-        new_date = parsed_date.strftime("%Y-%m-%d %H:%M:%S")
+        new_date = format_db_datetime(parsed_date)
 
     if errors:
       for message in errors:
@@ -575,24 +624,10 @@ def show_trade_details_dialog(trade, df=None):
       )
 
     if add_submit:
-      # ჭკვიანი თარიღის პარსვა (ბროკერიდან დაკოპირებული წელმიუწერელი თარიღებისთვის)
-      date_str = add_date.strip()
-      parsed_add_date = pd.NaT
-      if date_str:
-        try:
-          parsed_add_date = pd.to_datetime(date_str, errors="coerce")
-          if pd.isna(parsed_add_date) or parsed_add_date.year < 1900:
-            from dateutil import parser as date_parser
-            current_year = datetime.now().year
-            dt_obj = date_parser.parse(date_str, default=datetime(current_year, 1, 1))
-            if dt_obj.year < 1900:
-              dt_obj = dt_obj.replace(year=current_year)
-            parsed_add_date = pd.to_datetime(dt_obj)
-        except Exception:
-          parsed_add_date = pd.NaT
+      parsed_add_date = parse_trade_datetime(add_date)
 
       if pd.isna(parsed_add_date):
-        st.error("თარიღი ვერ იკითხება (გამოიყენე YYYY-MM-DD HH:MM:SS ან ბროკერის ფორმატი)")
+        st.error("თარიღი ვერ იკითხება (მაგ. 2026-11-10 13:38:02 ან Nov 10, 1:38:02 PM)")
       else:
         sub_screenshot_url = ""
         if add_file is not None:
@@ -604,7 +639,7 @@ def show_trade_details_dialog(trade, df=None):
         sub_payload = {
             "Trade ID": str(uuid.uuid4()),
             "Parent Trade ID": trade_id,
-            "Entry Date": parsed_add_date.strftime("%Y-%m-%d %H:%M:%S"),
+            "Entry Date": format_db_datetime(parsed_add_date),
             "Pair": pair,
             "Side": side,
             "ActionType": add_type,
@@ -624,47 +659,28 @@ def show_trade_details_dialog(trade, df=None):
   # --- AI ასისტენტი ---
   st.markdown("### 🤖 AI ასისტენტი")
   user_id = st.session_state.user.id if st.session_state.user else None
-  current_credits = get_user_credits_cached(user_id) if user_id else 0.0
+  mode = ai_status()
 
-  st.caption(f"💳 ბალანსი: **{current_credits:g} ქულა**")
+  if mode == "disabled":
+    st.info("AI მენტორი ჯერ ჩართული არ არის. ქულები არ იხარჯება.")
+  else:
+    current_credits = get_user_credits_cached(user_id) if user_id else 0.0
+    st.caption(f"💳 ბალანსი: **{current_credits:g} ქულა**")
+    if mode == "demo":
+      st.caption("🧪 დემო რეჟიმი: პასუხი სატესტოა და ქულები არ იხარჯება.")
 
-  opt_detailed = st.toggle("ვრცელი პასუხი (+2 ქულა)", key=f"ai_opt_det_{trade_id}")
-  opt_advice = st.toggle("AI რჩევა (+2 ქულა)", key=f"ai_opt_adv_{trade_id}")
+    opt_detailed = st.toggle("ვრცელი პასუხი (+2 ქულა)", key=f"ai_opt_det_{trade_id}")
+    opt_advice = st.toggle("AI რჩევა (+2 ქულა)", key=f"ai_opt_adv_{trade_id}")
+    total_cost = 0.0 if mode == "demo" else calculate_cost(opt_detailed, opt_advice)
 
-  base_cost = 1.0
-  total_cost = (
-      base_cost
-      + (2.0 if opt_detailed else 0.0)
-      + (2.0 if opt_advice else 0.0)
-  )
-
-  if st.button(
-      f"🚀 გაგზავნა: {total_cost:g} ქულა",
-      key=f"ai_send_{trade_id}",
-      use_container_width=True,
-  ):
-    if not user_id:
-      st.error("ავტორიზაციის შეცდომა.")
-    elif not check_has_enough_credits(user_id, total_cost):
-      st.error(
-          f"❌ არ გაქვთ საკმარისი ქულები. საჭიროა: {total_cost:g}, თქვენ გაქვთ:"
-          f" {current_credits:g}"
+    if st.button(
+        f"🚀 გაგზავნა: {total_cost:g} ქულა",
+        key=f"ai_send_{trade_id}",
+        use_container_width=True,
+    ):
+      _run_ai_analysis(
+          trade, sub_actions, trade_id, user_id, mode, total_cost, opt_detailed, opt_advice
       )
-    else:
-      if deduct_credits(user_id, total_cost):
-        with st.spinner("მიმდინარეობს AI ანალიზი..."):
-          analysis_text, scores_text = generate_trade_analysis(
-              trade, sub_actions, opt_detailed, opt_advice
-          )
-          update_trade(
-              trade_id,
-              {"ai_analysis": analysis_text, "ai_scores": scores_text},
-          )
-          trade["ai_analysis"] = analysis_text
-          trade["ai_scores"] = scores_text
-
-        st.success("✅ AI ანალიზი წარმატებით დასრულდა!")
-        st.rerun(scope="fragment")
 
   stored_analysis = trade.get("ai_analysis")
   if _has_value(stored_analysis):

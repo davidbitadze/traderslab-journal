@@ -1,13 +1,28 @@
 import pandas as pd
 import streamlit as st
-from database import fetch_balance_transactions, fetch_trades
+from database import fetch_balance_transactions, fetch_trades, update_net_pnl_batch
 from utils.credits import get_user_credits_cached
-from utils.formulas import calculate_net_pnl, to_float
+from utils.trades import compute_pnl_map, split_trades, stale_net_pnl
 from utils.translations import t
 from views.add_trade_modal import render_add_trade_modal
 from views.trade_card import inject_card_css, render_trade_card
 
 PAGE_SIZE = 30  # ერთდროულად ნაჩვენები ბარათების რაოდენობა
+SYNC_TRIED_KEY = "_pnl_sync_tried"
+
+
+def _sync_stored_net_pnl(main_trades, subs_map):
+  """ბაზის Net P/L სვეტს ასწორებს ცოცხალ გამოთვლასთან. ერთი და იგივე მნიშვნელობა სესიაში
+  მეორედ არ იწერება, ამიტომ ჩაწერის (მაგ. უფლების) შეცდომა ციკლში ვერ ჩავარდება."""
+  tried = st.session_state.setdefault(SYNC_TRIED_KEY, set())
+  try:
+    stale = stale_net_pnl(main_trades, subs_map, tried)
+    if not stale:
+      return
+    tried.update((trade_id, str(value)) for trade_id, value in stale)
+    update_net_pnl_batch(stale)
+  except Exception:
+    pass
 
 
 def render_journal_view(lang="ka"):
@@ -20,40 +35,13 @@ def render_journal_view(lang="ka"):
   # 2. მონაცემების წამოღება გარიგებებიდან (ქეშიდან: ბაზას მხოლოდ ცვლილების შემდეგ ეკითხება)
   df = fetch_trades()
 
-  main_trades = pd.DataFrame()
-  subs_map = {}
-  pnl_map = {}
-  total_pnl = 0.0
+  main_trades, subs_map = split_trades(df)
+  pnl_map = compute_pnl_map(main_trades, subs_map)
+  total_pnl = float(sum(pnl_map.values()))
 
-  if not df.empty:
-    # ერთჯერადი სორტირება თარიღით
-    if "Entry Date" in df.columns:
-      df["_parsed_date"] = pd.to_datetime(
-          df["Entry Date"], errors="coerce", format="mixed"
-      )
-      df = df.sort_values(by="_parsed_date", ascending=False).drop(
-          columns=["_parsed_date"]
-      )
-
-    # 3. მთავარი გარიგებები (ერთხელ ითვლება, ორჯერ აღარ)
-    main_trades = df[
-        df["ActionType"].str.contains("Start Row", case=False, na=False)
-    ]
-    if main_trades.empty:
-      main_trades = df.drop_duplicates(subset=["Parent Trade ID"])
-
-    # ქვეეტაპები ერთი groupby-თი (ნაცვლად ყოველი ბარათისთვის მთელი ცხრილის გაფილტვრისა)
-    subs_map = {pid: g for pid, g in df.groupby("Parent Trade ID", sort=False)}
-    empty_subs = df.iloc[0:0]
-
-    # ჯამური PnL; იგივე შედეგი ბარათებსაც გადაეცემა და ხელახლა აღარ ითვლება
-    for _, trade in main_trades.iterrows():
-      trade_id = trade.get("Trade ID") or trade.get("Parent Trade ID")
-      pnl = calculate_net_pnl(trade, subs_map.get(trade_id, empty_subs))
-      if pnl is None:
-        pnl = to_float(trade.get("Net P/L"))
-      pnl_map[trade_id] = pnl
-      total_pnl += pnl
+  # ბაზაში შენახული Net P/L (Sheets-ისთვის, ექსპორტისთვის) სესიაში ერთხელ ახლდება მხოლოდ
+  # იმ გარიგებებზე, სადაც განსხვავდება; ზედმეტი ჩაწერა არ ხდება.
+  _sync_stored_net_pnl(main_trades, subs_map)
 
   # 4. საბოლოო ბალანსი = დეპოზიტების ჯამი + ჯამური PnL
   final_balance = total_deposits + total_pnl

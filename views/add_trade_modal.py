@@ -2,9 +2,9 @@ import os
 import uuid
 from datetime import datetime
 from database import fetch_settings, insert_trade, upload_screenshot
-from dateutil import parser as date_parser
 import pandas as pd
 import streamlit as st
+from utils.dates import format_db_datetime, parse_trade_datetime
 from utils.formulas import calculate_rr, to_float
 from utils.translations import t
 
@@ -18,26 +18,6 @@ FORMATIONS = ["ტრენდი", "კონტრ-ტრენდი", "ფ�
 def _k(name):
   """ველის გასაღები + "თაობის" ნომერი: შენახვის შემდეგ ნომერი იზრდება და ყველა ველი სუფთად იწყება."""
   return f"modal_{name}_{st.session_state.get('modal_gen', 0)}"
-
-
-def _parse_smart_date(date_str):
-  """კითხულობს თარიღს; თუ წელი გამოტოვებულია (მაგ. 'Nov 10, 1:38:02 PM'), ამაგრებს მიმდინარე წელს."""
-  if not date_str or not date_str.strip():
-    return pd.NaT
-  clean_str = date_str.strip()
-  try:
-    parsed = pd.to_datetime(clean_str, errors="coerce")
-    if pd.isna(parsed) or parsed.year < 1900:
-      current_year = datetime.now().year
-      dt_obj = date_parser.parse(
-          clean_str, default=datetime(current_year, 1, 1)
-      )
-      if dt_obj.year < 1900:
-        dt_obj = dt_obj.replace(year=current_year)
-      return pd.to_datetime(dt_obj)
-    return parsed
-  except Exception:
-    return pd.NaT
 
 
 def _rr_html(side, entry, sl, tp, risk_usd, lang="ka"):
@@ -167,7 +147,7 @@ def _trade_form(patterns_options, triggers_options, lang="ka"):
         key=_k("date"),
     )
 
-    parsed_date = _parse_smart_date(entry_date)
+    parsed_date = parse_trade_datetime(entry_date)
 
     if pd.isna(parsed_date):
       warn_date = (
@@ -319,7 +299,7 @@ def _trade_form(patterns_options, triggers_options, lang="ka"):
       trade_data = {
           "Trade ID": trade_id,
           "Parent Trade ID": trade_id,
-          "Entry Date": parsed_date.strftime("%Y-%m-%d %H:%M:%S"),
+          "Entry Date": format_db_datetime(parsed_date),
           "Pair": pair,
           "Side": side,
           "Entry Price": str(entry_price),
