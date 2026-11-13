@@ -34,7 +34,7 @@ def apply_ui_scaling(scale_mode):
             </style>
         """,
   }
-  st.markdown(styles.get(scale_mode, styles["medium"]), unsafe_allow_html=True)
+  st.markdown(styles.get(scale_mode, styles["medium"], unsafe_allow_html=True))
 
 
 def apply_theme_styles(theme_mode):
@@ -45,26 +45,17 @@ def apply_theme_styles(theme_mode):
             [data-testid="stAppViewContainer"] { background-color: #f8f9fa; color: #212529; }
             [data-testid="stSidebar"] { background-color: #e9ecef; }
 
-            /* --- 1. ღილაკი ("Add New Trade"): ნაგულისხმევად თეთრი ტექსტი --- */
-            button[kind="secondary"], .stButton button {
-                color: #FFFFFF !important;
-            }
-            button[kind="secondary"] *, .stButton button * {
-                color: #FFFFFF !important;
-            }
-            /* ჰოვერი: ბეგრაუნდი ღიავდება, ტექსტი ხდება მუქი (#0A0E17) */
-            button[kind="secondary"]:hover, .stButton button:hover {
-                background-color: #E2E8F0 !important;
-            }
-            button[kind="secondary"]:hover *, .stButton button:hover * {
-                color: #0A0E17 !important;
+            /* --- 1. საიდბარის ლეიბლები/სათაურები ტესტი: მწვანე (#008000) --- */
+            [data-testid="stSidebar"] label, 
+            [data-testid="stSidebar"] .stMarkdown p,
+            [data-testid="stSidebar"] span {
+                color: #008000 !important;
             }
 
-            /* --- 2. გარიგების წყვილების სათაურები მთავარ კონტენტში --- */
-            div[data-testid="stMain"] div[data-testid="stMarkdownContainer"] p strong,
-            div[data-testid="stMain"] div[data-testid="stMarkdownContainer"] h3,
-            div[data-testid="stMain"] .element-container p strong {
-                color: #0A0E17 !important;
+            /* --- 2. მთავარი გვერდის გარიგებების ტექსტები ტესტი: ყვითელი/ნარინჯისფერი (#D97706) --- */
+            div[data-testid="stMain"] div[data-testid="stMarkdownContainer"] p,
+            div[data-testid="stMain"] div[data-testid="stMarkdownContainer"] span {
+                color: #D97706 !important;
             }
         </style>
     """
