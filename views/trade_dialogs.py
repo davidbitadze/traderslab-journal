@@ -1,0 +1,479 @@
+from datetime import datetime
+import os
+import uuid
+import pandas as pd
+import streamlit as st
+from database import (
+    delete_trade,
+    fetch_trades,
+    insert_trade,
+    update_trade,
+    upload_screenshot,
+    delete_screenshot,
+    fetch_settings,
+)
+from utils.ai_mentor import ai_status, calculate_cost, generate_trade_analysis
+from utils.credits import (
+    charge_credits,
+    check_has_enough_credits,
+    get_user_credits_cached,
+    refund_charge,
+)
+from utils.dates import (
+    format_db_datetime,
+    format_display_datetime,
+    parse_date_series,
+    parse_trade_datetime,
+)
+from utils.formulas import calculate_net_pnl, pnl_breakdown, to_float
+
+GREEN = "#22c55e"
+RED = "#ef4444"
+GRAY = "#94a3b8"
+ORANGE = "#f97316"
+
+START_ROW_MARK = "Start Row"
+SUB_ACTION_TYPES = [
+    "ნაწილობრივი დახურვა",
+    "სრული დახურვა",
+    "დამატებითი შესვლა",
+    "ცვლილება",
+]
+EDIT_STATE_KEY = "edit_sub_id"
+
+def _has_value(value):
+  return value is not None and str(value).strip() not in (
+      "", "None", "nan", "NaT", "<NA>", "No Screenshot",
+  )
+
+def _txt(value):
+  return str(value).strip() if _has_value(value) else ""
+
+def _parse_num(text):
+  try:
+    return float(str(text).strip().replace(",", "."))
+  except (ValueError, TypeError):
+    return None
+
+def _get_image_url(val):
+  if not _has_value(val):
+    return None
+  val_str = str(val).strip()
+  if val_str.startswith("http://") or val_str.startswith("https://"):
+    return val_str
+  supabase_url = st.secrets.get("SUPABASE_URL", "")
+  if supabase_url:
+    return f"{supabase_url}/storage/v1/object/public/screenshots/{val_str}"
+  return None
+
+def _pretty_date(value):
+  return format_display_datetime(value)
+
+def _sort_by_date(frame):
+  date_col = None
+  for candidate in ["Date", "date", "Entry Date", "entry_date"]:
+    if candidate in frame.columns and frame[candidate].notna().any():
+      date_col = candidate
+      break
+  if date_col is None or frame.empty:
+    return frame, date_col
+  order = parse_date_series(frame[date_col])
+  ordered = frame.assign(_order=order).sort_values("_order", kind="stable")
+  return ordered.drop(columns="_order"), date_col
+
+def recalc_net_pnl(parent_id, clear_if_none=True):
+  df = fetch_trades()
+  if df.empty:
+    return
+  main_df = df[df["Trade ID"] == parent_id]
+  if main_df.empty:
+    return
+  subs = df[df["Parent Trade ID"] == parent_id]
+  net = calculate_net_pnl(main_df.iloc[0], subs)
+  if net is None and not clear_if_none:
+    return
+  update_trade(parent_id, {"Net P/L": None if net is None else str(net)})
+
+def _close_edit_screen():
+  st.session_state.pop(EDIT_STATE_KEY, None)
+  st.rerun(scope="fragment")
+
+def _run_ai_analysis(trade, sub_actions, trade_id, user_id, mode, cost, opt_detailed, opt_advice):
+  if not user_id:
+    st.error("ავტორიზაციის შეცდომა.")
+    return
+
+  charge = None
+  if cost > 0:
+    if not check_has_enough_credits(user_id, cost):
+      st.error(f"❌ არ გაქვთ საკმარისი ქულები. საჭიროა: {cost:g}")
+      return
+    charge = charge_credits(user_id, cost, f"ai_analysis:{trade_id}")
+    if not charge.ok:
+      st.error(f"❌ {charge.error}")
+      return
+
+  lang = st.session_state.get("lang", "ka")
+  with st.spinner("მიმდინარეობს AI ანალიზი..."):
+    result = generate_trade_analysis(trade, sub_actions, opt_detailed, opt_advice, lang)
+
+  saved = False
+  if result.ok:
+    saved = update_trade(trade_id, {"ai_analysis": result.analysis, "ai_scores": result.scores})
+
+  if not (result.ok and saved):
+    refunded = refund_charge(user_id, charge) if charge else True
+    reason = result.error or "შედეგის შენახვა ვერ მოხერხდა."
+    suffix = " ქულები დაგიბრუნდათ." if charge and refunded else ""
+    st.error(f"❌ {reason}{suffix}")
+    return
+
+  trade["ai_analysis"] = result.analysis
+  trade["ai_scores"] = result.scores
+  st.success("✅ AI ანალიზი წარმატებით დასრულდა!")
+  st.rerun(scope="fragment")
+
+def _render_sub_edit(trade_id, sub, date_col):
+  sub_id = sub.get("Trade ID")
+  sub_type = _txt(sub.get("ActionType"))
+  is_start = START_ROW_MARK in sub_type
+  date_col = date_col or "Entry Date"
+  orig_date = _txt(sub.get(date_col))
+  parsed_orig = parse_trade_datetime(orig_date)
+  shown_date = format_db_datetime(parsed_orig) if not pd.isna(parsed_orig) else orig_date
+  current_img = _get_image_url(sub.get("Screenshot"))
+
+  st.markdown("### ✏️ ეტაპის რედაქტირება")
+  st.caption(f"{sub.get('Pair', '')} · {sub_type}")
+
+  user_patterns = fetch_settings("pattern")
+  user_triggers = fetch_settings("trigger")
+
+  orig_pattern = _txt(sub.get("Pattern"))
+  orig_trigger = _txt(sub.get("Trigger"))
+  orig_side = _txt(sub.get("Side")) or "Long"
+
+  with st.form(key=f"form_edit_sub_{sub_id}"):
+    if is_start:
+      new_type = sub_type
+    else:
+      options = list(SUB_ACTION_TYPES)
+      if sub_type and sub_type not in options:
+        options.insert(0, sub_type)
+      new_type = st.selectbox("მოქმედება", options, index=options.index(sub_type) if sub_type in options else 0)
+
+    # ზოლი 1
+    st.markdown("---")
+    r1_c1, r1_c2, r1_c3 = st.columns(3)
+    date_txt = r1_c1.text_input("თარიღი და დრო", value=shown_date, placeholder="YYYY-MM-DD HH:MM:SS")
+    price_txt = r1_c2.text_input("შესვლის ფასი", value=_txt(sub.get("Entry Price")))
+    qty_txt = r1_c3.text_input("მოცულობა", value=_txt(sub.get("Qty")))
+
+    # ზოლი 2
+    r2_c1, r2_c2, r2_c3 = st.columns(3)
+    sl_txt = r2_c1.text_input("სტოპ ლოსი (SL ფასი)", value=_txt(sub.get("SL_Price")))
+    tp_txt = r2_c2.text_input("თეიქ პროფიტი (TP ფასი)", value=_txt(sub.get("TP_Price")))
+    risk_txt = r2_c3.text_input("რისკი დოლარში (Risk $)", value=_txt(sub.get("Risk ($)")))
+
+    # ზოლი 3
+    orig_desc = _txt(sub.get("Description"))
+    desc_txt = st.text_area("აღწერა / კომენტარი (Description)", value=orig_desc, key=f"edit_sub_desc_{sub_id}")
+
+    img_col, upload_col = st.columns([1, 2], vertical_alignment="center")
+    with img_col:
+      if current_img:
+        st.image(current_img, caption="მიმდინარე სკრინშოტი", width=180)
+      else:
+        st.caption("სკრინშოტი არ არის")
+    with upload_col:
+      new_file = st.file_uploader("🖼️ სკრინშოტის შეცვლა", type=["png", "jpg", "jpeg"], key=f"edit_sub_img_{sub_id}")
+
+    # ზოლი 4
+    r4_c1, r4_c2, r4_c3 = st.columns(3)
+    p_opts = user_patterns if user_patterns else ["ვ-შემობრუნება", "ორმაგი წვერი", "თავი მხრები"]
+    if orig_pattern and orig_pattern not in p_opts:
+      p_opts.insert(0, orig_pattern)
+    selected_pattern = r4_c1.selectbox("პატერნი", p_opts, index=p_opts.index(orig_pattern) if orig_pattern in p_opts else 0, key=f"edit_pattern_{sub_id}")
+
+    t_opts = user_triggers if user_triggers else ["პინბარი", "ჩამყლაპავი", "გაფართოვება"]
+    if orig_trigger and orig_trigger not in t_opts:
+      t_opts.insert(0, orig_trigger)
+    selected_trigger = r4_c2.selectbox("ტრიგერი", t_opts, index=t_opts.index(orig_trigger) if orig_trigger in t_opts else 0, key=f"edit_trigger_{sub_id}")
+
+    side_opts = ["Long", "Short"]
+    if orig_side.capitalize() not in side_opts:
+      side_opts.insert(0, orig_side)
+    selected_side = r4_c3.selectbox("მიმართულება", side_opts, index=side_opts.index(orig_side.capitalize()) if orig_side.capitalize() in side_opts else 0, key=f"edit_side_{sub_id}")
+
+    st.markdown("---")
+    b1, b2 = st.columns(2)
+    save = b1.form_submit_button("💾 შენახვა", type="primary", use_container_width=True)
+    cancel = b2.form_submit_button("გაუქმება", use_container_width=True)
+
+  if cancel:
+    _close_edit_screen()
+
+  if save:
+    required = {"ფასი": price_txt, "მოცულობა": qty_txt, "რისკი": risk_txt}
+    parsed = {name: _parse_num(text) for name, text in required.items()}
+    errors = [f"არასწორი რიცხვი: {n}" for n, v in parsed.items() if v is None]
+
+    optional = {}
+    for name, text in (("SL", sl_txt), ("TP", tp_txt)):
+      if not text.strip():
+        optional[name] = 0.0
+      else:
+        value = _parse_num(text)
+        if value is None:
+          errors.append(f"არასწორი რიცხვი: {name}")
+        else:
+          optional[name] = value
+
+    new_date = None
+    if date_txt.strip() != orig_date:
+      parsed_date = parse_trade_datetime(date_txt)
+      if pd.isna(parsed_date):
+        errors.append("თარიღი ვერ იკითხება")
+      else:
+        new_date = format_db_datetime(parsed_date)
+
+    if errors:
+      for message in errors:
+        st.error(message)
+    else:
+      payload = {
+          "Entry Price": str(parsed["ფასი"]),
+          "Qty": str(parsed["მოცულობა"]),
+          "Description": desc_txt,
+          "Risk ($)": str(parsed["რისკი"]),
+          "SL_Price": str(optional["SL"]),
+          "TP_Price": str(optional["TP"]),
+          "Pattern": selected_pattern,
+          "Trigger": selected_trigger,
+          "Side": selected_side,
+      }
+      if not is_start:
+        payload["ActionType"] = new_type
+      if new_date is not None:
+        payload[date_col] = new_date
+      if new_file is not None:
+        ext = os.path.splitext(new_file.name)[1].lower() or ".png"
+        stamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        safe_name = f"sub_{stamp}_{uuid.uuid4().hex[:6]}{ext}"
+        uploaded_url = upload_screenshot(new_file, file_name=safe_name)
+        if uploaded_url:
+          payload["Screenshot"] = uploaded_url
+
+      if update_trade(sub_id, payload):
+        if new_file is not None and uploaded_url and current_img:
+          delete_screenshot(current_img)
+        recalc_net_pnl(trade_id)
+        st.toast("ეტაპი განახლდა!", icon="✅")
+        _close_edit_screen()
+
+  if not is_start:
+    st.divider()
+    confirm = st.checkbox("ვადასტურებ ამ ეტაპის წაშლას", key=f"confirm_del_sub_{sub_id}")
+    if st.button("🗑️ ეტაპის წაშლა", key=f"del_sub_{sub_id}", disabled=not confirm, use_container_width=True):
+      if delete_trade(sub_id):
+        recalc_net_pnl(trade_id)
+        st.toast("ეტაპი წაიშალა!", icon="🗑️")
+        _close_edit_screen()
+
+
+@st.dialog("🔍 გარიგების დეტალები და მართვა", width="large")
+def show_trade_details_dialog(trade, df=None):
+  trade_id = trade.get("Trade ID") or trade.get("Parent Trade ID")
+
+  df = fetch_trades()
+  fresh = df[df["Trade ID"] == trade_id]
+  if not fresh.empty:
+    trade = fresh.iloc[0].to_dict()
+
+  pair = trade.get("Pair", "N/A")
+  side = trade.get("Side", "N/A")
+  main_screenshot = trade.get("Screenshot")
+  sub_actions, date_col = _sort_by_date(df[df["Parent Trade ID"] == trade_id])
+
+  edit_id = st.session_state.get(EDIT_STATE_KEY)
+  if edit_id:
+    match = sub_actions[sub_actions["Trade ID"] == edit_id]
+    if not match.empty:
+      _render_sub_edit(trade_id, match.iloc[0], date_col)
+      return
+    st.session_state.pop(EDIT_STATE_KEY, None)
+
+  raw_fin = trade.get("Finalized")
+  is_finalized = str(raw_fin).strip().lower() in ("true", "1", "yes")
+
+  st.markdown(f"### {pair} — **{side}**")
+
+  col_st1, col_st2, col_st3 = st.columns([3, 3, 2], vertical_alignment="center")
+  with col_st1:
+    new_status = st.toggle("დასრულებული" if is_finalized else "მიმდინარე", value=is_finalized, key=f"dialog_toggle_fin_{trade_id}")
+    if new_status != is_finalized:
+      update_trade(trade_id, {"Finalized": str(new_status)})
+      recalc_net_pnl(trade_id, clear_if_none=False)
+      st.toast("სტატუსი განახლდა!", icon="🔄")
+      st.rerun(scope="fragment")
+
+  with col_st2:
+    status_badge = "🏁 დასრულებული" if is_finalized else "⚡ მიმდინარე"
+    badge_color = GRAY if is_finalized else ORANGE
+    st.markdown(f"სტატუსი: <b style='color:{badge_color}'>{status_badge}</b>", unsafe_allow_html=True)
+
+  with col_st3:
+    if st.button("🗑️ გარიგების წაშლა", key=f"dlg_del_{trade_id}", use_container_width=True):
+      if delete_trade(trade_id):
+        st.success("გარიგება წაიშალა!")
+        st.rerun()
+
+  st.divider()
+
+  img_url = _get_image_url(main_screenshot)
+  if img_url:
+    st.image(img_url, use_container_width=True)
+  else:
+    st.warning("⚠️ აკლია სკრინშოტი")
+
+  st.divider()
+
+  st.markdown("### 📊 გარიგების მართვა / დამატებითი ქმედებები")
+
+  if not sub_actions.empty:
+    sub_items = list(sub_actions.iterrows())
+    for i in range(0, len(sub_items), 3):
+      chunk = sub_items[i : i + 3]
+      cols = st.columns(3, vertical_alignment="top")
+      for j, (row_idx, row) in enumerate(chunk):
+        sub_id = row.get("Trade ID") or row.get("id") or row_idx
+        sub_type = "Action"
+        for k in ["ActionType", "Action Type", "action_type", "Action"]:
+          val = row.get(k)
+          if _has_value(val):
+            sub_type = val
+            break
+
+        sub_price = 0.0
+        for k in ["Price", "price", "Entry Price", "entry_price"]:
+          val = row.get(k)
+          if _has_value(val):
+            sub_price = val
+            break
+
+        sub_qty = 0.0
+        for k in ["Quantity", "quantity", "Qty", "qty"]:
+          val = row.get(k)
+          if _has_value(val):
+            sub_qty = val
+            break
+
+        sub_date = row.get(date_col, "") if date_col else ""
+        sub_img = None
+        for k in ["Screenshot", "screenshot"]:
+          val = row.get(k)
+          if _has_value(val):
+            sub_img = _get_image_url(val)
+            break
+
+        with cols[j]:
+          with st.container(border=True):
+            c_img, c_desc = st.columns([1, 2], vertical_alignment="center")
+            with c_img:
+              if sub_img:
+                st.markdown(f"<img src='{sub_img}' class='sub-action-img' loading='lazy'>", unsafe_allow_html=True)
+              else:
+                st.markdown("<div class='sub-action-placeholder'>📁</div>", unsafe_allow_html=True)
+            with c_desc:
+              st.markdown(f"**{sub_type}**")
+              st.markdown(f"ფასი: `{sub_price}`")
+              st.markdown(f"მოცულობა: `{sub_qty}`")
+              st.caption(f"📅 {_pretty_date(sub_date) if _has_value(sub_date) else ''}")
+
+            if st.button("✏️ რედაქტირება", key=f"btn_edit_sub_{sub_id}", use_container_width=True):
+              st.session_state[EDIT_STATE_KEY] = sub_id
+              st.rerun(scope="fragment")
+  else:
+    st.info("ამ გარიგებაზე დამატებითი ქმედებები ჯერ არ ფიქსირდება.")
+
+  with st.expander("➕ ახალი ქმედების დამატება (ნაწილობრივი/სრული გასვლა, დამატება)"):
+    with st.form(key=f"form_add_sub_{trade_id}", clear_on_submit=True):
+      add_date = st.text_input("თარიღი და დრო", value=datetime.now().strftime("%Y-%m-%d %H:%M:%S"), key=f"add_sub_date_{trade_id}")
+      add_type = st.selectbox("მოქმედების ტიპი", SUB_ACTION_TYPES)
+      a1, a2 = st.columns(2)
+      add_price = a1.number_input("ფასი", value=0.0, format="%.5f")
+      add_qty = a2.number_input("მოცულობა (Qty)", value=1.0, format="%.2f")
+      add_description = st.text_area("აღწერა / კომენტარი (Description)", value="", key=f"add_sub_desc_{trade_id}")
+      add_file = st.file_uploader("შუალედური სკრინშოტი (არასავალდებულო)", type=["png", "jpg", "jpeg"], key=f"sub_img_up_{trade_id}")
+      add_submit = st.form_submit_button("მონაცემის დამატება", use_container_width=True)
+
+    if add_submit:
+      parsed_add_date = parse_trade_datetime(add_date)
+      if pd.isna(parsed_add_date):
+        st.error("თარიღი ვერ იკითხება")
+      else:
+        sub_screenshot_url = ""
+        if add_file is not None:
+          ext = os.path.splitext(add_file.name)[1].lower() or ".png"
+          stamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+          safe_name = f"sub_{pair}_{stamp}_{uuid.uuid4().hex[:6]}{ext}"
+          sub_screenshot_url = upload_screenshot(add_file, file_name=safe_name) or ""
+
+        sub_payload = {
+            "Trade ID": str(uuid.uuid4()),
+            "Parent Trade ID": trade_id,
+            "Entry Date": format_db_datetime(parsed_add_date),
+            "Pair": pair,
+            "Side": side,
+            "ActionType": add_type,
+            "Entry Price": str(add_price),
+            "Qty": str(add_qty),
+            "Description": add_description,
+            "Screenshot": sub_screenshot_url,
+            "Finalized": "False",
+        }
+        if insert_trade(sub_payload):
+          recalc_net_pnl(trade_id, clear_if_none=False)
+          st.toast("მონაცემი დაემატა!", icon="✅")
+          st.rerun(scope="fragment")
+
+  st.divider()
+  st.markdown("### 🤖 AI ასისტენტი")
+  user_id = st.session_state.user.id if st.session_state.user else None
+  mode = ai_status()
+
+  if mode == "disabled":
+    st.info("AI მენტორი ჯერ ჩართული არ არის.")
+  else:
+    current_credits = get_user_credits_cached(user_id) if user_id else 0.0
+    st.caption(f"💳 ბალანსი: **{current_credits:g} ქულა**")
+    if mode == "demo":
+      st.caption("🧪 დემო რეჟიმი")
+
+    opt_detailed = st.toggle("ვრცელი პასუხი (+2 ქულა)", key=f"ai_opt_det_{trade_id}")
+    opt_advice = st.toggle("AI რჩევა (+2 ქულა)", key=f"ai_opt_adv_{trade_id}")
+    total_cost = 0.0 if mode == "demo" else calculate_cost(opt_detailed, opt_advice)
+
+    if st.button(f"🚀 გაგზავნა: {total_cost:g} ქულა", key=f"ai_send_{trade_id}", use_container_width=True):
+      _run_ai_analysis(trade, sub_actions, trade_id, user_id, mode, total_cost, opt_detailed, opt_advice)
+
+  stored_analysis = trade.get("ai_analysis")
+  if _has_value(stored_analysis):
+    with st.expander("🤖 AI შეფასების შედეგი", expanded=True):
+      st.markdown(stored_analysis)
+
+  st.divider()
+  breakdown = pnl_breakdown(trade, sub_actions)
+  st.markdown("**🧮 Net P/L-ის გაანგარიშება**")
+  if breakdown is None:
+    st.caption("გასვლის ეტაპი ჯერ არ არის.")
+  else:
+    lines = [f"- შესვლა (საშუალო): `{breakdown['entry_avg']:.5f}` × `{breakdown['entry_qty']:g}`"]
+    if breakdown["exit_avg"] is not None:
+      lines.append(f"- გასვლა: `{breakdown['exit_avg']:.5f}` × `{breakdown['exit_qty']:g}`")
+    lines.append(f"- რისკი: `{breakdown['risk']:g}$` → **Net P/L = {breakdown['pnl']:+.2f}$**")
+    st.markdown("\n".join(lines))
+
+  st.divider()
+  if st.button("✅ დახურვა", key=f"close_dlg_{trade_id}", use_container_width=True):
+    st.rerun()
