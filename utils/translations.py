@@ -271,7 +271,7 @@ TRANSLATIONS = {
         "col_trigger": "Trigger",
         "col_side": "Side",
 
-        "days_of_week": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
+        "days_of_week": ["Monday", "Tuesday1", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
     }
 }
 
