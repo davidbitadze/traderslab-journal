@@ -49,6 +49,19 @@ div[data-testid="element-container"]:has(> [data-testid="stHorizontalBlock"] .tr
     width: auto !important;
     min-width: 0 !important;
 }
+/* მინიატურისა და ტექსტის სვეტებში ზედმეტი ვერტიკალური დაშორებები (ისინი ჩარჩოდან ჩამოწევდა შიგთავსს) */
+[data-testid="stHorizontalBlock"]:has(.trade-row-marker) > div:not(:last-child) [data-testid="stVerticalBlock"] {
+    gap: 0 !important;
+}
+[data-testid="stHorizontalBlock"]:has(.trade-row-marker) > div:not(:last-child) [data-testid="stElementContainer"],
+[data-testid="stHorizontalBlock"]:has(.trade-row-marker) > div:not(:last-child) [data-testid="element-container"],
+[data-testid="stHorizontalBlock"]:has(.trade-row-marker) > div:not(:last-child) [data-testid="stMarkdownContainer"] {
+    margin: 0 !important;
+    padding: 0 !important;
+}
+[data-testid="stHorizontalBlock"]:has(.trade-row-marker) > div:not(:last-child) [data-testid="stMarkdownContainer"] p {
+    margin: 0 !important;
+}
 .trade-thumb-img {
     width: __SIZE__ !important;
     height: __SIZE__ !important;
