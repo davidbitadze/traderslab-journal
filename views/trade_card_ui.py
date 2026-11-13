@@ -1,8 +1,9 @@
 import html
 import streamlit as st
 from database import delete_trade, thumb_url
-from views.trade_dialogs import show_trade_details_dialog, EDIT_STATE_KEY, _has_value, _txt, _get_image_url, _side_label, _pretty_date
+from views.trade_dialogs import show_trade_details_dialog, EDIT_STATE_KEY
 from utils.formulas import calculate_net_pnl, to_float
+from utils.dates import format_display_datetime
 
 GREEN = "#22c55e"
 RED = "#ef4444"
@@ -98,6 +99,28 @@ def inject_card_css():
       unsafe_allow_html=True,
   )
 
+def _has_value(val):
+  return val is not None and str(val).strip() not in ("", "None", "nan", "NaT", "<NA>", "No Screenshot")
+
+def _get_image_url(val):
+  if not _has_value(val):
+    return None
+  val_str = str(val).strip()
+  if val_str.startswith("http://") or val_str.startswith("https://"):
+    return val_str
+  supabase_url = st.secrets.get("SUPABASE_URL", "")
+  if supabase_url:
+    return f"{supabase_url}/storage/v1/object/public/screenshots/{val_str}"
+  return None
+
+def _side_label(side):
+  s = str(side).strip().lower()
+  if s == "long":
+    return "Long"
+  if s == "short":
+    return "Short"
+  return str(side)
+
 def render_trade_card(trade, df, subs=None, pnl=None):
   trade_id = trade.get("Trade ID") or trade.get("Parent Trade ID")
   pair = html.escape(str(trade.get("Pair", "N/A")))
@@ -116,7 +139,7 @@ def render_trade_card(trade, df, subs=None, pnl=None):
       raw_net = trade.get("Net P/L")
       pnl = to_float(raw_net) if _has_value(raw_net) else 0.0
 
-  state_key = f"mode_{trade_id}"
+  state_key = `mode_{trade_id}`
   current_mode = st.session_state.get(state_key, None)
 
   if is_finalized:
@@ -148,7 +171,7 @@ def render_trade_card(trade, df, subs=None, pnl=None):
             <div class='trade-sub-text'>
                 <span>{_side_label(side)}</span>
                 <span>•</span>
-                <span>{_pretty_date(entry_date)}</span>
+                <span>{format_display_datetime(entry_date) if _has_value(entry_date) else ''}</span>
             </div>
         </div>
         """,
