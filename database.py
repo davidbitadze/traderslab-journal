@@ -126,20 +126,25 @@ def delete_trade(trade_id):
     return False
 
 
-# ---------------------------------------------------------------- settings (იუზერ-იზოლირებული)
+# ---------------------------------------------------------------- settings (იუზერ-იზოლირებული ახალი სტრუქტურით)
 @st.cache_data(ttl=SETTINGS_TTL, show_spinner=False)
 def _load_settings(uid, category):
   if not uid:
     return []
   client = get_data_client()
+  
+  # ვეძებთ სვეტს კატეგორიის მიხედვით (პატერნისთვის ვკითხულობთ 'pattern' სვეტს, ტრიგერისთვის - 'trigger' სვეტს)
+  target_column = "pattern" if category == "pattern" else "trigger"
+  
   response = (
       client.table("user_settings")
-      .select("item_name")
-      .eq("category", category)
+      .select(f"id, {target_column}")
       .eq("user_id", uid)
+      .not_.is_(target_column, "null")
       .execute()
   )
-  items = [row["item_name"] for row in response.data] if response.data else []
+  
+  items = [row[target_column] for row in (response.data or []) if row.get(target_column)]
 
   # თუ იუზერს ამ კატეგორიაში არაფერი აქვს, ვუწერთ საწყის (default) 3-3 ელემენტს
   if not items:
@@ -152,7 +157,7 @@ def _load_settings(uid, category):
       try:
         client.table("user_settings").insert({
             "category": category,
-            "item_name": d,
+            target_column: d,
             "user_id": uid
         }).execute()
       except Exception:
@@ -169,9 +174,7 @@ def fetch_settings(category):
       return []
     return _load_settings(uid, category)
   except Exception:
-    if category == "pattern":
-      return ["ვ-შემობრუნება", "ორმაგი წვერი", "თავი მხრები"]
-    return ["პინბარი", "ჩამყლაპავი", "გაფართოვება"]
+    return ["ვ-შემობრუნება", "ორმაგი წვერი", "თავი მხრები"] if category == "pattern" else ["პინბარი", "ჩამყლაპავი", "გაფართოვება"]
 
 
 def add_setting_item(category, item_name):
@@ -179,8 +182,10 @@ def add_setting_item(category, item_name):
     uid = _uid()
     if not uid or not item_name.strip():
       return False
+    target_column = "pattern" if category == "pattern" else "trigger"
+    
     get_data_client().table("user_settings").insert(
-        {"category": category, "item_name": item_name.strip(), "user_id": uid}
+        {"category": category, target_column: item_name.strip(), "user_id": uid}
     ).execute()
     _load_settings.clear()
     return True
@@ -193,9 +198,11 @@ def delete_setting_item(category, item_name):
     uid = _uid()
     if not uid:
       return False
+    target_column = "pattern" if category == "pattern" else "trigger"
+    
     get_data_client().table("user_settings").delete().eq(
         "category", category
-    ).eq("item_name", item_name).eq("user_id", uid).execute()
+    ).eq(target_column, item_name).eq("user_id", uid).execute()
     _load_settings.clear()
     return True
   except Exception:
@@ -207,14 +214,15 @@ def update_setting_item(category, old_name, new_name):
     uid = _uid()
     if not uid or not new_name.strip():
       return False
+    target_column = "pattern" if category == "pattern" else "trigger"
+    
     get_data_client().table("user_settings").update(
-        {"item_name": new_name.strip()}
-    ).eq("category", category).eq("item_name", old_name).eq("user_id", uid).execute()
+        {target_column: new_name.strip()}
+    ).eq("category", category).eq(target_column, old_name).eq("user_id", uid).execute()
     _load_settings.clear()
     return True
   except Exception:
     return False
-
 
 # ------------------------------------------------------- balance transactions
 @st.cache_data(ttl=BALANCE_TTL, show_spinner=False)
