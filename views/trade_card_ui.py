@@ -33,6 +33,8 @@ div[data-testid="element-container"]:has(> [data-testid="stHorizontalBlock"] .tr
     justify-content: flex-end !important;
     margin-left: auto !important;
     overflow: visible !important;
+    flex-direction: column !important;
+    align-items: flex-end !important;
     padding-right: 10px !important;
 }
 [data-testid="stHorizontalBlock"]:has(.trade-row-marker) > div:last-child button {
