@@ -19,17 +19,17 @@ _ROW_CSS = """
 <style>
 /* ცნობარის სტრიქონები (წაშლა · რედაქტირება · სახელი) მობილურზეც ერთ ხაზზე რჩება */
 @media (max-width: 640px) {
-  [data-testid="stHorizontalBlock"]:has(.setting-row-marker) {
+  [data-testid="stHorizontalBlock"]:has(.setting-row-marker):not(:has([data-testid="stHorizontalBlock"])) {
     flex-wrap: nowrap !important;
     gap: 0.4rem !important;
     align-items: center !important;
   }
-  [data-testid="stHorizontalBlock"]:has(.setting-row-marker) > div {
+  [data-testid="stHorizontalBlock"]:has(.setting-row-marker):not(:has([data-testid="stHorizontalBlock"])) > div {
     width: auto !important;
     min-width: 0 !important;
     flex: 0 0 auto !important;
   }
-  [data-testid="stHorizontalBlock"]:has(.setting-row-marker) > div:last-child {
+  [data-testid="stHorizontalBlock"]:has(.setting-row-marker):not(:has([data-testid="stHorizontalBlock"])) > div:last-child {
     flex: 1 1 0 !important;
     overflow-wrap: anywhere;
   }

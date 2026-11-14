@@ -274,7 +274,13 @@ def apply_theme_styles(theme_mode):
             [data-testid="stExpandSidebarButton"] *, [data-testid="stSidebarCollapsedControl"] *,
             [data-testid="stSidebarCollapseButton"] * {
                 color: #0F172A !important;
+            }
+            [data-testid="stHeader"] svg path, [data-testid="stToolbar"] svg path,
+            [data-testid="stExpandSidebarButton"] svg path, [data-testid="stSidebarCollapsedControl"] svg path {
                 fill: #0F172A !important;
+            }
+            [data-testid="stHeader"] svg rect, [data-testid="stToolbar"] svg rect {
+                fill: transparent !important;
             }
             [data-testid="stExpandSidebarButton"], [data-testid="stSidebarCollapsedControl"] button,
             [data-testid="stSidebarCollapseButton"] button, [data-testid="stHeader"] button {
