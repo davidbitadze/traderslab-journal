@@ -14,6 +14,7 @@ def _load_settings(uid, category):
       client.table("user_settings")
       .select(f"id, {target_col}, item_name")
       .eq("user_id", uid)
+      .eq("category", category)
       .execute()
   )
   
@@ -21,7 +22,7 @@ def _load_settings(uid, category):
   items = []
   for row in (response.data or []):
     val = row.get(target_col) or row.get("item_name")
-    if val:
+    if val and val not in items:
       items.append(val)
 
   # თუ იუზერს ამ კატეგორიაში ჩანაწერი არ აქვს, ვუწერთ საწყის 3-3 დეფოლტს

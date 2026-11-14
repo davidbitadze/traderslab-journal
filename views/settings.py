@@ -47,11 +47,11 @@ def _item_label(text):
 
 def render_settings_view(lang="ka"):
   st.markdown(_ROW_CSS, unsafe_allow_html=True)
-  st.title(f"⚙️ {t('settings_main_title', lang)}")
+  st.title(t('settings_main_title', lang))
   st.write(t('settings_subtitle', lang))
 
   # --- ინტერფეისის მასშტაბისა და ვიზუალური ზომების მართვა ---
-  st.markdown(f"### 📱 {t('screen_vis_title', lang)}")
+  st.markdown(f"### {t('screen_vis_title', lang)}")
 
   user_id = st.session_state.user.id if st.session_state.user else None
   user_prefs = st.session_state.get(
@@ -108,7 +108,7 @@ def render_settings_view(lang="ka"):
   st.divider()
 
   # --- ბალანსის ტრანზაქციების (შევსება / გამოტანა) მართვა ---
-  st.markdown(f"### 💰 {t('deposit_history_title', lang)}")
+  st.markdown(f"### {t('deposit_history_title', lang)}")
 
   with st.form("form_add_transaction"):
     col_t1, col_t2, col_t3 = st.columns(3)
@@ -168,7 +168,7 @@ def render_settings_view(lang="ka"):
 
   # --- პატერნების მართვა ---
   with col1:
-    st.subheader(f"📌 {t('patterns_title', lang)}")
+    st.subheader(t('patterns_title', lang))
     patterns = fetch_settings("pattern")
 
     for p in patterns:
@@ -204,7 +204,7 @@ def render_settings_view(lang="ka"):
 
   # --- ტრიგერების მართვა ---
   with col2:
-    st.subheader(f"⚡ {t('triggers_title', lang)}")
+    st.subheader(t('triggers_title', lang))
     triggers = fetch_settings("trigger")
 
     for tr in triggers:
