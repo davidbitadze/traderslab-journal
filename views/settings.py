@@ -1,3 +1,4 @@
+import html
 from datetime import datetime
 from database import (
     add_balance_transaction,
@@ -13,7 +14,39 @@ import streamlit as st
 from utils.translations import t
 
 
+
+_ROW_CSS = """
+<style>
+/* ცნობარის სტრიქონები (წაშლა · რედაქტირება · სახელი) მობილურზეც ერთ ხაზზე რჩება */
+@media (max-width: 640px) {
+  [data-testid="stHorizontalBlock"]:has(.setting-row-marker) {
+    flex-wrap: nowrap !important;
+    gap: 0.4rem !important;
+    align-items: center !important;
+  }
+  [data-testid="stHorizontalBlock"]:has(.setting-row-marker) > div {
+    width: auto !important;
+    min-width: 0 !important;
+    flex: 0 0 auto !important;
+  }
+  [data-testid="stHorizontalBlock"]:has(.setting-row-marker) > div:last-child {
+    flex: 1 1 0 !important;
+    overflow-wrap: anywhere;
+  }
+}
+</style>
+"""
+
+
+def _item_label(text):
+  """სახელი + უჩინარი მარკერი, რომლითაც CSS ამ სტრიქონებს ცნობს."""
+  st.markdown(
+      f"<span class='setting-row-marker'></span>{html.escape(str(text))}",
+      unsafe_allow_html=True,
+  )
+
 def render_settings_view(lang="ka"):
+  st.markdown(_ROW_CSS, unsafe_allow_html=True)
   st.title(f"⚙️ {t('settings_main_title', lang)}")
   st.write(t('settings_subtitle', lang))
 
@@ -159,7 +192,7 @@ def render_settings_view(lang="ka"):
                 st.rerun()
 
       with c_txt:
-        st.write(p)
+        _item_label(p)
 
     st.divider()
     new_pat = st.text_input(t("new_pattern_placeholder", lang))
@@ -195,7 +228,7 @@ def render_settings_view(lang="ka"):
                 st.rerun()
 
       with c_txt:
-        st.write(tr)
+        _item_label(tr)
 
     st.divider()
     new_trig = st.text_input(t("new_trigger_placeholder", lang))

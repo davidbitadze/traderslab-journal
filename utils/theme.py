@@ -264,6 +264,24 @@ def apply_theme_styles(theme_mode):
                 background: #E2E8F0 !important;
             }
 
+
+            /* ზედა პანელი (გვერდითი მენიუს გახსნის ღილაკი, Fork, GitHub, ⋮) ღია თემაზე */
+            [data-testid="stHeader"], header[data-testid="stHeader"] {
+                background-color: #E2E8F0 !important;
+                border-bottom: 1px solid #CBD5E1 !important;
+            }
+            [data-testid="stHeader"] *, [data-testid="stToolbar"] *,
+            [data-testid="stExpandSidebarButton"] *, [data-testid="stSidebarCollapsedControl"] *,
+            [data-testid="stSidebarCollapseButton"] * {
+                color: #0F172A !important;
+                fill: #0F172A !important;
+            }
+            [data-testid="stExpandSidebarButton"], [data-testid="stSidebarCollapsedControl"] button,
+            [data-testid="stSidebarCollapseButton"] button, [data-testid="stHeader"] button {
+                background-color: transparent !important;
+                border: none !important;
+            }
+
             /* ზოგადი სათაურები და ტექსტები გვერდზე */
             h1, h2, h3, h4, h5, h6, p, label, .stMarkdown, span,
             [data-testid="stSidebar"] div, [data-testid="stSidebar"] span {
