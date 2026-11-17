@@ -1,3 +1,4 @@
+import html
 from datetime import datetime
 import os
 import uuid
@@ -320,7 +321,7 @@ def show_trade_details_dialog(trade, df=None):
   with col_st2:
     status_badge = "🏁 დასრულებული" if is_finalized else "⚡ მიმდინარე"
     badge_color = GRAY if is_finalized else ORANGE
-    st.markdown(f"სტატუსი: <b style='color:{badge_color}'>{status_badge}</b>", unsafe_allow_html=True)
+    st.markdown(f"სტატუსი: <b style='color:{badge_color}'>{html.escape(status_badge)}</b>", unsafe_allow_html=True)
 
   with col_st3:
     if st.button("🗑️ გარიგების წაშლა", key=f"dlg_del_{trade_id}", use_container_width=True):
@@ -381,7 +382,7 @@ def show_trade_details_dialog(trade, df=None):
             c_img, c_desc = st.columns([1, 2], vertical_alignment="center")
             with c_img:
               if sub_img:
-                st.markdown(f"<img src='{sub_img}' class='sub-action-img' loading='lazy'>", unsafe_allow_html=True)
+                st.markdown(f"<img src='{html.escape(str(sub_img), quote=True)}' class='sub-action-img' loading='lazy'>", unsafe_allow_html=True)
               else:
                 st.markdown("<div class='sub-action-placeholder'>📁</div>", unsafe_allow_html=True)
             with c_desc:

@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from typing import Optional
 
 import streamlit as st
+from i18n import t
 
 from database import call_rpc, get_data_client
 
@@ -47,7 +48,8 @@ def get_user_credits(user_id: str) -> float:
       return float(balance) if balance is not None else 0.0
     return 0.0
   except Exception as e:
-    st.error(f"ბალანსის წაკითხვის შეცდომა: {e}")
+    print(f"credits.py: {e!r}")  # დეტალი მხოლოდ ლოგში
+    st.error(t("db_generic_error", st.session_state.get("lang", "ka")))
     return 0.0
 
 

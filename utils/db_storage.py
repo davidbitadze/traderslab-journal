@@ -1,10 +1,13 @@
 import io
-import os
 import uuid
 import streamlit as st
+from i18n import t
 from utils.db_core import get_data_client, _uid
 
 SCREENSHOT_BUCKET = "screenshots"
+MAX_UPLOAD_BYTES = 2 * 1024 * 1024  # ატვირთული ფაილის მაქსიმალური ზომა (დამუშავებამდე)
+MAX_IMAGE_PIXELS = 40_000_000  # "დეკომპრესიული ბომბისგან" დასაცავად
+ALLOWED_FORMATS = {"PNG", "JPEG", "WEBP"}
 FULL_MAX_SIDE = 1600  # სრული სურათის მაქს. გვერდი (px)
 FULL_QUALITY = 80
 THUMB_MAX_SIDE = 360  # სიის პატარა პრევიუ
@@ -17,7 +20,11 @@ def _prepare_images(raw):
   try:
     from PIL import Image, ImageOps
 
-    img = ImageOps.exif_transpose(Image.open(io.BytesIO(raw)))
+    Image.MAX_IMAGE_PIXELS = MAX_IMAGE_PIXELS
+    opened = Image.open(io.BytesIO(raw))
+    if opened.format not in ALLOWED_FORMATS:
+      return None
+    img = ImageOps.exif_transpose(opened)
     if img.mode in ("RGBA", "LA", "P"):
       img = img.convert("RGBA")
       background = Image.new("RGB", img.size, (255, 255, 255))
@@ -76,34 +83,38 @@ def delete_screenshot(url):
     return False
 
 
-def upload_screenshot(uploaded_file, file_name=None):
-  """სურათს ოპტიმიზაციის შემდეგ ტვირთავს <user_id>/ საქაღალდეში (+ პატარა პრევიუ)."""
+def upload_screenshot(uploaded_file, file_name=None, lang=None):
+  """სურათს ოპტიმიზაციის შემდეგ ტვირთავს <user_id>/ საქაღალდეში (+ პატარა პრევიუ).
+
+  მხოლოდ ნამდვილი PNG/JPG/WEBP მიიღება: რასაც Pillow ვერ ხსნის, ის არ ინახება (საჯარო bucket-ში
+  თვითნებური ფაილი, მაგ. HTML, არ უნდა აღმოჩნდეს)."""
+  lang = lang or st.session_state.get("lang", "ka")
   try:
-    supabase = get_data_client()
     raw = uploaded_file.getvalue()
+    if len(raw) > MAX_UPLOAD_BYTES:
+      st.error(t("upload_too_large", lang, mb=MAX_UPLOAD_BYTES // (1024 * 1024)))
+      return None
+    prepared = _prepare_images(raw)
+    if not prepared:
+      st.error(t("upload_invalid", lang))
+      return None
+
+    supabase = get_data_client()
     folder = _uid() or "anon"
     token = uuid.uuid4().hex
     bucket = supabase.storage.from_(SCREENSHOT_BUCKET)
-    options = {"upsert": "true", "cache-control": "31536000"}
+    options = {"upsert": "false", "cache-control": "31536000", "content-type": "image/webp"}
 
-    prepared = _prepare_images(raw)
-    if prepared:
-      full_bytes, thumb_bytes = prepared
-      path = f"{folder}/{token}.webp"
-      bucket.upload(path, full_bytes, {**options, "content-type": "image/webp"})
-      try:
-        bucket.upload(
-            f"{folder}/{token}_t.webp", thumb_bytes, {**options, "content-type": "image/webp"}
-        )
-      except Exception:
-        bucket.remove([path])
-        raise
-      return bucket.get_public_url(path)
-
-    ext = os.path.splitext(file_name or "")[1].lower() or ".png"
-    path = f"{folder}/{token}{ext}"
-    bucket.upload(path, raw, {**options, "content-type": uploaded_file.type or "image/png"})
+    full_bytes, thumb_bytes = prepared
+    path = f"{folder}/{token}.webp"
+    bucket.upload(path, full_bytes, options)
+    try:
+      bucket.upload(f"{folder}/{token}_t.webp", thumb_bytes, options)
+    except Exception:
+      bucket.remove([path])
+      raise
     return bucket.get_public_url(path)
   except Exception as e:
-    st.error(f"სურათის ატვირთვის შეცდომა: {e}")
+    print(f"upload_screenshot error: {e!r}")  # დეტალი მხოლოდ სერვერის ლოგში
+    st.error(t("db_generic_error", lang))
     return None

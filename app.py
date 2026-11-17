@@ -1,5 +1,6 @@
 import streamlit as st
 
+from i18n import normalize_lang
 from utils import auth
 from utils.account import load_account
 from utils.sidebar_manager import render_sidebar_and_navigation
@@ -20,8 +21,6 @@ for _old_key in ("saved_email", "saved_uid"):
 auth.restore_session()
 auth.ensure_fresh_session()
 auth.flush_cookie_cmd()
-if st.query_params.get("debug") == "1":
-  auth.render_debug()
 
 if st.session_state.user is None:
   render_auth_screen()
@@ -30,9 +29,13 @@ else:
   user_email = st.session_state.user.email
   account = load_account(user_id)
 
+  # დიაგნოსტიკა (?debug=1) მხოლოდ ბაზაში დადასტურებულ ადმინს ეჩვენება
+  if st.query_params.get("debug") == "1" and account.is_admin:
+    auth.render_debug()
+
   # ენა/თემა ბაზიდან
   prefs = account.prefs
-  st.session_state.lang = prefs.get("language") or st.session_state.get("lang") or "ka"
+  st.session_state.lang = normalize_lang(prefs.get("language") or st.session_state.get("lang"))
   st.session_state.setdefault("theme", prefs.get("theme") or "auto")
 
   if not account.subscription.valid:

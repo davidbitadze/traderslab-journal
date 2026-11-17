@@ -1,4 +1,5 @@
 import streamlit as st
+from i18n import t
 from utils.db_core import get_data_client, call_rpc
 
 EDITABLE_PREFERENCE_FIELDS = ("language", "theme", "mobile_view_mode", "desktop_view_mode")
@@ -38,7 +39,8 @@ def update_user_preference_fields(user_id, **fields):
       cached.update(data)
     return True
   except Exception as e:
-    st.error(f"ბაზის დეტალური შეცდომა: {e}")
+    print(f"db_preferences.py: {e!r}")  # დეტალი მხოლოდ ლოგში
+    st.error(t("db_generic_error", st.session_state.get("lang", "ka")))
     return False
 
 def ensure_user_preferences():

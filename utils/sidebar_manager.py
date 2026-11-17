@@ -5,6 +5,7 @@ import streamlit as st
 from database import update_user_preference_fields
 from utils import auth
 from utils.theme import apply_theme_styles
+from i18n import available_languages
 from utils.translations import t
 from views.admin import render_admin_view
 from views.analytics import render_analytics_view
@@ -21,11 +22,14 @@ PAGES = {
 
 
 def _language_picker(user_id, lang):
+  languages = available_languages()  # i18n/ საქაღალდის ფაილებიდან: ახალი ენა მენიუში თავისით ჩნდება
+  codes = [code for code, _ in languages]
+  labels = dict(languages)
   selected = st.sidebar.selectbox(
       "Language / ენა",
-      options=["ka", "en"],
-      format_func=lambda x: "🇬🇪 ქართული" if x == "ka" else "🇬🇧 English",
-      index=0 if lang == "ka" else 1,
+      options=codes,
+      format_func=lambda code: labels[code],
+      index=codes.index(lang) if lang in codes else 0,
       key="global_lang_select",
   )
   if selected != lang:

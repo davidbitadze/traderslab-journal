@@ -1,5 +1,6 @@
 import pandas as pd
 import streamlit as st
+from i18n import t
 from utils.db_core import get_data_client, _uid
 
 BALANCE_TTL = 300
@@ -33,7 +34,8 @@ def add_balance_transaction(data):
     _load_balance.clear()
     return True
   except Exception as e:
-    st.error(f"შეცდომა ბაზაში ჩაწერისას: {e}")
+    print(f"db_balance.py: {e!r}")  # დეტალი მხოლოდ ლოგში
+    st.error(t("db_generic_error", st.session_state.get("lang", "ka")))
     return False
 
 def delete_balance_transaction(txn_id):
@@ -44,5 +46,6 @@ def delete_balance_transaction(txn_id):
     _load_balance.clear()
     return True
   except Exception as e:
-    st.error(f"შეცდომა ტრანზაქციის წაშლისას: {e}")
+    print(f"db_balance.py: {e!r}")  # დეტალი მხოლოდ ლოგში
+    st.error(t("db_generic_error", st.session_state.get("lang", "ka")))
     return False

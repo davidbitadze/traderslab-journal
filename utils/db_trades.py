@@ -1,5 +1,6 @@
 import pandas as pd
 import streamlit as st
+from i18n import t
 from utils.db_core import get_data_client, _uid
 from utils.db_storage import delete_screenshot
 
@@ -39,7 +40,8 @@ def fetch_trades():
       return pd.DataFrame()
     return _load_trades(uid)
   except Exception as e:
-    st.error(f"ბაზიდან მონაცემის წამოღების შეცდომა: {e}")
+    print(f"db_trades.py: {e!r}")  # დეტალი მხოლოდ ლოგში
+    st.error(t("db_generic_error", st.session_state.get("lang", "ka")))
     return pd.DataFrame()
 
 def insert_trade(trade_data):
@@ -51,27 +53,34 @@ def insert_trade(trade_data):
     invalidate_trades()
     return True
   except Exception as e:
-    st.error(f"ბაზაში ჩაწერის შეცდომა: {e}")
+    print(f"db_trades.py: {e!r}")  # დეტალი მხოლოდ ლოგში
+    st.error(t("db_generic_error", st.session_state.get("lang", "ka")))
     return False
 
 def update_trade(trade_id, updated_data):
   try:
-    supabase = get_data_client()
-    response = supabase.table("trades").update(updated_data).eq("Trade ID", trade_id).execute()
-    if not response.data:
-      supabase.table("trades").update(updated_data).eq("id", trade_id).execute()
+    uid = _uid()
+    if not uid:
+      return False
+    updated_data = {k: v for k, v in updated_data.items() if k != "user_id"}  # მფლობელის შეცვლა აკრძალულია
+    # user_id ფილტრი RLS-ის გარდა მეორე დაცვის ფენაა
+    get_data_client().table("trades").update(updated_data).eq("Trade ID", trade_id).eq("user_id", uid).execute()
     invalidate_trades()
     return True
   except Exception as e:
-    st.error(f"ბაზის განახლების შეცდომა: {e}")
+    print(f"db_trades.update_trade: {e!r}")
+    st.error(t("db_generic_error", st.session_state.get("lang", "ka")))
     return False
 
 def update_net_pnl_batch(updates):
   done = []
+  uid = _uid()
+  if not uid:
+    return done
   client = get_data_client()
   for trade_id, value in updates:
     try:
-      client.table("trades").update({"Net P/L": str(value)}).eq("Trade ID", trade_id).execute()
+      client.table("trades").update({"Net P/L": str(value)}).eq("Trade ID", trade_id).eq("user_id", uid).execute()
       done.append((trade_id, value))
     except Exception:
       continue
@@ -81,20 +90,24 @@ def update_net_pnl_batch(updates):
 
 def delete_trade(trade_id):
   try:
+    uid = _uid()
+    if not uid:
+      return False
     supabase = get_data_client()
     urls = []
     try:
       for col in ("Trade ID", "Parent Trade ID"):
-        rows = supabase.table("trades").select("Screenshot").eq(col, trade_id).execute().data
+        rows = supabase.table("trades").select("Screenshot").eq(col, trade_id).eq("user_id", uid).execute().data
         urls += [r.get("Screenshot") for r in (rows or [])]
     except Exception:
       urls = []
-    supabase.table("trades").delete().eq("Trade ID", trade_id).execute()
-    supabase.table("trades").delete().eq("Parent Trade ID", trade_id).execute()
+    supabase.table("trades").delete().eq("Trade ID", trade_id).eq("user_id", uid).execute()
+    supabase.table("trades").delete().eq("Parent Trade ID", trade_id).eq("user_id", uid).execute()
     invalidate_trades()
     for url in set(u for u in urls if u):
       delete_screenshot(url)
     return True
   except Exception as e:
-    st.error(f"ბაზიდან წაშლის შეცდომა: {e}")
+    print(f"db_trades.py: {e!r}")  # დეტალი მხოლოდ ლოგში
+    st.error(t("db_generic_error", st.session_state.get("lang", "ka")))
     return False

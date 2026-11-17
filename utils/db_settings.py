@@ -1,4 +1,5 @@
 import streamlit as st
+from i18n import t
 from utils.db_core import get_data_client, _uid
 
 SETTINGS_TTL = 600
@@ -77,7 +78,8 @@ def add_setting_item(category, item_name):
     _load_settings.clear()
     return True
   except Exception as e:
-    st.error(f"დამატების შეცდომა: {e}")
+    print(f"db_settings.py: {e!r}")  # დეტალი მხოლოდ ლოგში
+    st.error(t("db_generic_error", st.session_state.get("lang", "ka")))
     return False
 
 
@@ -94,7 +96,8 @@ def delete_setting_item(category, item_name):
     _load_settings.clear()
     return True
   except Exception as e:
-    st.error(f"წაშლის შეცდომა: {e}")
+    print(f"db_settings.py: {e!r}")  # დეტალი მხოლოდ ლოგში
+    st.error(t("db_generic_error", st.session_state.get("lang", "ka")))
     return False
 
 
@@ -112,5 +115,6 @@ def update_setting_item(category, old_name, new_name):
     _load_settings.clear()
     return True
   except Exception as e:
-    st.error(f"განახლების შეცდომა: {e}")
+    print(f"db_settings.py: {e!r}")  # დეტალი მხოლოდ ლოგში
+    st.error(t("db_generic_error", st.session_state.get("lang", "ka")))
     return False
