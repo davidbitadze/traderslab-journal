@@ -3,7 +3,7 @@
 -- Run once in the Supabase SQL Editor. The script is idempotent
 -- (safe to run again).
 --
--- BEFORE RUNNING: replace eufrazio@yandex.ru below with YOUR e-mail
+-- BEFORE RUNNING: replace CHANGE_ME@example.com below with YOUR e-mail
 -- (the one you log in with). It is used to
 --   1) claim all legacy rows that have no user_id yet, and
 --   2) create the first admin.
@@ -14,14 +14,14 @@ begin;
 -- 0. Settings: your e-mail (kept only in the database, not in the repo)
 -- ---------------------------------------------------------------------
 -- (transaction-local setting; no temporary table, so Supabase shows no RLS warning)
-select set_config('tl.owner_email', 'eufrazio@yandex.ru', true);
+select set_config('tl.owner_email', 'CHANGE_ME@example.com', true);
 
 do $$
 declare v_email text; v_uid uuid;
 begin
   v_email := current_setting('tl.owner_email');
   if v_email is null or v_email like 'CHANGE_ME%' then
-    raise exception 'Edit the e-mail at the top of this script first (eufrazio@yandex.ru).';
+    raise exception 'Edit the e-mail at the top of this script first (CHANGE_ME@example.com).';
   end if;
   select id into v_uid from auth.users where lower(email) = lower(v_email);
   if v_uid is null then

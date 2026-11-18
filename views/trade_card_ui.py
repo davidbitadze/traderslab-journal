@@ -62,6 +62,30 @@ div[data-testid="element-container"]:has(> [data-testid="stHorizontalBlock"] .tr
 [data-testid="stHorizontalBlock"]:has(.trade-row-marker) > div:not(:last-child) [data-testid="stMarkdownContainer"] p {
     margin: 0 !important;
 }
+.sub-action-img {
+    width: 75px !important;
+    height: 75px !important;
+    min-width: 75px !important;
+    min-height: 75px !important;
+    border-radius: 6px !important;
+    object-fit: cover !important;
+    object-position: center center !important;
+    border: 1px solid rgba(128,128,128,0.35) !important;
+    display: block !important;
+}
+.sub-action-placeholder {
+    width: 75px !important;
+    height: 75px !important;
+    min-width: 75px !important;
+    min-height: 75px !important;
+    border-radius: 6px !important;
+    background: rgba(128,128,128,0.12);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    border: 1px solid rgba(128,128,128,0.35) !important;
+}
 .trade-thumb-img {
     width: __SIZE__ !important;
     height: __SIZE__ !important;

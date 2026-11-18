@@ -215,8 +215,12 @@ def _render_sub_edit(trade_id, sub, date_col):
     _close_edit_screen()
 
   if save:
-    required = {"ფასი": price_txt, "მოცულობა": qty_txt, "რისკი": risk_txt}
+    # ფასი და მოცულობა სავალდებულოა; რისკი მხოლოდ საწყის სტრიქონში (ნაწილობრივ/სრულ დახურვას რისკი არ სჭირდება)
+    required = {"ფასი": price_txt, "მოცულობა": qty_txt}
+    if is_start or risk_txt.strip():
+      required["რისკი"] = risk_txt
     parsed = {name: _parse_num(text) for name, text in required.items()}
+    parsed.setdefault("რისკი", 0.0)
     errors = [f"არასწორი რიცხვი: {n}" for n, v in parsed.items() if v is None]
 
     optional = {}
@@ -316,7 +320,7 @@ def show_trade_details_dialog(trade, df=None):
       update_trade(trade_id, {"Finalized": str(new_status)})
       recalc_net_pnl(trade_id, clear_if_none=False)
       st.toast("სტატუსი განახლდა!", icon="🔄")
-      st.rerun(scope="fragment")
+      st.rerun()  # მთლიანი გვერდი: ჟურნალის სია (მიმდინარე/დასრულებული) ახალ სტატუსს მაშინვე აჩვენებს
 
   with col_st2:
     status_badge = "🏁 დასრულებული" if is_finalized else "⚡ მიმდინარე"
