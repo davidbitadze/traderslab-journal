@@ -491,8 +491,7 @@ def show_trade_details_dialog(trade, df=None):
 
     opt_detailed = st.toggle(_tt("ai_opt_detailed"), key=f"ai_opt_det_{trade_id}")
     opt_advice = st.toggle(_tt("ai_opt_advice"), key=f"ai_opt_adv_{trade_id}")
-    total_cost = 0.0 if mode == "demo" else calculate_cost(opt_detailed, opt_advice)
-
+    total_cost = calculate_cost(opt_detailed, opt_advice)
     if st.button(_tt("ai_send", cost=total_cost), key=f"ai_send_{trade_id}", use_container_width=True):
       _run_ai_analysis(trade, sub_actions, trade_id, user_id, mode, total_cost, opt_detailed, opt_advice)
 
