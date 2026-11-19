@@ -45,12 +45,10 @@ class AIResult:
 
 def calculate_cost(detailed: bool, advice: bool) -> float:
   """ანალიზის ფასი ქულებში."""
-  return round(
-      AI_BASE_COST
-      + (AI_DETAILED_EXTRA if detailed else 0.0)
-      + (AI_ADVICE_EXTRA if advice else 0.0),
-      2,
-  )
+  base = float(_secret("AI_BASE_COST", 1.0))
+  det = float(_secret("AI_DETAILED_EXTRA", 1.0)) if detailed else 0.0
+  adv = float(_secret("AI_ADVICE_EXTRA", 1.0)) if advice else 0.0
+  return round(base + det + adv, 2)
 
 
 def _secret(name, default=None):
