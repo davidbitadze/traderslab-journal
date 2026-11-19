@@ -1,3 +1,4 @@
+import re
 from database import fetch_trades
 from utils.dates import parse_trade_datetime
 from utils.formulas import calculate_stats
@@ -10,6 +11,23 @@ GREEN = "#22c55e"
 RED = "#ef4444"
 GRAY = "#94a3b8"
 
+_AI_CRITERIA_KEYS = ["level", "pattern", "trigger", "volume", "management"]
+_AI_CRITERIA_LABELS_KA = [
+    "📍 დონე",
+    "🧩 პატერნი",
+    "⚡ ტრიგერი",
+    "📊 მოცულობა/ფონი",
+    "🛡️ მართვა",
+]
+_AI_CRITERIA_LABELS_EN = [
+    "📍 Level",
+    "🧩 Pattern",
+    "⚡ Trigger",
+    "📊 Volume/Context",
+    "🛡️ Management",
+]
+
+
 # ---------------------------------------------------------------- helpers
 def _is_true(value):
   if isinstance(value, str):
@@ -21,6 +39,141 @@ def _clean_label(value):
   if value is None or pd.isna(value) or not str(value).strip():
     return "N/A"
   return str(value).replace("|", "").strip() or "N/A"
+
+
+def _parse_ai_scores(raw):
+  """აბრუნებს [s1, s2, s3, s4, s5] float სიას (0..2) ან None-ს, თუ ვალიდური ქულები არ არის."""
+  if raw is None:
+    return None
+  if isinstance(raw, float) and pd.isna(raw):
+    return None
+
+  if isinstance(raw, (list, tuple)):
+    parts = list(raw)
+  else:
+    text = str(raw).strip()
+    if not text or text.lower() in ("nan", "none", "<na>"):
+      return None
+    text = re.sub(r"^SCORES:\s*", "", text, flags=re.I)
+    parts = [p.strip() for p in text.split(",")]
+
+  if len(parts) != 5:
+    return None
+
+  vals = []
+  for p in parts:
+    try:
+      v = float(p)
+    except (ValueError, TypeError):
+      return None
+    if v < 0 or v > 2:
+      return None
+    vals.append(v)
+  return vals
+
+
+def _collect_ai_scores(df):
+  """აგროვებს AI შეფასებებს მთავარი გარიგებებიდან ქრონოლოგიურად."""
+  main_trades, _ = split_trades(df)
+  if main_trades.empty or "ai_scores" not in main_trades.columns:
+    return pd.DataFrame()
+
+  rows = []
+  for _, trade in main_trades.iterrows():
+    parsed = _parse_ai_scores(trade.get("ai_scores"))
+    if not parsed:
+      continue
+    trade_id = trade.get("Trade ID") or trade.get("Parent Trade ID")
+    total_10 = round(sum(parsed), 2)
+    row = {
+        "Trade ID": trade_id,
+        "Date": parse_trade_datetime(trade.get("Entry Date")),
+        "Pair": _clean_label(trade.get("Pair")),
+        "AI_Total": total_10,
+    }
+    for k, v in zip(_AI_CRITERIA_KEYS, parsed):
+      row[k] = v
+    rows.append(row)
+
+  out = pd.DataFrame(rows)
+  if out.empty:
+    return out
+  out["Date"] = pd.to_datetime(out["Date"])
+  out = out.sort_values("Date", na_position="first").reset_index(drop=True)
+  return out
+
+
+def _render_ai_scores_section(df, lang="ka"):
+  st.divider()
+  st.subheader("🤖 AI მენტორის ქულების სტატისტიკა" if lang == "ka" else "🤖 AI Mentor Score Statistics")
+
+  ai_df = _collect_ai_scores(df)
+  if ai_df.empty:
+    st.info(
+        "AI ქულების სტატისტიკა გამოჩნდება მას შემდეგ, რაც გარიგებებზე შეფასების ქულები ჩაიწერება."
+        if lang == "ka"
+        else "AI score statistics will appear once trades have recorded AI scores."
+    )
+    return
+
+  labels = _AI_CRITERIA_LABELS_KA if lang == "ka" else _AI_CRITERIA_LABELS_EN
+  avg_total = ai_df["AI_Total"].mean()
+  last_total = ai_df["AI_Total"].iloc[-1]
+  prev_avg = ai_df["AI_Total"].iloc[:-1].mean() if len(ai_df) > 1 else None
+  delta_str = f"{avg_total - prev_avg:+.2f} vs prev" if prev_avg is not None else None
+
+  crit_means = {lbl: round(float(ai_df[key].mean()), 2) for lbl, key in zip(labels, _AI_CRITERIA_KEYS)}
+  weakest_lbl = min(crit_means, key=crit_means.get)
+  strongest_lbl = max(crit_means, key=crit_means.get)
+
+  m_cols = st.columns(4)
+  with m_cols[0]:
+    with st.container(border=True):
+      st.metric(
+          "საშუალო AI ქულა" if lang == "ka" else "Avg AI Score",
+          f"{avg_total:.2f} / 10",
+          delta=delta_str,
+          delta_color="normal",
+      )
+  with m_cols[1]:
+    with st.container(border=True):
+      st.metric(
+          "ბოლო შეფასება" if lang == "ka" else "Latest Score",
+          f"{last_total:.1f} / 10",
+      )
+  with m_cols[2]:
+    with st.container(border=True):
+      st.metric(
+          "ყველაზე სუსტი კრიტერიუმი" if lang == "ka" else "Weakest Area",
+          weakest_lbl,
+          f"{crit_means[weakest_lbl]:.2f} / 2.00",
+          delta_color="off",
+      )
+  with m_cols[3]:
+    with st.container(border=True):
+      st.metric(
+          "ყველაზე ძლიერი კრიტერიუმი" if lang == "ka" else "Strongest Area",
+          strongest_lbl,
+          f"{crit_means[strongest_lbl]:.2f} / 2.00",
+          delta_color="off",
+      )
+
+  c1, c2 = st.columns(2)
+  with c1:
+    st.caption("საშუალო ქულა კრიტერიუმების მიხედვით (მაქს. 2.0)" if lang == "ka" else "Average score by criterion (max 2.0)")
+    crit_df = pd.DataFrame({
+        "Criterion": list(crit_means.keys()),
+        "Avg": list(crit_means.values()),
+    })
+    st.bar_chart(crit_df, x="Criterion", y="Avg", height=260, sort=False)
+
+  with c2:
+    st.caption("ჯამური AI ქულის დინამიკა (0–10)" if lang == "ka" else "Total AI score trend (0–10)")
+    trend_df = pd.DataFrame({
+        "Index": range(1, len(ai_df) + 1),
+        "Score": ai_df["AI_Total"],
+    })
+    st.line_chart(trend_df, x="Index", y="Score", height=260)
 
 
 def _collect_trades(df):
@@ -120,7 +273,6 @@ def _bar(g, key, value_col="Total", height=320):
 
 
 # ------------------------------------------------------------------- view
-# ------------------------------------------------------------------- view
 def render_analytics_view(lang="ka"):
   st.title(t("analytics_page_title", lang))
 
@@ -132,6 +284,7 @@ def render_analytics_view(lang="ka"):
   all_trades = _collect_trades(df)
   if all_trades.empty:
     st.info(t("no_finalized_trades", lang))
+    _render_ai_scores_section(df, lang)
     return
 
   # ---- პერიოდის ფილტრი
@@ -270,3 +423,6 @@ def render_analytics_view(lang="ka"):
               delta_color="off",
           )
     _group_table(g, "Side", t("col_side", lang), lang)
+
+  # ---- AI ქულების სტატისტიკა
+  _render_ai_scores_section(df, lang)
