@@ -106,8 +106,9 @@ def _load_prompt_template(lang: str = "ka") -> str:
 
 
 def _build_prompt(trade_data, sub_actions_df, detailed, advice, lang="ka"):
+  analysis_mode = "deep" if detailed else "standard"
   lacony = (
-      "ვრცელი და დეტალური ანალიზი"
+      "ვრცელი, სიღრმისეული და ჩაშლილი ანალიზი"
       if detailed
       else "ლაკონური, მოკლე და კონკრეტული"
   )
@@ -131,6 +132,7 @@ def _build_prompt(trade_data, sub_actions_df, detailed, advice, lang="ka"):
 
   return template.format(
       lacony=lacony,
+      analysis_mode=analysis_mode,
       advice_rule=advice_rule,
       default_lang="ქართული" if lang == "ka" else "ინგლისური",
       pair=_fmt(trade_data.get("Pair")),
@@ -257,7 +259,7 @@ def generate_trade_analysis(
         json={
             "contents": [{"role": "user", "parts": parts}],
             "generationConfig": {
-                "maxOutputTokens": 2400 if opt_detailed else 1200,
+                "maxOutputTokens": 3200 if opt_detailed else 1200,
             },
         },
         timeout=REQUEST_TIMEOUT,
