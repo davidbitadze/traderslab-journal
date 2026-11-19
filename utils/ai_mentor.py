@@ -191,14 +191,24 @@ def _split_scores(text):
   return cleaned, scores
 
 
-def _demo_result(trade_data):
+def _demo_result(trade_data, sub_actions_df=None, detailed=False, advice=False, lang="ka"):
   pair = _fmt(trade_data.get("Pair"))
-  return AIResult(
-      ok=True,
-      demo=True,
-      analysis=t("ai_demo_text", st.session_state.get("lang", "ka"), pair=pair),
-      scores="",
+  shot_url = _fmt(trade_data.get("Screenshot"))
+  built_prompt = _build_prompt(trade_data, sub_actions_df, detailed, advice, lang)
+
+  shot_line = (
+      f"🖼️ **სკრინშოტის ბმული:** {shot_url}\n\n"
+      if shot_url != "n/a" and shot_url != "No Screenshot"
+      else "⚠️ **სკრინშოტი მიბმული არ არის**\n\n"
   )
+
+  demo_text = (
+      f"🧪 **დემო რეჟიმი ({pair}) — ტესტისთვის მზა პაკეტი:**\n\n"
+      f"{shot_line}"
+      f"ქვემოთ მოცემულია დაგენერირებული პრომტი. დააკოპირე და ჩააგდე ჩატში სკრინშოტთან ერთად:\n\n"
+      f"```text\n{built_prompt}\n```"
+  )
+  return AIResult(ok=True, demo=True, analysis=demo_text, scores="")
 
 
 def generate_trade_analysis(
@@ -209,8 +219,7 @@ def generate_trade_analysis(
   if status == "disabled":
     return AIResult(False, error=t("ai_disabled", st.session_state.get("lang", "ka")))
   if status == "demo":
-    return _demo_result(trade_data)
-
+    return _demo_result(trade_data, sub_actions_df, opt_detailed, opt_advice, lang)
   content = []
   image = _download_image(trade_data.get("Screenshot"))
   if image:
