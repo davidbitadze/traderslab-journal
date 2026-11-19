@@ -1,5 +1,6 @@
 import html
 import streamlit as st
+from i18n import t
 from database import delete_trade, thumb_url
 from views.trade_dialogs import show_trade_details_dialog, EDIT_STATE_KEY
 from utils.formulas import calculate_net_pnl, to_float
@@ -175,6 +176,7 @@ def _side_label(side):
   return str(side)
 
 def render_trade_card(trade, df, subs=None, pnl=None):
+  lang = st.session_state.get("lang", "ka")
   trade_id = trade.get("Trade ID") or trade.get("Parent Trade ID")
   pair = html.escape(str(trade.get("Pair", "N/A")))
   side = trade.get("Side", "N/A")
@@ -199,7 +201,7 @@ def render_trade_card(trade, df, subs=None, pnl=None):
     pnl_color = GREEN if pnl > 0 else (RED if pnl < 0 else GRAY)
     status_indicator = f"<span style='color:{pnl_color}; font-weight:600;'>{pnl:+.2f}$</span>"
   else:
-    status_indicator = f"<span style='background-color: {ORANGE}; color: white; font-size: 0.6rem; padding: 1px 4px; border-radius: 3px; font-weight: 500;'>მიმდინარე</span>"
+    status_indicator = f"<span style='background-color: {ORANGE}; color: white; font-size: 0.6rem; padding: 1px 4px; border-radius: 3px; font-weight: 500;'>{html.escape(t('status_ongoing', lang))}</span>"
 
   img_url = _get_image_url(screenshot)
   if img_url:
@@ -233,24 +235,24 @@ def render_trade_card(trade, df, subs=None, pnl=None):
 
   with col_menu:
     with st.popover("⋯"):
-      if st.button("დეტალები", key=f"det_menu_{trade_id}", use_container_width=True):
+      if st.button(t("menu_details", lang), key=f"det_menu_{trade_id}", use_container_width=True):
         st.session_state.pop(EDIT_STATE_KEY, None)
         show_trade_details_dialog(trade)
 
-      if st.button("წაშლა", key=f"del_menu_{trade_id}", use_container_width=True):
+      if st.button(t("menu_delete", lang), key=f"del_menu_{trade_id}", use_container_width=True):
         st.session_state[state_key] = "delete"
         st.rerun()
 
   if current_mode == "delete":
-    st.error("⚠️ ნამდვილად გსურთ გარიგების წაშლა?")
+    st.error(t("confirm_delete_trade", lang))
     col_d1, col_d2 = st.columns(2)
     with col_d1:
-      if st.button("დიახ", key=f"conf_del_{trade_id}", use_container_width=True):
+      if st.button(t("yes", lang), key=f"conf_del_{trade_id}", use_container_width=True):
         if delete_trade(trade_id):
-          st.success("წაიშალა!")
+          st.success(t("deleted_ok", lang))
           del st.session_state[state_key]
           st.rerun()
     with col_d2:
-      if st.button("გაუქმება", key=f"canc_del_{trade_id}", use_container_width=True):
+      if st.button(t("cancel", lang), key=f"canc_del_{trade_id}", use_container_width=True):
         del st.session_state[state_key]
         st.rerun()

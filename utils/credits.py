@@ -12,12 +12,16 @@ from database import call_rpc, get_data_client
 CREDITS_DISPLAY_TTL = 30
 
 # ბაზის შეცდომის კოდი -> გასაგები ტექსტი
-ERROR_TEXTS = {
-    "insufficient_credits": "არ გაქვთ საკმარისი ქულები.",
-    "subscription_inactive": "გამოწერა აქტიური არ არის.",
-    "invalid_amount": "ქულების რაოდენობა არასწორია.",
-    "not_authenticated": "ავტორიზაციის შეცდომა.",
+ERROR_KEYS = {
+    "insufficient_credits": "cr_insufficient_credits",
+    "subscription_inactive": "cr_subscription_inactive",
+    "invalid_amount": "cr_invalid_amount",
+    "not_authenticated": "cr_not_authenticated",
 }
+
+
+def _msg(key, **fmt):
+  return t(key, st.session_state.get("lang", "ka"), **fmt)
 
 
 @dataclass
@@ -78,10 +82,10 @@ def charge_credits(user_id: str, amount: float, reason: str) -> ChargeResult:
   """
   data, error = call_rpc("spend_credits", {"p_amount": float(amount), "p_reason": reason})
   if error or not isinstance(data, dict):
-    return ChargeResult(False, error="ქულების სისტემა ხელმისაწვდომი არ არის. სცადეთ მოგვიანებით.")
+    return ChargeResult(False, error=_msg("cr_unavailable"))
   if not data.get("ok"):
     code = data.get("error", "")
-    return ChargeResult(False, error=ERROR_TEXTS.get(code, f"ჩამოჭრა ვერ მოხერხდა ({code})."))
+    return ChargeResult(False, error=_msg(ERROR_KEYS.get(code, "cr_charge_failed"), code=code))
   balance = float(data["balance"])
   _remember_credits(user_id, balance)
   return ChargeResult(True, balance=balance, entry_id=data.get("entry_id"))

@@ -15,6 +15,7 @@ from typing import Optional
 
 import httpx
 import streamlit as st
+from i18n import t
 
 API_URL = "https://api.anthropic.com/v1/messages"
 API_VERSION = "2023-06-01"
@@ -163,10 +164,7 @@ def _demo_result(trade_data):
   return AIResult(
       ok=True,
       demo=True,
-      analysis=(
-          "🧪 **დემო რეჟიმი**: ეს რეალური ანალიზი არ არის და ქულა არ ჩამოგჭრიათ.\n\n"
-          f"გარიგება {pair}: რეალური შეფასებისთვის ჩართეთ ANTHROPIC_API_KEY."
-      ),
+      analysis=t("ai_demo_text", st.session_state.get("lang", "ka"), pair=pair),
       scores="",
   )
 
@@ -177,7 +175,7 @@ def generate_trade_analysis(
   """აბრუნებს AIResult-ს. შეცდომისას ok=False (გამოძახებელი ქულებს უკან აბრუნებს)."""
   status = ai_status()
   if status == "disabled":
-    return AIResult(False, error="AI მენტორი ჯერ ჩართული არ არის.")
+    return AIResult(False, error=t("ai_disabled", st.session_state.get("lang", "ka")))
   if status == "demo":
     return _demo_result(trade_data)
 
@@ -206,9 +204,9 @@ def generate_trade_analysis(
     blocks = response.json().get("content", [])
     text = "".join(b.get("text", "") for b in blocks if b.get("type") == "text").strip()
   except Exception as e:
-    return AIResult(False, error=f"AI სერვისი დროებით მიუწვდომელია ({type(e).__name__}).")
+    return AIResult(False, error=t("ai_err_unavailable", st.session_state.get("lang", "ka"), name=type(e).__name__))
 
   if not text:
-    return AIResult(False, error="AI-მ ცარიელი პასუხი დააბრუნა.")
+    return AIResult(False, error=t("ai_err_empty", st.session_state.get("lang", "ka")))
   analysis, scores = _split_scores(text)
   return AIResult(True, analysis=analysis, scores=scores)

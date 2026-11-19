@@ -12,7 +12,6 @@ GREEN = "#22c55e"
 RED = "#ef4444"
 AMBER = "#f59e0b"
 
-FORMATIONS = ["ტრენდი", "კონტრ-ტრენდი", "ფლეტი"]
 
 
 def _k(name):
@@ -233,7 +232,7 @@ def _trade_form(patterns_options, triggers_options, lang="ka"):
     )
     formation = st.selectbox(
         "Formation" if lang == "en" else "ფორმაცია (Formation)",
-        FORMATIONS,
+        list(t("formations", lang)),
         key=_k("formation"),
     )
     description = st.text_area(

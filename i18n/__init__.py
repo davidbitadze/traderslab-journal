@@ -39,6 +39,21 @@ def normalize_lang(code):
   return code if code in _LANGS else BASE_LANG
 
 
+def detect_browser_lang():
+  """ახალი ვიზიტორისთვის ენა ბრაუზერის ენიდან (st.context.locale), თუ ასეთი ენა გვაქვს; სხვაგვარად ka."""
+  try:
+    import streamlit as st
+
+    locale = getattr(st.context, "locale", None)
+    if locale:
+      code = str(locale).replace("_", "-").split("-")[0].lower()
+      if code in _LANGS:
+        return code
+  except Exception:
+    pass
+  return BASE_LANG
+
+
 def t(key, lang=BASE_LANG, **fmt):
   """აბრუნებს ტექსტს არჩეული ენით; გამოტოვებულია -> ბაზისურ ენაზე; მაშინაც არა -> გასაღები."""
   lang = normalize_lang(lang)

@@ -14,6 +14,7 @@ import re
 import time
 
 import streamlit as st
+from i18n import t
 import streamlit.components.v1 as components
 
 from database import new_auth_client
@@ -65,24 +66,30 @@ def _adopt(client, session, remember):
     _queue_cookie("clear")
 
 
-def friendly_error(err):
-  """Supabase-ის ინგლისური შეცდომები -> ქართულად."""
+def error_key(err):
+  """Supabase-ის (ინგლისური) შეცდომა -> i18n გასაღები."""
   text = str(err).lower()
   if "email not confirmed" in text:
-    return "ელ-ფოსტა ჯერ არ არის დადასტურებული. გახსენი მეილში მიღებული წერილი და დააჭირე დადასტურების ბმულს."
+    return "err_email_not_confirmed"
   if "invalid login credentials" in text or "invalid credentials" in text:
-    return "ელ-ფოსტა ან პაროლი არასწორია."
+    return "err_bad_credentials"
   if "already registered" in text or "already been registered" in text:
-    return "ამ ელ-ფოსტით ანგარიში უკვე არსებობს. სცადე შესვლა."
+    return "err_already_registered"
   if "at least" in text and "character" in text:
-    return "პაროლი მინიმუმ 6 სიმბოლოს უნდა შეიცავდეს."
+    return "err_password_short"
   if "rate limit" in text or "too many" in text or "security purposes" in text:
-    return "ძალიან ბევრი მცდელობაა. სცადე რამდენიმე წუთში."
+    return "err_rate_limit"
   if "valid email" in text or "invalid email" in text or "unable to validate email" in text:
-    return "ელ-ფოსტის ფორმატი არასწორია."
+    return "err_bad_email"
   if "signup" in text and "disabled" in text:
-    return "რეგისტრაცია დროებით გამორთულია."
-  return f"მოულოდნელი შეცდომა: {err}"
+    return "err_signup_disabled"
+  print(f"auth: unexpected error: {err!r}")  # დეტალი მხოლოდ ლოგში
+  return "err_unexpected"
+
+
+def friendly_error(err):
+  """მომხმარებლისთვის გასაგები შეცდომა მისი ენით (დეტალი ეკრანზე არ ჩანს)."""
+  return t(error_key(err), st.session_state.get("lang", "ka"))
 
 
 def _app_url():
@@ -103,12 +110,11 @@ def login(email, password, remember):
     if response.user and response.session:
       _adopt(client, response.session, remember)
       return True, None
-    return False, "ელ-ფოსტა ან პაროლი არასწორია."
+    return False, t("err_bad_credentials", st.session_state.get("lang", "ka"))
   except Exception as e:
-    message = friendly_error(e)
-    if "არ არის დადასტურებული" in message:
+    if error_key(e) == "err_email_not_confirmed":
       st.session_state["_unconfirmed_email"] = email.strip()
-    return False, message
+    return False, friendly_error(e)
 
 
 _BRIDGE_JS = """

@@ -28,11 +28,7 @@ def _load_settings(uid, category):
 
   # თუ იუზერს ამ კატეგორიაში ჩანაწერი არ აქვს, ვუწერთ საწყის 3-3 დეფოლტს
   if not items:
-    defaults = (
-        ["ვ-შემობრუნება", "ორმაგი წვერი", "თავი მხრები"]
-        if category == "pattern"
-        else ["პინბარი", "ჩამყლაპავი", "გაფართოვება"]
-    )
+    defaults = _default_items(category)
     for d in defaults:
       try:
         client.table("user_settings").insert({
@@ -48,6 +44,12 @@ def _load_settings(uid, category):
   return items
 
 
+def _default_items(category):
+  """საწყისი პატერნები/ტრიგერები მომხმარებლის მიმდინარე ენაზე (i18n/<ენა>.py)."""
+  key = "default_patterns" if category == "pattern" else "default_triggers"
+  return list(t(key, st.session_state.get("lang", "ka")))
+
+
 def fetch_settings(category):
   try:
     uid = _uid()
@@ -55,7 +57,7 @@ def fetch_settings(category):
       return []
     return _load_settings(uid, category)
   except Exception:
-    return ["ვ-შემობრუნება", "ორმაგი წვერი", "თავი მხრები"] if category == "pattern" else ["პინბარი", "ჩამყლაპავი", "გაფართოვება"]
+    return _default_items(category)
 
 
 def add_setting_item(category, item_name):
