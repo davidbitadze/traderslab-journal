@@ -255,3 +255,9 @@ def generate_trade_analysis(
     return AIResult(False, error=t("ai_err_empty", st.session_state.get("lang", "ka")))
   analysis, scores = _split_scores(text)
   return AIResult(True, analysis=analysis, scores=scores)
+
+def get_extra_costs() -> tuple[float, float]:
+  """აბრუნებს (detailed_cost, advice_cost) სეკრეტებიდან ან დეფოლტიდან."""
+  det = float(_secret("AI_DETAILED_EXTRA", 1.0))
+  adv = float(_secret("AI_ADVICE_EXTRA", 1.0))
+  return round(det, 2), round(adv, 2)
