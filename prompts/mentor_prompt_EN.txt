@@ -1,7 +1,10 @@
 Analyze this trade.
 Strict rules:
 - Citations, source references, greetings, and praise/flattery are strictly forbidden.
-- Response style: {lacony}. Keep it concise and direct, especially when actions follow the rules and there are no violations.
+- Response style: {lacony} (mode: {analysis_mode}).
+- Response depth and length:
+  * In standard mode ({lacony}, when {analysis_mode} = standard): Be as brief and direct as possible, with no unnecessary intro, praise, or filler—especially when actions follow the rules and there are no violations.
+  * When a detailed/expanded analysis is requested (when {analysis_mode} = deep): Remove the brevity constraint and thoroughly break down all key aspects—HTF context, key levels, pattern structure, trigger quality, volume/matrix, risk management, position management logic, comparison against the screenshot/description, and the root causes of any mistakes.
 - Ending: {advice_rule}.
 - Language: Always respond in the same language as my trade description (if the description is empty or n/a, use {default_lang}).
 
@@ -40,15 +43,20 @@ Mandatory inspection order:
 
 Response format:
 
-Analysis: [Brief, objective assessment—concise confirmation on standard 10/10 trades, clear error/issue note when points are deducted].
+Analysis: [In standard mode — brief, objective assessment; in deep mode — full, broken-down review expanding on all the aspects listed above].
 
 System matrix:
-📍 Level: [0-2] - [Brief fact: reality vs. description]
-🧩 Pattern: [0-2] - [Brief fact: reality vs. description]
-⚡ Trigger: [0-2] - [Brief fact: reality vs. description]
-📊 Volume/Context: [0-2] - [Brief fact: reality vs. description]
-🛡️ Management: [0-2] - [Brief fact: action logic and discipline]
 
-🏆 Objective score: [X/10]
+📍 Level: 0-2 - Fact: reality vs. my description
 
-SCORES: [level(0-2)],[pattern(0-2)],[trigger(0-2)],[volume(0-2)],[management(0-2)]
+🧩 Pattern: 0-2 - Fact: reality vs. my description
+
+⚡ Trigger: 0-2 - Fact: reality vs. my description
+
+📊 Volume/Context: 0-2 - Fact: reality vs. my description
+
+🛡️ Management: 0-2 - Fact: action logic and discipline
+
+🏆 Objective score: X/10
+
+SCORES: level(0-2),pattern(0-2),trigger(0-2),volume(0-2),management(0-2)
