@@ -1,8 +1,8 @@
-"""AI მენტორი: გარიგების ანალიზი (Gemini REST API).
+"""AI მენტორი: გარიგების ანალიზი (Gemini API).
 
 კონფიგურაცია (.streamlit/secrets.toml ან Streamlit Cloud Secrets):
   GEMINI_API_KEY    = "..."                  # ჩართავს რეალურ ანალიზს
-  AI_MODEL          = "gemini-3.8-flash"     # არასავალდებულო (მაგ. gemini-3.8-flash ან gemini-3.5-flash-lite)
+  AI_MODEL          = "gemini-3.8-flash"     # არასავალდებულო
   AI_DEMO_MODE      = false                  # true -> სატესტო (უფასო) პასუხი
   AI_BASE_COST      = 1.0
   AI_DETAILED_EXTRA = 1.0
@@ -18,7 +18,7 @@ import httpx
 import streamlit as st
 from i18n import t
 
-GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models"
+GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta/models"
 DEFAULT_MODEL = "gemini-3.8-flash"
 REQUEST_TIMEOUT = 90.0
 MAX_IMAGE_BYTES = 5 * 1024 * 1024
@@ -53,6 +53,14 @@ def _secret(name, default=None):
     return default
 
 
+def _is_truthy(val) -> bool:
+  if isinstance(val, bool):
+    return val
+  if val is None:
+    return False
+  return str(val).strip().lower() in ("1", "true", "yes", "on")
+
+
 def get_extra_costs() -> tuple[float, float]:
   """აბრუნებს (detailed_cost, advice_cost) სეკრეტებიდან ან დეფოლტიდან."""
   det = float(_secret("AI_DETAILED_EXTRA", AI_DETAILED_EXTRA))
@@ -67,14 +75,6 @@ def calculate_cost(detailed: bool, advice: bool) -> float:
   det = det_extra if detailed else 0.0
   adv = adv_extra if advice else 0.0
   return round(base + det + adv, 2)
-
-
-def _is_truthy(val) -> bool:
-  if isinstance(val, bool):
-    return val
-  if val is None:
-    return False
-  return str(val).strip().lower() in ("1", "true", "yes", "on")
 
 
 def ai_status() -> str:
@@ -172,7 +172,7 @@ Cross-Check: შეადარე სტუდენტის მიერ ნ�
 
 
 def _download_image_part(url):
-  """სკრინშოტი Gemini inline_data part-ად; ვერ ჩამოიტვირთა -> None."""
+  """სკრინშოტი Gemini inline_data ბლოკად; ვერ ჩამოიტვირთა -> None (ანალიზი უსურათოდ გაგრძელდება)."""
   if not url or not str(url).startswith(("http://", "https://")):
     return None
   try:
@@ -246,7 +246,7 @@ def generate_trade_analysis(
 
   api_key = str(_secret("GEMINI_API_KEY", "")).strip()
   model = str(_secret("AI_MODEL", DEFAULT_MODEL)).strip()
-  url = f"{GEMINI_BASE_URL}/{model}:generateContent"
+  url = f"{GEMINI_API_BASE}/{model}:generateContent"
 
   parts = []
   image_part = _download_image_part(trade_data.get("Screenshot"))
