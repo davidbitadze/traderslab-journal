@@ -14,7 +14,7 @@ from database import (
     delete_screenshot,
     fetch_settings,
 )
-from utils.ai_mentor import ai_status, calculate_cost, generate_trade_analysis
+from utils.ai_mentor import ai_status, calculate_cost, generate_trade_analysis, get_extra_costs
 from utils.credits import (
     charge_credits,
     check_has_enough_credits,
@@ -489,8 +489,13 @@ def show_trade_details_dialog(trade, df=None):
     if mode == "demo":
       st.caption(_tt("ai_demo"))
 
-    opt_detailed = st.toggle(_tt("ai_opt_detailed"), key=f"ai_opt_det_{trade_id}")
-    opt_advice = st.toggle(_tt("ai_opt_advice"), key=f"ai_opt_adv_{trade_id}")
+    det_cost, adv_cost = get_extra_costs()
+    opt_detailed = st.toggle(
+        f"{_tt('ai_opt_detailed')} (+{det_cost:g})", key=f"ai_opt_det_{trade_id}"
+    )
+    opt_advice = st.toggle(
+        f"{_tt('ai_opt_advice')} (+{adv_cost:g})", key=f"ai_opt_adv_{trade_id}"
+    )
     total_cost = calculate_cost(opt_detailed, opt_advice)
     if st.button(_tt("ai_send", cost=total_cost), key=f"ai_send_{trade_id}", use_container_width=True):
       _run_ai_analysis(trade, sub_actions, trade_id, user_id, mode, total_cost, opt_detailed, opt_advice)
