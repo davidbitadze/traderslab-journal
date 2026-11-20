@@ -1,3 +1,4 @@
+import html
 import re
 from database import fetch_trades
 from utils.dates import parse_trade_datetime
@@ -41,6 +42,27 @@ def _clean_label(value):
   if value is None or pd.isna(value) or not str(value).strip():
     return "N/A"
   return str(value).replace("|", "").strip() or "N/A"
+
+
+def _metric(label, value, delta=None, delta_color="off"):
+  """st.metric დელტის გარეშე + საკუთარი ბეჯი, რომ ორივე თემაზე ერთნაირად იკითხებოდეს."""
+  st.metric(label, value)
+  if delta is None or delta == "":
+    return
+  text = str(delta)
+  light = st.session_state.get("theme", "auto") == "light"
+  fg, bg = ("#0F172A", "#E2E8F0") if light else ("#E2E8F0", "#1E293B")
+  arrow = ""
+  if delta_color == "normal":
+    if text.startswith("-"):
+      fg, bg, arrow = ("#B91C1C", "#FEE2E2", "↓ ") if light else ("#FCA5A5", "#450A0A", "↓ ")
+    elif text.startswith("+"):
+      fg, bg, arrow = ("#15803D", "#DCFCE7", "↑ ") if light else ("#86EFAC", "#052E16", "↑ ")
+  st.markdown(
+      f"<span style='display:inline-block;margin-top:-6px;padding:2px 10px;border-radius:999px;"
+      f"font-size:0.85rem;background:{bg};color:{fg};'>{arrow}{html.escape(text.lstrip('+-') if arrow else text)}</span>",
+      unsafe_allow_html=True,
+  )
 
 
 def _chart_palette():
@@ -180,7 +202,7 @@ def _render_ai_scores_section(df, lang="ka"):
   m_cols = st.columns(4)
   with m_cols[0]:
     with st.container(border=True):
-      st.metric(
+      _metric(
           "საშუალო AI ქულა" if lang == "ka" else "Avg AI Score",
           f"{avg_total:.2f} / 10",
           delta=delta_str,
@@ -188,13 +210,13 @@ def _render_ai_scores_section(df, lang="ka"):
       )
   with m_cols[1]:
     with st.container(border=True):
-      st.metric(
+      _metric(
           "ბოლო შეფასება" if lang == "ka" else "Latest Score",
           f"{last_total:.1f} / 10",
       )
   with m_cols[2]:
     with st.container(border=True):
-      st.metric(
+      _metric(
           "ყველაზე სუსტი კრიტერიუმი" if lang == "ka" else "Weakest Area",
           weakest_lbl,
           f"{crit_means[weakest_lbl]:.2f} / 2.00",
@@ -202,7 +224,7 @@ def _render_ai_scores_section(df, lang="ka"):
       )
   with m_cols[3]:
     with st.container(border=True):
-      st.metric(
+      _metric(
           "ყველაზე ძლიერი კრიტერიუმი" if lang == "ka" else "Strongest Area",
           strongest_lbl,
           f"{crit_means[strongest_lbl]:.2f} / 2.00",
@@ -420,10 +442,10 @@ def render_analytics_view(lang="ka"):
   row1 = st.columns(4)
   with row1[0]:
     with st.container(border=True):
-      st.metric(t("metric_total_pnl", lang), f"{s['total']:+.2f}$")
+      _metric(t("metric_total_pnl", lang), f"{s['total']:+.2f}$")
   with row1[1]:
     with st.container(border=True):
-      st.metric(
+      _metric(
           t("metric_win_rate", lang),
           f"{s['win_rate']:.1f}%",
           f"{s['wins']} / {s['losses']}",
@@ -431,10 +453,10 @@ def render_analytics_view(lang="ka"):
       )
   with row1[2]:
     with st.container(border=True):
-      st.metric(t("metric_pf", lang), _fmt(s["pf"]))
+      _metric(t("metric_pf", lang), _fmt(s["pf"]))
   with row1[3]:
     with st.container(border=True):
-      st.metric(
+      _metric(
           t("metric_expectancy", lang),
           _fmt(s["expectancy"], "{:+.2f}", "$"),
       )
@@ -442,16 +464,16 @@ def render_analytics_view(lang="ka"):
   row2 = st.columns(4)
   with row2[0]:
     with st.container(border=True):
-      st.metric(t("metric_avg_win", lang), f"{s['avg_win']:.2f}$")
+      _metric(t("metric_avg_win", lang), f"{s['avg_win']:.2f}$")
   with row2[1]:
     with st.container(border=True):
-      st.metric(t("metric_avg_loss", lang), f"-{s['avg_loss']:.2f}$")
+      _metric(t("metric_avg_loss", lang), f"-{s['avg_loss']:.2f}$")
   with row2[2]:
     with st.container(border=True):
-      st.metric(t("metric_payoff", lang), _fmt(s["payoff"]))
+      _metric(t("metric_payoff", lang), _fmt(s["payoff"]))
   with row2[3]:
     with st.container(border=True):
-      st.metric(t("metric_trades_count", lang), s["n"])
+      _metric(t("metric_trades_count", lang), s["n"])
 
   # ---- კაპიტალის მრუდი
   st.subheader(t("equity_curve_title", lang))
@@ -559,7 +581,7 @@ def render_analytics_view(lang="ka"):
     for col, (_, row) in zip(cols, g.iterrows()):
       with col:
         with st.container(border=True):
-          st.metric(
+          _metric(
               f"{row['Side']} ({row['Trades'] / total * 100:.0f}%)",
               f"{row['Total']:+.2f}$",
               f"Win Rate {row['WinRate']:.0f}%",
