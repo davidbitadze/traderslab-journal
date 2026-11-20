@@ -112,8 +112,11 @@ def _build_prompt(trade_data, sub_actions_df, detailed, advice, lang="ka"):
       if detailed
       else "ლაკონური, მოკლე და კონკრეტული"
   )
+  advice_title = "💡 რჩევა" if lang == "ka" else "💡 Advice"
   advice_rule = (
-      "ბოლოს დაურთე კონკრეტული, პრაქტიკული რჩევა შემდეგი გარიგებებისთვის"
+      f"ეს სავალდებულოა: ობიექტური ქულის შემდეგ (SCORES ხაზამდე) დაამატე ცალკე ბლოკი სათაურით „{advice_title}“ "
+      "და მასში 2-4 კონკრეტული, პრაქტიკული რჩევა შემდეგი გარიგებებისთვის. რჩევა აუცილებელია მაშინაც, "
+      "როცა ქულა სრულია (10/10): მაშინ დაწერე, რომელი ჩვევა შეინარჩუნოს და რა შეიძლება კიდევ გააუმჯობესოს"
       if advice
       else "რჩევა არ დაურთო, მხოლოდ ობიექტური შეფასება"
   )
@@ -259,7 +262,7 @@ def generate_trade_analysis(
         json={
             "contents": [{"role": "user", "parts": parts}],
             "generationConfig": {
-                "maxOutputTokens": 3200 if opt_detailed else 1200,
+                "maxOutputTokens": 3200 if opt_detailed else (2200 if opt_advice else 1200),
             },
         },
         timeout=REQUEST_TIMEOUT,

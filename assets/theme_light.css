@@ -302,3 +302,29 @@ h1, h2, h3, h4, h5, h6, p, label, .stMarkdown, span,
     background: transparent !important;
     color: #0F172A !important;
 }
+
+/* Expander სათაური (ღია და გახსნილი მდგომარეობა) ღია თემაზე */
+[data-testid="stExpander"] details,
+[data-testid="stExpander"] details[open],
+[data-testid="stExpander"] details > summary,
+[data-testid="stExpander"] details[open] > summary,
+[data-testid="stExpander"] details > summary:hover,
+[data-testid="stExpander"] details > summary:focus,
+[data-testid="stExpander"] details > summary:active {
+    background-color: #F1F5F9 !important;
+    color: #0F172A !important;
+}
+[data-testid="stExpander"] details > summary *,
+[data-testid="stExpander"] details[open] > summary *,
+[data-testid="stExpander"] details > summary:hover * {
+    color: #0F172A !important;
+    background-color: transparent !important;
+}
+[data-testid="stExpander"] details > summary svg {
+    fill: #0F172A !important;
+    color: #0F172A !important;
+}
+[data-testid="stExpander"] details > div {
+    background-color: #FFFFFF !important;
+    color: #0F172A !important;
+}
