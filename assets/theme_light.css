@@ -328,3 +328,19 @@ h1, h2, h3, h4, h5, h6, p, label, .stMarkdown, span,
     background-color: #FFFFFF !important;
     color: #0F172A !important;
 }
+
+/* Expander — გაძლიერებული სპეციფიკურობა (დიალოგშიც) */
+html body div[data-testid="stExpander"] summary,
+html body div[data-testid="stExpander"] summary:hover,
+html body div[data-testid="stExpander"] summary:focus,
+html body div[data-testid="stExpander"] summary:focus-visible,
+html body div[data-testid="stExpander"] summary:active,
+html body div[data-testid="stExpander"] details[open] > summary {
+    background: #F1F5F9 !important;
+    background-image: none !important;
+    color: #0F172A !important;
+}
+html body div[data-testid="stExpander"] summary * {
+    color: #0F172A !important;
+    background: transparent !important;
+}

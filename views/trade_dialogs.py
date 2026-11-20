@@ -528,7 +528,9 @@ def show_trade_details_dialog(trade, df=None):
 
   stored_analysis = trade.get("ai_analysis")
   if _has_value(stored_analysis):
-    with st.expander(_tt("ai_result"), expanded=True):
+    # expander-ის ნაცვლად ჩარჩოიანი ბლოკი: სათაურის მუქი ფონი ღია თემაზე აღარ წარმოიქმნება
+    with st.container(border=True):
+      st.markdown(f"**{_tt('ai_result')}**")
       st.markdown(stored_analysis)
 
   st.divider()
