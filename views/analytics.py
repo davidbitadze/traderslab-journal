@@ -4,9 +4,9 @@ from utils.dates import parse_trade_datetime
 from utils.formulas import calculate_stats
 from utils.trades import compute_pnl_map, split_trades
 from utils.translations import t
+import altair as alt
 import pandas as pd
 import streamlit as st
-import altair as alt
 
 GREEN = "#22c55e"
 RED = "#ef4444"
@@ -40,6 +40,47 @@ def _clean_label(value):
   if value is None or pd.isna(value) or not str(value).strip():
     return "N/A"
   return str(value).replace("|", "").strip() or "N/A"
+
+
+def _chart_palette():
+  is_light = st.session_state.get("theme_mode") == "light"
+  if is_light:
+    return {
+        "bg": "#FFFFFF",
+        "text": "#0F172A",
+        "grid": "#E2E8F0",
+        "bar_pos": "#16A34A",
+        "bar_neg": "#DC2626",
+        "ai_bar": "#2563EB",
+        "ai_line": "#059669",
+        "eq_pos": "#16A34A",
+        "eq_neg": "#DC2626",
+    }
+  return {
+      "bg": "#0F172A",
+      "text": "#E2E8F0",
+      "grid": "#1E293B",
+      "bar_pos": GREEN,
+      "bar_neg": RED,
+      "ai_bar": "#38BDF8",
+      "ai_line": "#34D399",
+      "eq_pos": GREEN,
+      "eq_neg": RED,
+  }
+
+
+def _apply_altair_theme(chart, palette, height):
+  return (
+      chart.properties(height=height, background=palette["bg"])
+      .configure_view(stroke=palette["grid"], fill=palette["bg"])
+      .configure_axis(
+          labelColor=palette["text"],
+          titleColor=palette["text"],
+          gridColor=palette["grid"],
+          domainColor=palette["grid"],
+          tickColor=palette["grid"],
+      )
+  )
 
 
 def _parse_ai_scores(raw):
@@ -115,30 +156,18 @@ def _render_ai_scores_section(df, lang="ka"):
   ai_df = _collect_ai_scores(df)
   if ai_df.empty:
     st.info(
-        "AI ქულების სტატისტიკა გამოჩნდება მას შემდეგ, რაც გარიგებებზე"
-        " შეფასების ქულები ჩაიწერება."
+        "AI ქულების სტატისტიკა გამოჩნდება მას შემდეგ, რაც გარიგებებზე შეფასების ქულები ჩაიწერება."
         if lang == "ka"
-        else (
-            "AI score statistics will appear once trades have recorded AI"
-            " scores."
-        )
+        else "AI score statistics will appear once trades have recorded AI scores."
     )
     return
 
-  is_light = st.session_state.get("theme_mode") == "light"
-  bg_color = "#FFFFFF" if is_light else "#0F172A"
-  text_color = "#0F172A" if is_light else "#E2E8F0"
-  grid_color = "#E2E8F0" if is_light else "#1E293B"
-  bar_color = "#2563EB" if is_light else "#38BDF8"
-  line_color = "#059669" if is_light else "#34D399"
-
+  palette = _chart_palette()
   labels = _AI_CRITERIA_LABELS_KA if lang == "ka" else _AI_CRITERIA_LABELS_EN
   avg_total = ai_df["AI_Total"].mean()
   last_total = ai_df["AI_Total"].iloc[-1]
   prev_avg = ai_df["AI_Total"].iloc[:-1].mean() if len(ai_df) > 1 else None
-  delta_str = (
-      f"{avg_total - prev_avg:+.2f} vs prev" if prev_avg is not None else None
-  )
+  delta_str = f"{avg_total - prev_avg:+.2f} vs prev" if prev_avg is not None else None
 
   crit_means = {
       lbl: round(float(ai_df[key].mean()), 2)
@@ -179,19 +208,6 @@ def _render_ai_scores_section(df, lang="ka"):
           delta_color="off",
       )
 
-  def _style_chart(chart):
-    return (
-        chart.properties(height=260, background=bg_color)
-        .configure_view(stroke=grid_color, fill=bg_color)
-        .configure_axis(
-            labelColor=text_color,
-            titleColor=text_color,
-            gridColor=grid_color,
-            domainColor=grid_color,
-            tickColor=grid_color,
-        )
-    )
-
   c1, c2 = st.columns(2)
   with c1:
     st.caption(
@@ -205,7 +221,7 @@ def _render_ai_scores_section(df, lang="ka"):
     })
     bar_chart = (
         alt.Chart(crit_df)
-        .mark_bar(color=bar_color, cornerRadiusTopLeft=4, cornerRadiusTopRight=4)
+        .mark_bar(color=palette["ai_bar"], cornerRadiusTopLeft=4, cornerRadiusTopRight=4)
         .encode(
             x=alt.X(
                 "Criterion:N",
@@ -213,15 +229,11 @@ def _render_ai_scores_section(df, lang="ka"):
                 title="Criterion",
                 axis=alt.Axis(labelAngle=-25),
             ),
-            y=alt.Y(
-                "Avg:Q",
-                scale=alt.Scale(domain=[0, 2]),
-                title="Avg",
-            ),
+            y=alt.Y("Avg:Q", scale=alt.Scale(domain=[0, 2]), title="Avg"),
             tooltip=["Criterion", "Avg"],
         )
     )
-    st.altair_chart(_style_chart(bar_chart), use_container_width=True)
+    st.altair_chart(_apply_altair_theme(bar_chart, palette, 260), use_container_width=True)
 
   with c2:
     st.caption(
@@ -230,23 +242,23 @@ def _render_ai_scores_section(df, lang="ka"):
         else "Total AI score trend (0–10)"
     )
     trend_df = pd.DataFrame({
-        "Index": range(1, len(ai_df) + 1),
-        "Score": ai_df["AI_Total"],
+        "Index": list(range(1, len(ai_df) + 1)),
+        "Score": ai_df["AI_Total"].tolist(),
     })
     line_chart = (
         alt.Chart(trend_df)
-        .mark_line(color=line_color, point=alt.OverlayMarkDef(color=line_color, size=45), strokeWidth=2.5)
+        .mark_line(
+            color=palette["ai_line"],
+            point=alt.OverlayMarkDef(color=palette["ai_line"], size=45),
+            strokeWidth=2.5,
+        )
         .encode(
             x=alt.X("Index:O", title="Index"),
-            y=alt.Y(
-                "Score:Q",
-                scale=alt.Scale(domain=[0, 10]),
-                title="Score",
-            ),
+            y=alt.Y("Score:Q", scale=alt.Scale(domain=[0, 10]), title="Score"),
             tooltip=["Index", "Score"],
         )
     )
-    st.altair_chart(_style_chart(line_chart), use_container_width=True)
+    st.altair_chart(_apply_altair_theme(line_chart, palette, 260), use_container_width=True)
 
 
 def _collect_trades(df):
@@ -332,17 +344,35 @@ def _group_table(g, key, label, lang):
           "Total": t("table_total_pnl", lang),
           "Avg": t("table_avg_pnl", lang),
       }
-  )[[label, t("table_trade_count", lang), t("table_win_rate", lang), t("table_total_pnl", lang), t("table_avg_pnl", lang)]]
+  )[[
+      label,
+      t("table_trade_count", lang),
+      t("table_win_rate", lang),
+      t("table_total_pnl", lang),
+      t("table_avg_pnl", lang),
+  ]]
   table[t("table_win_rate", lang)] = table[t("table_win_rate", lang)].round(0)
   _show_table(table, [t("table_total_pnl", lang), t("table_avg_pnl", lang)])
 
 
 def _bar(g, key, value_col="Total", height=320):
-  chart = g[[key, value_col]].copy()
-  chart["Color"] = chart[value_col].apply(lambda v: GREEN if v >= 0 else RED)
-  st.bar_chart(
-      chart, x=key, y=value_col, color="Color", height=height, sort=False
+  palette = _chart_palette()
+  chart_df = g[[key, value_col]].copy()
+  chart_df["Color"] = chart_df[value_col].apply(
+      lambda v: palette["bar_pos"] if v >= 0 else palette["bar_neg"]
   )
+  order_vals = chart_df[key].tolist()
+  bars = (
+      alt.Chart(chart_df)
+      .mark_bar(cornerRadiusTopLeft=4, cornerRadiusTopRight=4)
+      .encode(
+          x=alt.X(f"{key}:N", sort=order_vals, title=key),
+          y=alt.Y(f"{value_col}:Q", title=value_col),
+          color=alt.Color("Color:N", scale=None, legend=None),
+          tooltip=[key, value_col],
+      )
+  )
+  st.altair_chart(_apply_altair_theme(bars, palette, height), use_container_width=True)
 
 
 # ------------------------------------------------------------------- view
@@ -386,6 +416,7 @@ def render_analytics_view(lang="ka"):
     trades = all_trades
 
   s = _stats(trades)
+  palette = _chart_palette()
 
   # ---- მთავარი ბარათები
   row1 = st.columns(4)
@@ -394,13 +425,21 @@ def render_analytics_view(lang="ka"):
       st.metric(t("metric_total_pnl", lang), f"{s['total']:+.2f}$")
   with row1[1]:
     with st.container(border=True):
-      st.metric(t("metric_win_rate", lang), f"{s['win_rate']:.1f}%", f"{s['wins']} / {s['losses']}", delta_color="off")
+      st.metric(
+          t("metric_win_rate", lang),
+          f"{s['win_rate']:.1f}%",
+          f"{s['wins']} / {s['losses']}",
+          delta_color="off",
+      )
   with row1[2]:
     with st.container(border=True):
       st.metric(t("metric_pf", lang), _fmt(s["pf"]))
   with row1[3]:
     with st.container(border=True):
-      st.metric(t("metric_expectancy", lang), _fmt(s["expectancy"], "{:+.2f}", "$"))
+      st.metric(
+          t("metric_expectancy", lang),
+          _fmt(s["expectancy"], "{:+.2f}", "$"),
+      )
 
   row2 = st.columns(4)
   with row2[0]:
@@ -418,19 +457,46 @@ def render_analytics_view(lang="ka"):
 
   # ---- კაპიტალის მრუდი
   st.subheader(t("equity_curve_title", lang))
+  x_col = t("equity_chart_x", lang)
+  y_col = t("equity_chart_y", lang)
   equity = pd.DataFrame({
-      t("equity_chart_x", lang): range(1, len(trades) + 1),
-      t("equity_chart_y", lang): trades["PnL"].cumsum().round(2),
+      x_col: list(range(1, len(trades) + 1)),
+      y_col: trades["PnL"].cumsum().round(2).tolist(),
   })
-  line_color = GREEN if s["total"] >= 0 else RED
-  st.area_chart(
-      equity, x=t("equity_chart_x", lang), y=t("equity_chart_y", lang), color=line_color, height=300
+  eq_color = palette["eq_pos"] if s["total"] >= 0 else palette["eq_neg"]
+  area_chart = (
+      alt.Chart(equity)
+      .mark_area(
+          line={"color": eq_color, "strokeWidth": 2.5},
+          color=alt.Gradient(
+              gradient="linear",
+              stops=[
+                  alt.GradientStop(color=eq_color, offset=0),
+                  alt.GradientStop(color="rgba(34, 197, 94, 0.05)" if s["total"] >= 0 else "rgba(239, 68, 68, 0.05)", offset=1),
+              ],
+              x1=0,
+              x2=0,
+              y1=1,
+              y2=0,
+          ),
+      )
+      .encode(
+          x=alt.X(f"{x_col}:Q", title=x_col),
+          y=alt.Y(f"{y_col}:Q", title=y_col),
+          tooltip=[x_col, y_col],
+      )
   )
+  st.altair_chart(_apply_altair_theme(area_chart, palette, 300), use_container_width=True)
 
   # ---- პერიოდების შედარება
   st.subheader(t("periods_comp_title", lang))
   comp = []
-  for label, count in [(t("p_100", lang), 100), (t("p_50", lang), 50), (t("p_20", lang), 20), (t("p_10", lang), 10)]:
+  for label, count in [
+      (t("p_100", lang), 100),
+      (t("p_50", lang), 50),
+      (t("p_20", lang), 20),
+      (t("p_10", lang), 10),
+  ]:
     ps = _stats(all_trades.tail(count))
     if ps:
       comp.append({
@@ -442,16 +508,22 @@ def render_analytics_view(lang="ka"):
           t("table_total_pnl", lang): round(ps["total"], 2),
       })
   if comp:
-    _show_table(pd.DataFrame(comp), [t("table_expectancy", lang), t("table_total_pnl", lang)])
+    _show_table(
+        pd.DataFrame(comp),
+        [t("table_expectancy", lang), t("table_total_pnl", lang)],
+    )
 
   st.divider()
 
   # ---- დეტალური ანალიზი ტაბებში
-  tab_day, tab_pair, tab_pattern, tab_trigger, tab_side = st.tabs(
-      [t("tab_day_label", lang), t("tab_pair_label", lang), t("tab_pattern_label", lang), t("tab_trigger_label", lang), t("tab_side_label", lang)]
-  )
+  tab_day, tab_pair, tab_pattern, tab_trigger, tab_side = st.tabs([
+      t("tab_day_label", lang),
+      t("tab_pair_label", lang),
+      t("tab_pattern_label", lang),
+      t("tab_trigger_label", lang),
+      t("tab_side_label", lang),
+  ])
 
-  # ვიღებთ დღეების სიას უშუალოდ თარგმანების მოდულიდან
   days_list = t("days_of_week", lang)
 
   with tab_day:
