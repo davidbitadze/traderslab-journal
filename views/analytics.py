@@ -3,6 +3,7 @@ from database import fetch_trades
 from utils.dates import parse_trade_datetime
 from utils.formulas import calculate_stats
 from utils.trades import compute_pnl_map, split_trades
+from utils.theme import show_table
 from utils.translations import t
 import altair as alt
 import pandas as pd
@@ -43,7 +44,7 @@ def _clean_label(value):
 
 
 def _chart_palette():
-  is_light = st.session_state.get("theme_mode") == "light"
+  is_light = st.session_state.get("theme", "auto") == "light"
   if is_light:
     return {
         "bg": "#FFFFFF",
@@ -314,10 +315,7 @@ def _color_pnl(value):
 
 
 def _show_table(table, pnl_cols):
-  styler = table.style.format({c: "{:+.2f}" for c in pnl_cols})
-  apply = styler.map if hasattr(styler, "map") else styler.applymap
-  styler = apply(_color_pnl, subset=pnl_cols)
-  st.dataframe(styler, use_container_width=True, hide_index=True)
+  show_table(table, pnl_cols)
 
 
 def _group(d, key):

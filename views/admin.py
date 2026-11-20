@@ -4,6 +4,7 @@ import pandas as pd
 import streamlit as st
 
 from utils import admin_api
+from utils.theme import show_table
 from utils.subscription import ALL_STATUSES, evaluate, parse_expiry
 
 QUICK_CREDITS = (10, 50, 100)
@@ -97,7 +98,7 @@ def _render_users(lang, now):
       _tx(lang, "რეგისტრაცია", "Registered"): view["created_at"].map(_fmt_dt),
       _tx(lang, "ბოლო შესვლა", "Last sign-in"): view["last_sign_in_at"].map(lambda v: "—" if pd.isna(v) else _fmt_dt(v)),
   })
-  st.dataframe(table, use_container_width=True, hide_index=True)
+  show_table(table)
 
   if view.empty:
     return
@@ -199,7 +200,7 @@ def _render_user_panel(lang, now, row):
     else:
       history = history[["created_at", "kind", "delta", "balance_after", "reason", "actor"]].copy()
       history["created_at"] = history["created_at"].map(_fmt_dt)
-      st.dataframe(history, use_container_width=True, hide_index=True)
+      show_table(history)
 
 
 # ------------------------------------------------------------------ staff tab
@@ -213,11 +214,7 @@ def _render_staff(lang, my_email):
   if error:
     st.error(f"❌ {error}")
     return
-  st.dataframe(
-      staff[["email", "role", "added_by", "created_at"]].assign(created_at=lambda d: d["created_at"].map(_fmt_dt)),
-      use_container_width=True,
-      hide_index=True,
-  )
+  show_table(staff[["email", "role", "added_by", "created_at"]].assign(created_at=lambda d: d["created_at"].map(_fmt_dt)))
 
   with st.form("admin_add_staff", clear_on_submit=True):
     st.markdown(_tx(lang, "#### ➕ დამატება / როლის შეცვლა", "#### ➕ Add / change role"))
@@ -253,7 +250,7 @@ def _render_audit(lang):
     log = log[["created_at", "actor_email", "action", "target", "details"]].copy()
     log["created_at"] = log["created_at"].map(_fmt_dt)
     log["details"] = log["details"].map(lambda d: "" if d is None else str(d))
-    st.dataframe(log, use_container_width=True, hide_index=True)
+    show_table(log)
 
 
 # ----------------------------------------------------------------------- view

@@ -294,3 +294,11 @@ h1, h2, h3, h4, h5, h6, p, label, .stMarkdown, span,
 [data-testid="stVegaLiteChart"] canvas {
     background-color: #FFFFFF !important;
 }
+
+/* Metric delta: ყველა შიდა ელემენტი გამჭვირვალე, რომ მუქი ფონი არ დარჩეს */
+[data-testid="stMetricDelta"] > div,
+[data-testid="stMetricDelta"] div,
+[data-testid="stMetricDelta"] span {
+    background: transparent !important;
+    color: #0F172A !important;
+}
