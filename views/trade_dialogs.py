@@ -437,13 +437,37 @@ def show_trade_details_dialog(trade, df=None):
 
   with st.expander(_tt("add_action_expander")):
     with st.form(key=f"form_add_sub_{trade_id}", clear_on_submit=True):
-      add_date = st.text_input(_tt("f_datetime"), value=datetime.now().strftime("%Y-%m-%d %H:%M:%S"), key=f"add_sub_date_{trade_id}")
-      add_type = st.selectbox(_tt("f_action_type"), SUB_ACTION_TYPES, format_func=_action_label)
-      a1, a2 = st.columns(2)
-      add_price = a1.number_input(_tt("f_price"), value=0.0, format="%.5f")
-      add_qty = a2.number_input(_tt("f_qty_short"), value=1.0, format="%.2f")
-      add_description = st.text_area(_tt("f_description"), value="", key=f"add_sub_desc_{trade_id}")
-      add_file = st.file_uploader(_tt("f_mid_screenshot"), type=["png", "jpg", "jpeg"], key=f"sub_img_up_{trade_id}")
+      add_type = st.selectbox(
+          _tt("f_action_type"),
+          SUB_ACTION_TYPES,
+          format_func=_action_label,
+      )
+      r_dt, r_price, r_qty = st.columns([1.5, 1, 1])
+      with r_dt:
+        add_date = st.text_input(
+            _tt("f_datetime"),
+            value=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            key=f"add_sub_date_{trade_id}",
+        )
+      with r_price:
+        add_price = st.number_input(_tt("f_price"), value=0.0, format="%.5f")
+      with r_qty:
+        add_qty = st.number_input(_tt("f_qty_short"), value=1.0, format="%.2f")
+
+      r_desc, r_file = st.columns([2.6, 1], vertical_alignment="top")
+      with r_desc:
+        add_description = st.text_area(
+            _tt("f_description"),
+            value="",
+            height=90,
+            key=f"add_sub_desc_{trade_id}",
+        )
+      with r_file:
+        add_file = st.file_uploader(
+            _tt("f_mid_screenshot"),
+            type=["png", "jpg", "jpeg"],
+            key=f"sub_img_up_{trade_id}",
+        )
       add_submit = st.form_submit_button(_tt("add_data_btn"), use_container_width=True)
 
     if add_submit:
