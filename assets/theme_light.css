@@ -257,3 +257,40 @@ h1, h2, h3, h4, h5, h6, p, label, .stMarkdown, span,
 .trade-sub-text {
     color: #64748B !important;
 }
+
+/* Metric delta badges ღია თემაზე */
+[data-testid="stMetricDelta"] {
+    background-color: #E2E8F0 !important;
+    color: #0F172A !important;
+    border: 1px solid #CBD5E1 !important;
+    border-radius: 999px !important;
+    padding: 2px 8px !important;
+}
+[data-testid="stMetricDelta"] *,
+[data-testid="stMetricDelta"] svg {
+    color: #0F172A !important;
+    fill: #0F172A !important;
+}
+
+/* ცხრილები (st.dataframe) ღია თემაზე */
+[data-testid="stDataFrame"] {
+    background-color: #FFFFFF !important;
+    border: 1px solid #CBD5E1 !important;
+    border-radius: 8px !important;
+    padding: 4px !important;
+}
+[data-testid="stDataFrame"] > div {
+    background-color: #FFFFFF !important;
+    color: #0F172A !important;
+}
+
+/* Bar / Line გრაფიკები (Vega-Lite) ღია თემაზე */
+[data-testid="stVegaLiteChart"] {
+    background-color: #FFFFFF !important;
+    border: 1px solid #CBD5E1 !important;
+    border-radius: 8px !important;
+    padding: 8px !important;
+}
+[data-testid="stVegaLiteChart"] canvas {
+    background-color: #FFFFFF !important;
+}
