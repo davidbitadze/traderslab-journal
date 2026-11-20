@@ -64,4 +64,4 @@ System matrix:
 
 🏆 Objective score: X/10
 
-SCORES: level(0-2),pattern(0-2),trigger(0-2),volume(0-2),management(0-2)
+SCORES:2,2,2,2,2
