@@ -6,6 +6,7 @@ from utils.trades import compute_pnl_map, split_trades
 from utils.translations import t
 import pandas as pd
 import streamlit as st
+import altair as alt
 
 GREEN = "#22c55e"
 RED = "#ef4444"
@@ -105,24 +106,44 @@ def _collect_ai_scores(df):
 
 def _render_ai_scores_section(df, lang="ka"):
   st.divider()
-  st.subheader("🤖 AI მენტორის ქულების სტატისტიკა" if lang == "ka" else "🤖 AI Mentor Score Statistics")
+  st.subheader(
+      "🤖 AI მენტორის ქულების სტატისტიკა"
+      if lang == "ka"
+      else "🤖 AI Mentor Score Statistics"
+  )
 
   ai_df = _collect_ai_scores(df)
   if ai_df.empty:
     st.info(
-        "AI ქულების სტატისტიკა გამოჩნდება მას შემდეგ, რაც გარიგებებზე შეფასების ქულები ჩაიწერება."
+        "AI ქულების სტატისტიკა გამოჩნდება მას შემდეგ, რაც გარიგებებზე"
+        " შეფასების ქულები ჩაიწერება."
         if lang == "ka"
-        else "AI score statistics will appear once trades have recorded AI scores."
+        else (
+            "AI score statistics will appear once trades have recorded AI"
+            " scores."
+        )
     )
     return
+
+  is_light = st.session_state.get("theme_mode") == "light"
+  bg_color = "#FFFFFF" if is_light else "#0F172A"
+  text_color = "#0F172A" if is_light else "#E2E8F0"
+  grid_color = "#E2E8F0" if is_light else "#1E293B"
+  bar_color = "#2563EB" if is_light else "#38BDF8"
+  line_color = "#059669" if is_light else "#34D399"
 
   labels = _AI_CRITERIA_LABELS_KA if lang == "ka" else _AI_CRITERIA_LABELS_EN
   avg_total = ai_df["AI_Total"].mean()
   last_total = ai_df["AI_Total"].iloc[-1]
   prev_avg = ai_df["AI_Total"].iloc[:-1].mean() if len(ai_df) > 1 else None
-  delta_str = f"{avg_total - prev_avg:+.2f} vs prev" if prev_avg is not None else None
+  delta_str = (
+      f"{avg_total - prev_avg:+.2f} vs prev" if prev_avg is not None else None
+  )
 
-  crit_means = {lbl: round(float(ai_df[key].mean()), 2) for lbl, key in zip(labels, _AI_CRITERIA_KEYS)}
+  crit_means = {
+      lbl: round(float(ai_df[key].mean()), 2)
+      for lbl, key in zip(labels, _AI_CRITERIA_KEYS)
+  }
   weakest_lbl = min(crit_means, key=crit_means.get)
   strongest_lbl = max(crit_means, key=crit_means.get)
 
@@ -158,22 +179,74 @@ def _render_ai_scores_section(df, lang="ka"):
           delta_color="off",
       )
 
+  def _style_chart(chart):
+    return (
+        chart.properties(height=260, background=bg_color)
+        .configure_view(stroke=grid_color, fill=bg_color)
+        .configure_axis(
+            labelColor=text_color,
+            titleColor=text_color,
+            gridColor=grid_color,
+            domainColor=grid_color,
+            tickColor=grid_color,
+        )
+    )
+
   c1, c2 = st.columns(2)
   with c1:
-    st.caption("საშუალო ქულა კრიტერიუმების მიხედვით (მაქს. 2.0)" if lang == "ka" else "Average score by criterion (max 2.0)")
+    st.caption(
+        "საშუალო ქულა კრიტერიუმების მიხედვით (მაქს. 2.0)"
+        if lang == "ka"
+        else "Average score by criterion (max 2.0)"
+    )
     crit_df = pd.DataFrame({
         "Criterion": list(crit_means.keys()),
         "Avg": list(crit_means.values()),
     })
-    st.bar_chart(crit_df, x="Criterion", y="Avg", height=260, sort=False)
+    bar_chart = (
+        alt.Chart(crit_df)
+        .mark_bar(color=bar_color, cornerRadiusTopLeft=4, cornerRadiusTopRight=4)
+        .encode(
+            x=alt.X(
+                "Criterion:N",
+                sort=list(crit_means.keys()),
+                title="Criterion",
+                axis=alt.Axis(labelAngle=-25),
+            ),
+            y=alt.Y(
+                "Avg:Q",
+                scale=alt.Scale(domain=[0, 2]),
+                title="Avg",
+            ),
+            tooltip=["Criterion", "Avg"],
+        )
+    )
+    st.altair_chart(_style_chart(bar_chart), use_container_width=True)
 
   with c2:
-    st.caption("ჯამური AI ქულის დინამიკა (0–10)" if lang == "ka" else "Total AI score trend (0–10)")
+    st.caption(
+        "ჯამური AI ქულის დინამიკა (0–10)"
+        if lang == "ka"
+        else "Total AI score trend (0–10)"
+    )
     trend_df = pd.DataFrame({
         "Index": range(1, len(ai_df) + 1),
         "Score": ai_df["AI_Total"],
     })
-    st.line_chart(trend_df, x="Index", y="Score", height=260)
+    line_chart = (
+        alt.Chart(trend_df)
+        .mark_line(color=line_color, point=alt.OverlayMarkDef(color=line_color, size=45), strokeWidth=2.5)
+        .encode(
+            x=alt.X("Index:O", title="Index"),
+            y=alt.Y(
+                "Score:Q",
+                scale=alt.Scale(domain=[0, 10]),
+                title="Score",
+            ),
+            tooltip=["Index", "Score"],
+        )
+    )
+    st.altair_chart(_style_chart(line_chart), use_container_width=True)
 
 
 def _collect_trades(df):
